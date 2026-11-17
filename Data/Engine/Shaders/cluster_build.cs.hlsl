@@ -7,7 +7,7 @@ static const uint MAX_PER_CLUSTER = 64;
 cbuffer ClusterBuildParams : register(b0) {
     uint  GridX; uint GridY; uint SliceCount; uint TileSize;
     float Near;  float Far;  float LogScale;  float LogBias;
-    uint  LightCount; uint LightOffset; uint Orthographic; float _pad;
+    uint  LightCount; uint LightOffset; uint Orthographic; uint SlotsPerCluster;
     float4x4 ViewMatrix;
     float4x4 InvProjection;
 };
@@ -20,6 +20,11 @@ struct GpuLight {
 StructuredBuffer<GpuLight> Lights               : register(t0);
 RWStructuredBuffer<uint2>  ClusterOffsetsRW      : register(u0);
 RWStructuredBuffer<uint>   ClusterLightIndicesRW : register(u1);
+// One shared list, a region of it for each group of 64 clusters (SlotsPerCluster each on average):
+// in its group's region each cluster takes a run as long as its own lights, where the counts before
+// it end, rather than a fixed 64 slots each, mostly empty. No atomics: WebGPU's shaders take none
+// on a plain buffer.
+groupshared uint gRunStart[64];
 
 float  GetSliceDepth(uint slice) { return Near * pow(Far / Near, (float)slice / (float)SliceCount); }
 float2 ScreenToNDC(float2 s) {
@@ -40,10 +45,12 @@ bool SphereVsAABB(float3 c, float r, float3 mn, float3 mx) {
 }
 
 [numthreads(64, 1, 1)]
-void main(uint3 dtid : SV_DispatchThreadID) {
+void main(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID) {
     uint clusterIdx = dtid.x;
     uint total = GridX * GridY * SliceCount;
-    if (clusterIdx >= total) { return; }
+    // No early return: every thread of the group reaches the barriers below (one past the grid counts 0).
+    bool inGrid = clusterIdx < total;
+    if (!inGrid) { clusterIdx = total - 1; }
 
     uint slice = clusterIdx / (GridX * GridY);
     uint tib   = clusterIdx % (GridX * GridY);
@@ -65,9 +72,9 @@ void main(uint3 dtid : SV_DispatchThreadID) {
         aabbMax = max(aabbMax, max(vN, vF));
     }
 
-    uint base  = clusterIdx * MAX_PER_CLUSTER;
+    uint found[MAX_PER_CLUSTER];
     uint count = 0;
-    for (uint i = 0; i < LightCount && count < MAX_PER_CLUSTER; i++) {
+    for (uint i = 0; inGrid && i < LightCount && count < MAX_PER_CLUSTER; i++) {
         GpuLight L = Lights[LightOffset + i];
         bool hit;
         if (L.type < 0.5) {                                  // directional: affects every cluster
@@ -76,7 +83,24 @@ void main(uint3 dtid : SV_DispatchThreadID) {
             float3 posV = mul(float4(L.positionWS, 1.0), ViewMatrix).xyz;
             hit = SphereVsAABB(posV, L.range, aabbMin, aabbMax);
         }
-        if (hit) { ClusterLightIndicesRW[base + count] = i; count++; }
+        if (hit) { found[count] = i; count++; }
     }
-    ClusterOffsetsRW[clusterIdx] = uint2(base, count);
+    // Where each cluster's run starts in the group's region: the counts before it, summed.
+    gRunStart[gtid.x] = count;
+    GroupMemoryBarrierWithGroupSync();
+    if (gtid.x == 0) {
+        uint run = 0;
+        for (uint k = 0; k < 64; k++) { uint c = gRunStart[k]; gRunStart[k] = run; run += c; }
+    }
+    GroupMemoryBarrierWithGroupSync();
+    // Past the region's end a cluster keeps what fits: the region is sized for the view's lights, so
+    // only a crowd of large lights in one group's clusters reaches it.
+    uint region = 64 * SlotsPerCluster;
+    uint start  = gRunStart[gtid.x];
+    uint kept   = (start >= region) ? 0 : min(count, region - start);
+    uint base   = gid.x * region + start;
+    if (inGrid) {
+        for (uint k = 0; k < kept; k++) { ClusterLightIndicesRW[base + k] = found[k]; }
+        ClusterOffsetsRW[clusterIdx] = uint2(base, kept);
+    }
 }

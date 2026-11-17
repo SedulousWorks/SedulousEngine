@@ -17,6 +17,13 @@ class ClusterSystem
 	private const uint32 cSliceCount = 24;
 	/// The per cluster cap, which matches the kernel's own.
 	private const uint32 cMaxPerCluster = 64;
+	/// The shared index list holds this many lights a cluster on average, plus the view's directional
+	/// lights (each reaches every cluster). A view of no more lights than that sizes it by its light
+	/// count, which no cluster can pass; past it, a cluster's average is far below its cap (64), which
+	/// each cluster had in full: 50 MB a view at 1080p.
+	private const uint32 cAveragePerCluster = 16;
+	/// The kernel's group: one region of the list each.
+	private const uint32 cGroupClusters = 64;
 	/// The per view light budget, which matches the forward pass's.
 	private const uint32 cMaxLights = RenderLimits.MaxLightsPerView;
 	/// The dynamic offset alignment, which is at least the size of the parameters.
@@ -58,6 +65,7 @@ class ClusterSystem
 		public uint32 BindGroupParamsGen;
 		public uint32 BindGroupLightGen;
 		public IBuffer BindGroupOffsets;
+		public IBuffer BindGroupIndices;
 	}
 
 	/// Per (view, frame in flight), grown to the most views one frame draws.
@@ -181,8 +189,19 @@ class ClusterSystem
 		if (totalClusters == 0)
 			return binding;
 
+		// The shared list: per cluster as many as the view's lights, to the average (plus the
+		// directional lights, which reach every cluster) past that; a region of it per group.
+		let sceneLights = (view.Scene != null) ? view.Scene.Lights : Span<GpuLight>();
+		let viewLights = Min((uint32)sceneLights.Length, cMaxLights);
+		uint32 directional = 0;
+		for (int i < (int)viewLights)
+			directional += (sceneLights[i].Type < 0.5f) ? 1 : 0;
+		let perCluster = Max((uint32)1, Min(Min(viewLights, cAveragePerCluster + directional), cMaxPerCluster));
+		let groupCount = (uint32)((totalClusters + cGroupClusters - 1) / cGroupClusters);
+		let indexCapacity = (uint32)(groupCount * cGroupClusters * perCluster);
+
 		ref Slot slot = ref mSlots.At(viewIndex, frameIndex);
-		if (!EnsureBuffers(ref slot, totalClusters))
+		if (!EnsureBuffers(ref slot, totalClusters, indexCapacity))
 			return binding;
 
 		// The camera's own planes. The slices are logarithmic in view depth, so the near one stays
@@ -224,6 +243,7 @@ class ClusterSystem
 		parameters.LightCount = lightCount;
 		parameters.LightOffset = lightOffset;
 		parameters.Orthographic = view.Camera.Projection.IsOrthographic ? 1 : 0;
+		parameters.SlotsPerCluster = perCluster;
 		parameters.ViewMatrix = view.Camera.View;
 		parameters.InverseProjection = Inverse(view.Camera.Projection);
 		*(ClusterBuildParams*)paramsRange.Ptr = parameters;
@@ -293,13 +313,13 @@ class ClusterSystem
 		return .Ok;
 	}
 
-	/// Grows a slot's buffers when its cluster count outgrows them.
-	private bool EnsureBuffers(ref Slot slot, uint32 totalClusters)
+	/// Grows a slot's buffers when its cluster count or its lights outgrow them.
+	private bool EnsureBuffers(ref Slot slot, uint32 totalClusters, uint32 indexCapacity)
 	{
 		let offsetsBytes = (uint64)totalClusters * sizeof(uint32) * 2;
-		let indicesBytes = (uint64)totalClusters * cMaxPerCluster * sizeof(uint32);
+		let indicesBytes = (uint64)indexCapacity * sizeof(uint32); // the shared list
 
-		if ((slot.Offsets != null) && (offsetsBytes <= slot.OffsetsBytes))
+		if ((slot.Offsets != null) && (offsetsBytes <= slot.OffsetsBytes) && (indicesBytes <= slot.IndicesBytes))
 			return true;
 
 		// A frame in flight may still be reading the OLD buffers, and the group over them.
@@ -335,6 +355,7 @@ class ClusterSystem
 		// The slot's group referred to the old buffers, so it goes with them.
 		ReleaseBindGroup(ref slot);
 		slot.BindGroupOffsets = null;
+		slot.BindGroupIndices = null;
 		return true;
 	}
 
@@ -345,7 +366,7 @@ class ClusterSystem
 		let stable = (slot.BindGroup != null)
 			&& (slot.BindGroupParamsGen == mParamsRing.Generation)
 			&& (slot.BindGroupLightGen == mLightRing.Generation)
-			&& (slot.BindGroupOffsets == offsets);
+			&& (slot.BindGroupOffsets == offsets) && (slot.BindGroupIndices == indices);
 		if (stable)
 			return true;
 
@@ -373,6 +394,7 @@ class ClusterSystem
 		slot.BindGroupParamsGen = mParamsRing.Generation;
 		slot.BindGroupLightGen = mLightRing.Generation;
 		slot.BindGroupOffsets = offsets;
+		slot.BindGroupIndices = indices;
 		return true;
 	}
 

@@ -25,7 +25,8 @@ struct ClusterBuildParams
 	/// Non zero for an orthographic view: the kernel unprojects tile corners without the depth
 	/// scale, since an orthographic tile keeps its width.
 	public uint32 Orthographic = 0;
-	public float Pad0 = 0.0f;
+	/// A cluster's average share of the light index list: its group's region is 64 times this.
+	public uint32 SlotsPerCluster = 0;
 
 	public Float4x4 ViewMatrix = .Identity();
 	public Float4x4 InverseProjection = .Identity();

@@ -209,7 +209,7 @@ class ShaderBlockLayoutTests
 		.("LightCount", offsetof(ClusterBuildParams, LightCount)),
 		.("LightOffset", offsetof(ClusterBuildParams, LightOffset)),
 		.("Orthographic", offsetof(ClusterBuildParams, Orthographic)),
-		.("_pad", offsetof(ClusterBuildParams, Pad0)),
+		.("SlotsPerCluster", offsetof(ClusterBuildParams, SlotsPerCluster)),
 		.("ViewMatrix", offsetof(ClusterBuildParams, ViewMatrix)),
 		.("InvProjection", offsetof(ClusterBuildParams, InverseProjection)));
 
