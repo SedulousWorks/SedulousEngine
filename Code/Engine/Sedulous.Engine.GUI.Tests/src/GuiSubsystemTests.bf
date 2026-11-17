@@ -495,6 +495,44 @@ class GuiSubsystemTests
 		Test.Assert(clicks == 1);
 	}
 
+	/// The input pump holds the tier's root while it dispatches. A handler that ends a run (a "quit to
+	/// menu" button) removed the run's tier, root and screens with it, under the pump: they wait now
+	/// until the pump returns.
+	[Test]
+	public static void ARunEndedByAClickLosesItsScreensAfterTheInputPump()
+	{
+		let engine = scope GuiTestEngine();
+		engine.Gui.ScreenRoot.ViewportSize = .(800.0f, 600.0f);
+		let run = scope GuiTestRun();
+		engine.Runs.Add(run);
+		run.Start();
+		engine.Gui.RunScreens = true;
+		Test.Assert(engine.Gui.ScreensFor(run) != null);
+		Test.Assert(engine.Gui.RunScreenCount == 1);
+
+		let menu = GuiTestEngine.MakeMenu("quit");
+		Test.Assert(engine.Gui.Screens.Push(menu) != null);
+		menu.ReleaseRef(); // its screen holds it
+		let quit = menu.FindElement("quit") as Button;
+		Test.Assert(quit != null);
+		int duringClick = -1;
+		quit.SetOnClick(new [&duringClick, &engine, &run] () =>
+			{
+				run.Stop();
+				duringClick = engine.Gui.RunScreenCount;
+			});
+		engine.Frame();
+		engine.Devices.FakeMouse.X = 50.0f;
+		engine.Devices.FakeMouse.Y = 30.0f;
+		engine.Frame();
+		engine.Devices.FakeMouse.Down = true;
+		engine.Frame();
+		engine.Devices.FakeMouse.Down = false;
+		engine.Frame();
+		Test.Assert(duringClick == 1, scope $"under the pump the run's tier stays ({duringClick})");
+		Test.Assert(engine.Gui.RunScreenCount == 0, "and goes when the pump returns");
+	}
+
 	[Test]
 	public static void ADocumentOnTheOverlayLayerShowsAboveEveryScreenModalUntilItIsTakenOff()
 	{

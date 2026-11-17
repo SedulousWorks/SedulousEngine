@@ -82,6 +82,10 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	private GuiScreenTier mScreen = new .() ~ delete _;
 	/// A tier per run, with run screens on.
 	private List<GuiScreenTier> mRunTiers = new .() ~ DeleteContainerAndItems!(_);
+	/// Set while the input pump dispatches; runs a handler ended meanwhile, their screens removed
+	/// when it returns.
+	private bool mPumpingInput = false;
+	private List<RunId> mRunsEndedInPump = new .() ~ delete _;
 	private bool mRunScreens = false;
 	/// The run whose tier the next screen overlay draws under the shared one's, by id; nought for
 	/// none.
@@ -438,9 +442,27 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	/// (null: none), set by a host around its overlays for that run's view.
 	public void SetRenderRun(IRun run) => mRenderRun = (run != null) ? run.Id : 0;
 
-	/// The run's tier and every screen on it go.
+	/// The frame's input, with a run a handler ended while it dispatched (a "quit to menu" button)
+	/// losing its screens after the pump rather than under it: the pump holds the tier's root.
+	private void PumpInputAndEndRuns()
+	{
+		mPumpingInput = true;
+		PumpInput();
+		mPumpingInput = false;
+		for (let run in mRunsEndedInPump)
+			EndRunScreens(run);
+		mRunsEndedInPump.Clear();
+	}
+
+	/// The run's tier and every screen on it go; while the input pump dispatches, once it returns.
 	private void EndRunScreens(RunId run)
 	{
+		if (mPumpingInput)
+		{
+			if (!mRunsEndedInPump.Contains(run))
+				mRunsEndedInPump.Add(run);
+			return;
+		}
 		for (int i < mRunTiers.Count)
 		{
 			if (mRunTiers[i].Run != run)
@@ -782,7 +804,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 			}
 			SyncPrompts();
 			SyncComponents(); // each scene's billboards, canvases and world panels in line
-			PumpInput(); // before the clock, so this frame's input sees this frame's time
+			PumpInputAndEndRuns(); // before the clock, so this frame's input sees this frame's time
 			// By ticks: TimeSpan.FromSeconds would round to whole milliseconds.
 			mContext.Update(TimeSpan((int64)((double)deltaTime * (double)TimeSpan.TicksPerSecond)));
 			if (mScreen.Root != null)

@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- A game that ends its run from a button (a quit-to-menu) no longer has that run's screens removed
+  while the click is still being handled.
 - A saved dock layout whose split share is not a positive number (NaN, negative) is refused and the
   default layout used, instead of laying its panels out as NaN.
 - A storage image both read and written in one pass takes the layout (Vulkan) and state (DirectX 12)
