@@ -44,6 +44,8 @@ class ResourceManager
 	/// Loads in flight, and the decodes waiting to be turned into products. The pending
 	/// map is main-thread only; the completed list is written by workers, so it is locked.
 	private Dictionary<Guid, PendingLoad> mPending = new .() ~ delete _;
+	/// PendingLoad.Serial.
+	private uint64 mLoadSerial = 0;
 	private List<CompletedDecode> mCompleted = new .() ~ delete _;
 	private Monitor mCompletedLock = new .() ~ delete _;
 
@@ -654,7 +656,15 @@ class ResourceManager
 		visited.Add(id);
 
 		if (mHandles.TryGetValue(id, let handle))
+		{
+			// A decode in flight read the content before this reload: it is cancelled, or it
+			// would land after the rebuild and put the old product back. Cancelled rather than
+			// waited for, so a dependent reloading as a child settles never stalls on its own
+			// decode.
+			if (mPending.TryGetValue(id, let pending))
+				pending.Superseded = true;
 			BuildInto(handle, handle.ProductTypeId, id);
+		}
 
 		// Snapshotted, because rebuilding a dependent rewrites the very list being walked.
 		let dependents = scope List<Guid>();
@@ -689,6 +699,8 @@ class ResourceManager
 		let pending = new PendingLoad();
 		pending.Handle = handle;
 		pending.Id = id;
+		pending.Serial = ++mLoadSerial;
+		let serial = pending.Serial;
 		mPending[id] = pending;
 
 		// The task touches only what is safe to touch from a worker: the factory and
@@ -707,6 +719,7 @@ class ResourceManager
 					mCompleted.Add(CompletedDecode()
 						{
 							Id = id,
+							Serial = serial,
 							Handle = handle,
 							Factory = factory,
 							Decoded = decoded
@@ -721,6 +734,17 @@ class ResourceManager
 	/// Turns one decoded entry into its product, on the main thread.
 	private void FinalizeCompleted(CompletedDecode entry)
 	{
+		// A decode whose load was replaced (another load of the id began) or superseded (a
+		// reload built the product since) is dropped: landing, it would put back what the newer
+		// build replaced.
+		if (!mPending.TryGetValue(entry.Id, let current) || (current.Serial != entry.Serial) || current.Superseded)
+		{
+			if ((current != null) && (current.Serial == entry.Serial))
+				current.Finalized = true;
+			delete entry.Decoded;
+			return;
+		}
+
 		Object product = null;
 		if (entry.Decoded != null)
 		{

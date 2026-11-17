@@ -396,4 +396,42 @@ class AsyncResourceTests
 		Test.Assert(manager.ProductTypeIdFor(Guid.Create()) == 0, "no such instance");
 		Test.Assert(manager.BindAsyncAny(Guid.Create()) == null);
 	}
+
+	/// The decode read the content before the reload; it finished after, landed its product over
+	/// the rebuilt one, and the reload was undone.
+	[Test]
+	public static void AReloadWhileADecodeIsInFlightKeepsTheReloadsProduct()
+	{
+		let fixture = scope ResourceFixture("scratch_async_reload");
+		let factory = scope AsyncProductFactory();
+		let tasks = scope TaskPool(2);
+		let manager = scope ResourceManager(fixture.Database, tasks);
+		factory.Gate = new WaitEvent(); // the decode is held mid-flight
+		factory.SyncPassesGate = true;
+		manager.AddFactory(factory);
+
+		let id = fixture.Author("mesh", 4, 5);
+		let proxy = manager.BindAsync<TestProduct>(id);
+		Test.Assert(proxy.State == .Pending);
+
+		// The content changes and the reload builds from it.
+		let edited = scope TestSource();
+		edited.Width = 3;
+		edited.Height = 3;
+		fixture.Database.GetInstance(id).WriteObject(edited).IgnoreError();
+		manager.Reload(id);
+		Test.Assert((proxy.Get != null) && (proxy.Get.Area == 9), "the reload's product");
+
+		// Changed again with no reload: the held decode now reads this, so landing it would show.
+		let stale = scope TestSource();
+		stale.Width = 11;
+		stale.Height = 1;
+		fixture.Database.GetInstance(id).WriteObject(stale).IgnoreError();
+		factory.Gate.Set(true); // the old decode finishes
+		manager.WaitAll();
+		Test.Assert(proxy.Get != null);
+		Test.Assert(proxy.Get.Area == 9, scope $"area {proxy.Get.Area}: the reload's, not the decode in flight's");
+		Test.Assert(proxy.State == .Ready);
+		Test.Assert(manager.PendingCount == 0, "the dropped decode's record was reaped");
+	}
 }

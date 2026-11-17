@@ -15,4 +15,8 @@ class PendingLoad
 	public TaskHandle Task = null ~ _?.ReleaseRef();
 	/// The product is set on the main thread; the record can be reaped once it is.
 	public bool Finalized;
+	/// Which load this is: a decode lands only on its own record.
+	public uint64 Serial;
+	/// A reload built the product since: the decode is dropped.
+	public bool Superseded;
 }

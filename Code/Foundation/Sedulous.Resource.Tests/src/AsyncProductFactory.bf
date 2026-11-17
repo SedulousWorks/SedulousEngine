@@ -26,6 +26,8 @@ class AsyncProductFactory : IResourceFactory
 	public int FinalizeThreadId;
 	/// Held closed to keep a decode in flight while a test looks at the pending state.
 	public WaitEvent Gate ~ delete _;
+	/// The synchronous build (a reload's) passes the gate, so only the decodes on workers wait.
+	public bool SyncPassesGate;
 	/// The decode itself refuses, so the load fails before there is an intermediate.
 	public bool RefuseDecode;
 	/// The decode succeeds and the finalize refuses, which fails on the other side of the
@@ -45,7 +47,7 @@ class AsyncProductFactory : IResourceFactory
 	/// Synchronous fallback, for when async is not available.
 	public Object Create(ResourceManager manager, Instance instance)
 	{
-		let decoded = DecodeStage(instance);
+		let decoded = SyncPassesGate ? Decode(instance) : DecodeStage(instance);
 		if (decoded == null)
 			return null;
 		return FinalizeStage(manager, decoded);
@@ -55,7 +57,11 @@ class AsyncProductFactory : IResourceFactory
 	{
 		if (Gate != null)
 			Gate.WaitFor(2000);
+		return Decode(instance);
+	}
 
+	private Object Decode(Instance instance)
+	{
 		DecodeThreadId = Thread.CurrentThread.Id;
 		Interlocked.Increment(ref Decodes);
 

@@ -6,6 +6,8 @@ namespace Sedulous.Resource;
 struct CompletedDecode
 {
 	public Guid Id;
+	/// Its PendingLoad's.
+	public uint64 Serial;
 	public ResourceHandle Handle;
 	public IResourceFactory Factory;
 	/// Null when the decode failed. Owned until finalize takes it.

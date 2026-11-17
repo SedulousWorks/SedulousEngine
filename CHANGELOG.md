@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Resources: an asset reloaded while it was still loading keeps the reloaded version, rather than
+  the load in flight putting the old one back.
 - HTTP: a server's interim answer (100 Continue, 103 Early Hints) is no longer taken as the response;
   the real one after it is read.
 - HTTP: a request whose header, method or URL holds a line break is refused before anything is
