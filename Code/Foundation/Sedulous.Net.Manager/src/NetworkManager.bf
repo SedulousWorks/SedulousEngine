@@ -291,6 +291,13 @@ class NetworkManager
 
 	public void SetReplicatedScene(Scene scene)
 	{
+		if (scene !== mScene)
+		{
+			// Another scene: what replication knew of the last one goes (ids, baselines,
+			// timelines), and the new one's authored entities are registered below.
+			mReplication.ResetScene();
+			mInterpolation.Clear();
+		}
 		mScene = scene;
 		if (scene == null)
 			return;

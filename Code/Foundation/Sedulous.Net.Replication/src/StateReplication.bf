@@ -174,6 +174,19 @@ class StateReplication : IReplicationModel
 			});
 	}
 
+	/// Forgets the scene replicated so far: its id map, every peer's baseline and its authored
+	/// set. Another scene's entities reuse those ids (authored ids come from Guids, minted ones
+	/// from the counter), so kept, an old id would find a destroyed entity's handle and a peer's
+	/// baseline would hold entities it never had in this scene.
+	public void ResetScene()
+	{
+		mNetIdToEntity.Clear();
+		for (let value in mPeerBaselines.Values)
+			delete value;
+		mPeerBaselines.Clear();
+		mAuthoredIds.Clear();
+	}
+
 	/// Client: compute the SAME Guid derived id the server did, so incoming replication
 	/// UPDATES the client's own authored entity instead of creating a duplicate beside it.
 	public void RegisterAuthoredEntities(Scene scene)

@@ -139,6 +139,14 @@ class InterpolationBuffer
 		return true;
 	}
 
+	/// Drops every timeline: another scene, whose ids name other entities.
+	public void Clear()
+	{
+		for (let value in mEntities.Values)
+			delete value;
+		mEntities.Clear();
+	}
+
 	/// Drops an entity's timelines, on despawn or disconnect.
 	public void Forget(NetworkId id)
 	{

@@ -276,4 +276,31 @@ class ReplicationWiringTests
 		Test.Assert(server.Session.PeerCount == 1);
 		Test.Assert(!server.IsHeld(server.Session.Peers[0].Id));
 	}
+
+	/// The id map and the peers' baselines outlived a scene change, so an old id found a handle
+	/// in the destroyed scene and a peer's baseline still held the old scene's entities.
+	[Test]
+	public static void AnotherReplicatedSceneForgetsTheLastOnesIds()
+	{
+		let network = scope SimDatagramNetwork(SimConditions());
+		let server = scope NetworkManager(network.CreateSocket());
+		server.StartServer(true);
+
+		var oldId = NetworkId();
+		{
+			let first = scope Scene("first");
+			first.AddSystem<NetworkComponentManager>();
+			let entity = first.CreateEntity("Old");
+			first.GetSystem<NetworkComponentManager>().Add(entity);
+			server.SetReplicatedScene(first);
+			oldId = first.GetSystem<NetworkComponentManager>().Get(entity).Id;
+			Test.Assert(server.Replication.FindEntity(oldId).IsAssigned);
+			server.SetReplicatedScene(null);
+		}
+		let second = scope Scene("second");
+		second.AddSystem<NetworkComponentManager>();
+		server.SetReplicatedScene(second);
+		Test.Assert(!server.Replication.FindEntity(oldId).IsAssigned, "the old id names nothing");
+		Test.Assert(server.Replication.NetworkedCount == 0);
+	}
 }
