@@ -984,6 +984,7 @@ class Scene : IScriptWeaklyHeld
 	}
 
 	public float FixedTimeStep => mStepper.Step;
+	public uint32 MaxFixedSteps => mStepper.MaxSteps;
 
 	/// The interpolation weight for a fixed rate consumer, such as physics pose smoothing.
 	/// Published by AdvanceTime after its steps.

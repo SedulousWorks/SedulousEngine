@@ -50,4 +50,26 @@ class InstanceTeardownTests
 		app.OnShutdown(host);
 		host.Subsystems.Dispose();
 	}
+
+	/// The player's host shuts the subsystems down before it calls OnShutdown, where the scenes
+	/// went: their teardown reached physics, audio and the rest after those had shut down.
+	[Test]
+	public static void LeavingPlayTakesTheRunsScenesWhileTheSubsystemsAreAlive()
+	{
+		let host = scope StubHost();
+		let app = scope DefaultApplication();
+		app.Configure(host);
+		host.Subsystems.Startup();
+		app.OnStartup(host);
+		let instance = app.CreateInstance(true);
+		Test.Assert(instance != null);
+		Test.Assert(instance.Scenes.CreateScene("extra") != null);
+		Test.Assert(app.Instance.Scenes.CreateScene("level") != null);
+		app.OnExit(host); // the host calls this before it shuts the subsystems down
+		Test.Assert(app.Instance.Scenes.SceneCount == 0, "the primary's scenes are gone");
+		Test.Assert(instance.Scenes.SceneCount == 0, "and every other run's");
+		host.Subsystems.Shutdown();
+		app.OnShutdown(host);
+		host.Subsystems.Dispose();
+	}
 }

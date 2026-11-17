@@ -129,6 +129,10 @@ class RunBase : IRun
 				mServices.RemoveAt(i);
 			}
 		}
+		// What the session posted and nobody drained goes with it: delivered at the next
+		// session's first drain, it would reach handlers about a game that is over. The
+		// subscribers stay; each owner unsubscribes as it stops.
+		mEvents.DropPending();
 		mState = .Idle;
 	}
 

@@ -139,6 +139,10 @@ class EventBus
 		Settle();
 	}
 
+	/// Drops the events posted and not yet delivered, keeping the subscribers (a run's stop: what
+	/// its session posted must not reach the next session's handlers).
+	public void DropPending() => DisposeQueue(mQueue);
+
 	/// Drops every subscriber and everything queued, for a scope's teardown. From a handler
 	/// during a drain, every subscription stops hearing at once and leaves when no handler runs.
 	public void Clear()

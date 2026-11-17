@@ -136,6 +136,7 @@ class ApplicationHost : IApplicationHost
 			// from; there is no context level fixed execution lane. This stepper serves the
 			// application level hook and nothing else.
 			mSubsystems.FixedTimeStep = mSettings.FixedTimeStep;
+			mSubsystems.MaxFixedSteps = mSettings.MaxFixedStepsPerFrame;
 			mStepper.Step = mSettings.FixedTimeStep;
 			mStepper.MaxSteps = mSettings.MaxFixedStepsPerFrame;
 			let fixedSteps = mStepper.Advance(scaledDelta);

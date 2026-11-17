@@ -20,17 +20,20 @@ struct FrameTime
 	/// The per scene term.
 	public float SceneScale = 1.0f;
 	public float FixedStep = 1.0f / 60.0f;
+	/// A frame's catch-up cap (the app's MaxFixedStepsPerFrame).
+	public uint32 MaxFixedSteps = 4;
 
 	public this() {}
 
 	public this(float rawDelta, float contextScale = 1.0f, float groupScale = 1.0f,
-		float sceneScale = 1.0f, float fixedStep = 1.0f / 60.0f)
+		float sceneScale = 1.0f, float fixedStep = 1.0f / 60.0f, uint32 maxFixedSteps = 4)
 	{
 		RawDelta = rawDelta;
 		ContextScale = contextScale;
 		GroupScale = groupScale;
 		SceneScale = sceneScale;
 		FixedStep = fixedStep;
+		MaxFixedSteps = maxFixedSteps;
 	}
 
 	/// What a context level subsystem sees on the variable lane: host by context.

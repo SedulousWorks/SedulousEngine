@@ -270,4 +270,15 @@ class SceneManagerTests
 		Test.Assert(countInHandler == 1, "still there inside the handler");
 		Test.Assert(manager.SceneCount == 0);
 	}
+
+	/// Scenes stepped with a catch-up cap of 4 whatever the app's MaxFixedStepsPerFrame said.
+	[Test]
+	public static void AFramesCatchUpCapIsTheAppsNotAFixedFour()
+	{
+		let manager = scope SceneManager();
+		let scene = manager.CreateScene("steps");
+		manager.BeginFrame(FrameTime(1.0f, 1.0f, 1.0f, 1.0f, 1.0f / 60.0f, 8)); // a second behind
+		Test.Assert(scene.MaxFixedSteps == 8, scope $"cap {scene.MaxFixedSteps}");
+		manager.Clear();
+	}
 }

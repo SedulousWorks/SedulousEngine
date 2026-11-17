@@ -285,4 +285,24 @@ class RunTests
 		Test.Assert(ran, "the work ran once the drain was done");
 		Test.Assert(!run.Mutations.IsDeferring);
 	}
+
+	/// The bus kept its queue through Stop, so the next Start's first drain delivered events
+	/// about the game that had ended.
+	[Test]
+	public static void WhatASessionPostedAndNobodyDrainedDoesNotReachTheNextSession()
+	{
+		let run = scope TestRun("run");
+		var heard = 0;
+		run.Events.Subscribe(StringHash("over"), scope [&] (payload) => { heard++; });
+		run.Start();
+		run.Events.Publish(StringHash("over"), Variant());
+		run.Stop();
+		run.Start();
+		run.Events.Drain();
+		Test.Assert(heard == 0, "the ended session's event was dropped");
+		run.Events.Publish(StringHash("over"), Variant()); // the subscriber still hears this session
+		run.Events.Drain();
+		Test.Assert(heard == 1);
+		run.Stop();
+	}
 }

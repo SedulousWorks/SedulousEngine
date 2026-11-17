@@ -200,8 +200,9 @@ class SceneManager
 		mUpdating = true;
 		for (let scene in mActive)
 		{
-			if ((time.FixedStep > 0.0f) && (scene.FixedTimeStep != time.FixedStep))
-				scene.SetFixedTiming(time.FixedStep, 4);
+			if ((time.FixedStep > 0.0f)
+				&& ((scene.FixedTimeStep != time.FixedStep) || (scene.MaxFixedSteps != time.MaxFixedSteps)))
+				scene.SetFixedTiming(time.FixedStep, time.MaxFixedSteps);
 			scene.AdvanceTime(time.ContextDelta * mTimeScale * scene.TimeScale);
 		}
 		mUpdating = false;

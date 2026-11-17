@@ -23,6 +23,7 @@ class SubsystemManager
 	private bool mRunning;
 	private bool mDisposed;
 	private float mFixedStep = 1.0f / 60.0f;
+	private uint32 mMaxFixedSteps = 4;
 	private float mTimeScale = 1.0f;
 	/// BORROWED: the live runs (SetRunManager); null is none.
 	private IRunManager mRuns = null;
@@ -77,6 +78,14 @@ class SubsystemManager
 	/// The application's configured fixed step. Plain configuration, not an execution
 	/// lane: nothing here drives a fixed update, and a scene reads this to seed its own
 	/// stepper.
+	/// The most fixed steps a frame runs to catch up (the app's MaxFixedStepsPerFrame); the time
+	/// past them is dropped.
+	public uint32 MaxFixedSteps
+	{
+		get => mMaxFixedSteps;
+		set => mMaxFixedSteps = value;
+	}
+
 	public float FixedTimeStep
 	{
 		get => mFixedStep;

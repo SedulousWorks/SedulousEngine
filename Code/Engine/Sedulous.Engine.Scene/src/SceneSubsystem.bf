@@ -143,7 +143,8 @@ class SceneSubsystem : Subsystem
 		mFrameTime = FrameTime(deltaTime,
 			(Manager != null) ? Manager.TimeScale : 1.0f,
 			1.0f, 1.0f,
-			(Manager != null) ? Manager.FixedTimeStep : 0.0f);
+			(Manager != null) ? Manager.FixedTimeStep : 0.0f,
+			(Manager != null) ? Manager.MaxFixedSteps : 4);
 		mScenes.BeginFrame(mFrameTime);
 	}
 

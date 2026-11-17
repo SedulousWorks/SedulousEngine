@@ -561,6 +561,9 @@ class PlayerApplication : DefaultApplication
 		SetPrimaryScene(null);
 		if (mScene != null)
 			mScene.Stop();
+		// The run's scenes go now, while the subsystems are alive; mScene was one of them.
+		base.OnExit(host);
+		mScene = null;
 	}
 
 	public override void OnShutdown(IApplicationHost host)

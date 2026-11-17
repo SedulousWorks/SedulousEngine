@@ -643,8 +643,24 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// start being read.
 	public virtual void OnLaunch(IApplicationHost host) {}
 
-	/// And the moment the run is asked to end, before anything is torn down.
-	public virtual void OnExit(IApplicationHost host) {}
+	/// Leaving play: the runs' games and scenes go while the subsystems they live in are alive.
+	/// The player's host shuts the subsystems down next and calls OnShutdown after that, so
+	/// scene teardown there reached physics, audio and the rest after they had gone. An app
+	/// overriding this calls this one.
+	public virtual void OnExit(IApplicationHost host)
+	{
+		TearDownRuns();
+	}
+
+	/// Every run's game script told it exits, then every run's scenes stopped and gone.
+	/// Idempotent: OnExit does it in the player, and OnShutdown again for the editor, which
+	/// calls that before it shuts its runtime's subsystems down and never calls OnExit.
+	protected void TearDownRuns()
+	{
+		// Every game script's exit() before its scenes go.
+		ForEachInstance(scope (instance) => instance.StopScript());
+		ForEachInstance(scope (instance) => instance.Scenes.Clear());
+	}
 
 	public virtual void OnUpdate(IApplicationHost host, float deltaTime)
 	{
@@ -1017,8 +1033,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		}
 		mContactBridge.Uninstall();
 		mAnimationBridge.Uninstall();
-		// Every game script's exit() before its scenes go.
-		ForEachInstance(scope (instance) => instance.StopScript());
+		// The runs' games and scenes: gone already in the player (OnExit); for the editor here.
+		TearDownRuns();
 		DebugFacade.Renderer = null;
 
 		// Each manager's scenes go before it is unregistered, so the aware subsystems hear of them.
