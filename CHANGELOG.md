@@ -135,6 +135,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- DirectX 12: a bindless sampler update on a bind group sharing its sampler table reaches the GPU
+  (the group takes a table of its own), and a view whose descriptor heap had no room is skipped
+  rather than copied from or bound.
 - Vulkan: a failing semaphore creation, surface query, queue submit or command buffer begin and end is
   reported (once) and handled, instead of silently going on with a null handle or lost work.
 - A light whose intensity, colour or position is not a number is left out of the frame instead of

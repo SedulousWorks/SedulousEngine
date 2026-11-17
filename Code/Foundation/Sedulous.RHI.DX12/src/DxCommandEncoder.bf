@@ -94,6 +94,8 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 				continue;
 
 			let rtv = dxView.GetRtv();
+			if (rtv.ptr == 0)
+				continue; // its heap had no room: drawn into as a missing view is
 			rtvHandles[(int)rtvCount] = rtv;
 			rtvCount++;
 
@@ -112,7 +114,7 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			if (let dxView = desc.DepthStencilAttachment.Value.View as DxTextureView)
 			{
 				dsvStorage = dxView.GetDsv();
-				dsvPtr = &dsvStorage;
+				dsvPtr = (dsvStorage.ptr != 0) ? &dsvStorage : null; // no room: no depth
 			}
 		}
 

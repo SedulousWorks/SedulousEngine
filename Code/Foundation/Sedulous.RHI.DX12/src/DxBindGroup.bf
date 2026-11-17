@@ -1,6 +1,7 @@
 #if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.RHI;
 using Win32.Graphics.Direct3D12;
 using Win32.Graphics.Dxgi.Common;
@@ -26,8 +27,34 @@ class DxSamplerTables
 	private ID3D12Device* mDevice = null; // NOT owned
 	private DxGpuDescriptorHeap mHeap = null; // NOT owned, the device's
 	private List<Table> mTables = new .() ~ DeleteContainerAndItems!(_);
+	/// Bind groups are made and destroyed on whichever thread records (the heap under the tables
+	/// locks for the same reason), so the table list is guarded as the heap is.
+	private Monitor mMonitor = new .() ~ delete _;
 
-	public int TableCount => mTables.Count;
+	public int TableCount
+	{
+		get
+		{
+			using (mMonitor.Enter())
+				return mTables.Count;
+		}
+	}
+
+	/// The sampler descriptions of the table at `offset`, into `outDescs` (none when there is none).
+	public void DescsOf(int32 offset, List<D3D12_SAMPLER_DESC> outDescs)
+	{
+		using (mMonitor.Enter())
+		{
+			for (let table in mTables)
+			{
+				if (table.Offset == offset)
+				{
+					outDescs.AddRange(table.Descs);
+					return;
+				}
+			}
+		}
+	}
 
 	public void Initialize(ID3D12Device* device, DxGpuDescriptorHeap gpuSamplerHeap)
 	{
@@ -39,48 +66,54 @@ class DxSamplerTables
 	/// heap has no room. Slots with no source (an array's unwritten tail) are left as they are.
 	public int32 Acquire(Span<D3D12_SAMPLER_DESC> descs, Span<D3D12_CPU_DESCRIPTOR_HANDLE> sources)
 	{
-		for (let table in mTables)
+		using (mMonitor.Enter())
 		{
-			if ((table.Descs.Count == descs.Length)
-				&& (Internal.MemCmp(table.Descs.Ptr, descs.Ptr, descs.Length * sizeof(D3D12_SAMPLER_DESC)) == 0))
+			for (let table in mTables)
 			{
-				table.Refs++;
-				return table.Offset;
+				if ((table.Descs.Count == descs.Length)
+					&& (Internal.MemCmp(table.Descs.Ptr, descs.Ptr, descs.Length * sizeof(D3D12_SAMPLER_DESC)) == 0))
+				{
+					table.Refs++;
+					return table.Offset;
+				}
 			}
+			if (mHeap == null)
+				return -1;
+			let offset = mHeap.Allocate((uint32)descs.Length);
+			if (offset < 0)
+				return -1;
+			for (int i < sources.Length)
+			{
+				if (sources[i].ptr != 0)
+					mDevice.CopyDescriptorsSimple(1, mHeap.GetCpuHandle((uint32)offset + (uint32)i), sources[i],
+						.D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+			}
+			let table = new Table();
+			table.Descs.AddRange(descs);
+			table.Offset = offset;
+			table.Refs = 1;
+			mTables.Add(table);
+			return offset;
 		}
-		if (mHeap == null)
-			return -1;
-		let offset = mHeap.Allocate((uint32)descs.Length);
-		if (offset < 0)
-			return -1;
-		for (int i < sources.Length)
-		{
-			if (sources[i].ptr != 0)
-				mDevice.CopyDescriptorsSimple(1, mHeap.GetCpuHandle((uint32)offset + (uint32)i), sources[i],
-					.D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
-		}
-		let table = new Table();
-		table.Descs.AddRange(descs);
-		table.Offset = offset;
-		table.Refs = 1;
-		mTables.Add(table);
-		return offset;
 	}
 
 	public void Release(int32 offset)
 	{
-		for (int i < mTables.Count)
+		using (mMonitor.Enter())
 		{
-			let table = mTables[i];
-			if (table.Offset != offset)
-				continue;
-			if (--table.Refs == 0)
+			for (int i < mTables.Count)
 			{
-				mHeap.Free((uint32)offset, (uint32)table.Descs.Count);
-				mTables.RemoveAtFast(i);
-				delete table;
+				let table = mTables[i];
+				if (table.Offset != offset)
+					continue;
+				if (--table.Refs == 0)
+				{
+					mHeap.Free((uint32)offset, (uint32)table.Descs.Count);
+					mTables.RemoveAtFast(i);
+					delete table;
+				}
+				return;
 			}
-			return;
 		}
 	}
 }
@@ -186,7 +219,14 @@ class DxBindGroup : IBindGroup
 			bgEntry.Sampler = e.Sampler;
 
 			if (r.IsSampler)
+			{
+				// A shared table is every group's with these samplers: rewritten in place it would
+				// change them all (and WriteSampler skips it, so the update was lost). The group takes
+				// a private table first.
+				if (mSharedSamplers && !MakeSamplersPrivate())
+					continue;
 				WriteSampler(bgEntry, r, e.ArrayIndex);
+			}
 			else
 				WriteCbvSrvUav(bgEntry, r, e.ArrayIndex);
 		}
@@ -210,6 +250,36 @@ class DxBindGroup : IBindGroup
 		mCbvSrvUavOffset = -1;
 		mSamplerOffset = -1;
 		mGpuSamplerOffset = -1;
+	}
+
+	/// Moves the group off its shared sampler table onto a table of its own, made from the shared
+	/// one's descriptions (a shader visible heap is no copy source). False, and the group as it was,
+	/// when the heaps have no room.
+	private bool MakeSamplersPrivate()
+	{
+		let descs = scope List<D3D12_SAMPLER_DESC>();
+		mSamplerTables.DescsOf(mGpuSamplerOffset, descs);
+		let cpu = mCpuSamplerHeap.Allocate(mCachedSamplerCount);
+		let gpu = (cpu >= 0) ? mGpuSamplerHeap.Allocate(mCachedSamplerCount) : -1;
+		if (gpu < 0)
+		{
+			if (cpu >= 0)
+				mCpuSamplerHeap.Free((uint32)cpu, mCachedSamplerCount);
+			return false;
+		}
+		for (int i < Math.Min(descs.Count, (int)mCachedSamplerCount))
+		{
+			var desc = descs[i];
+			if ((int32)desc.AddressU == 0)
+				continue; // a slot the shared table left unwritten
+			mDevice.CreateSampler(&desc, mCpuSamplerHeap.GetCpuHandle((uint32)cpu + (uint32)i));
+			mDevice.CreateSampler(&desc, mGpuSamplerHeap.GetCpuHandle((uint32)gpu + (uint32)i));
+		}
+		mSamplerTables.Release(mGpuSamplerOffset);
+		mSharedSamplers = false;
+		mSamplerOffset = cpu;
+		mGpuSamplerOffset = gpu;
+		return true;
 	}
 
 	/// Takes a shared table for the group's samplers when every sampler range is a plain one and
@@ -361,14 +431,16 @@ class DxBindGroup : IBindGroup
 			}
 
 		case .SampledTexture, .BindlessTextures:
-			if (let v = e.TextureView as DxTextureView)
+			// A view whose descriptor heap had no room has a zero handle: no copy source (copying from
+			// it is invalid and can remove the device), so the slot is left.
+			if ((let v = e.TextureView as DxTextureView) && (v.GetSrv().ptr != 0))
 			{
 				mDevice.CopyDescriptorsSimple(1, dest, v.GetSrv(),
 					.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			}
 
 		case .StorageTextureReadOnly, .StorageTextureReadWrite, .BindlessStorageTextures:
-			if (let v = e.TextureView as DxTextureView)
+			if ((let v = e.TextureView as DxTextureView) && (v.GetUav().ptr != 0))
 			{
 				mDevice.CopyDescriptorsSimple(1, dest, v.GetUav(),
 					.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
