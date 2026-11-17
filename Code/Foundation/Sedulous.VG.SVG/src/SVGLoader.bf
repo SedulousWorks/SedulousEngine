@@ -11,7 +11,7 @@ namespace Sedulous.VG.SVG;
 /// than a general XML parse: it recognises the shape and paint tags and SKIPS anything
 /// else, which is what lets it survive the editor metadata real files are full of.
 ///
-/// The paint attributes (fill, stroke, stroke-width, stroke-linecap, stroke-linejoin) are
+/// The paint attributes (fill, fill-rule, stroke, stroke-width, stroke-linecap, stroke-linejoin) are
 /// inherited as SVG's are: from the <svg> element and each <g> down to the shapes in them, a
 /// shape's own attribute winning. An icon set written once on its root (fill="none" stroke=...)
 /// draws as written.
@@ -31,6 +31,8 @@ static class SVGLoader
 		public float StrokeWidth = 1.0f;
 		public VGLineCap Cap = .Butt;
 		public VGLineJoin Join = .Miter;
+		/// SVG's default.
+		public FillRule FillRule = .NonZero;
 
 		public this() {}
 	}
@@ -50,10 +52,7 @@ static class SVGLoader
 		document.Width = attributes.Number("width", 0.0f);
 		document.Height = attributes.Number("height", 0.0f);
 
-		// The view box is the FALLBACK, not the primary: an explicit size wins, and only a
-		// file that states neither has no size at all.
-		if ((document.Width == 0.0f) && (document.Height == 0.0f))
-			ReadViewBoxSize(attributes, document);
+		ReadViewBox(attributes, document);
 
 		let rootPaint = Cascade(PaintStyle(), attributes);
 		if (ParseChildren(content, ref pos, document.Elements, document, rootPaint) case .Err(let error))
@@ -65,22 +64,36 @@ static class SVGLoader
 		return document;
 	}
 
-	/// The third and fourth numbers of a view box are its extent. The first two are the
-	/// origin, which this reader does not apply.
-	private static void ReadViewBoxSize(SVGAttributes attributes, SVGDocument document)
+	/// The view box: the user coordinates the drawing is in. It was read only without a width and
+	/// height, so a file with all three (most exported icons: width="24" viewBox="0 0 960 960") was
+	/// drawn at its raw coordinates, scaled as if they were the width and height. A size the file
+	/// leaves out comes from the box.
+	private static void ReadViewBox(SVGAttributes attributes, SVGDocument document)
 	{
 		if (!attributes.TryGet("viewBox", let text))
 			return;
 
 		var pos = 0;
-		if (!ScanListNumber(text, ref pos, let ignoredX))
+		float[4] view = default;
+		for (int i < 4)
+		{
+			if (!ScanListNumber(text, ref pos, let number))
+				return;
+			view[i] = number;
+		}
+		if ((view[2] <= 0.0f) || (view[3] <= 0.0f))
 			return;
-		if (!ScanListNumber(text, ref pos, let ignoredY))
-			return;
-		if (ScanListNumber(text, ref pos, let width))
-			document.Width = width;
-		if (ScanListNumber(text, ref pos, let height))
-			document.Height = height;
+
+		document.ViewBox = Rectangle(view[0], view[1], view[2], view[3]);
+		if ((document.Width == 0.0f) && (document.Height == 0.0f))
+		{
+			document.Width = view[2];
+			document.Height = view[3];
+		}
+		else if (document.Width == 0.0f)
+			document.Width = document.Height * view[2] / view[3];
+		else if (document.Height == 0.0f)
+			document.Height = document.Width * view[3] / view[2];
 	}
 
 	/// `inherited` with the paint attributes `attributes` sets over it.
@@ -133,6 +146,11 @@ static class SVGLoader
 			style.Join = .Bevel;
 		else if (attributes.EqualsIgnoreCase("stroke-linejoin", "miter"))
 			style.Join = .Miter;
+
+		if (attributes.EqualsIgnoreCase("fill-rule", "evenodd"))
+			style.FillRule = .EvenOdd;
+		else if (attributes.EqualsIgnoreCase("fill-rule", "nonzero"))
+			style.FillRule = .NonZero;
 
 		return style;
 	}
@@ -426,6 +444,7 @@ static class SVGLoader
 		element.StrokeWidth = paint.StrokeWidth;
 		element.StrokeCap = paint.Cap;
 		element.StrokeJoin = paint.Join;
+		element.FillRule = paint.FillRule;
 
 		element.Opacity = attributes.Number("opacity", 1.0f);
 

@@ -730,4 +730,35 @@ class SVGLoaderTests
 		Test.Assert(shape.StrokeCap == .Butt);
 		Test.Assert(shape.StrokeJoin == .Miter);
 	}
+
+	/// It was never parsed, and the fill used VG's default, even-odd: a shape drawn with nonzero in
+	/// mind (overlapping subpaths, an outline with a counter wound the same way) lost its overlaps.
+	[Test]
+	public static void FillRuleIsReadAndInheritedNonzeroByDefault()
+	{
+		let document = Load("<svg viewBox=\"0 0 10 10\"><rect width=\"1\" height=\"1\"/><g fill-rule=\"evenodd\"><rect width=\"2\" height=\"2\"/><rect width=\"3\" height=\"3\" fill-rule=\"nonzero\"/></g></svg>");
+		defer delete document;
+		Test.Assert(document.Elements.Count == 2);
+		Test.Assert(document.Elements[0].FillRule == .NonZero);
+		Test.Assert(document.Elements[1].Children.Count == 2);
+		Test.Assert(document.Elements[1].Children[0].FillRule == .EvenOdd);
+		Test.Assert(document.Elements[1].Children[1].FillRule == .NonZero);
+	}
+
+	/// "1e999" read as infinity, and geometry built from an infinite coordinate is NaN throughout.
+	[Test]
+	public static void ANumberTooBigForAFloatIsRefusedNotReadAsInfinity()
+	{
+		let builder = scope PathBuilder();
+		Test.Assert(SVGPathParser.Parse("M 0 0 L 1e999 0", builder) case .Err);
+		let document = Load("<svg viewBox=\"0 0 10 10\"><rect width=\"1e999\" height=\"1\"/><rect width=\"2\" height=\"2\"/></svg>");
+		defer delete document;
+		for (let element in document.Elements)
+		{
+			if (element.Path == null)
+				continue;
+			let bounds = element.Path.GetBounds();
+			Test.Assert(bounds.Width.IsFinite && bounds.Height.IsFinite);
+		}
+	}
 }

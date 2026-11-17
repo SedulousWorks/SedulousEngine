@@ -116,8 +116,12 @@ static class SVGScan
 		if (pos == start)
 			return false;
 
+		// Past what a float holds ("1e999" reads as infinity, and an infinite coordinate or scale
+		// turns the geometry built from it into NaNs): refused, as no number.
 		if (float.Parse(s.Substring(start, pos - start)) case .Ok(let parsed))
 		{
+			if (!parsed.IsFinite)
+				return false;
 			value = parsed;
 			return true;
 		}

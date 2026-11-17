@@ -26,6 +26,17 @@ static class SVGRenderer
 		vg.PushState();
 		vg.Translate(bounds.X, bounds.Y);
 		vg.Scale(scaleX, scaleY);
+		if (document.ViewBox.HasValue)
+		{
+			let view = document.ViewBox.Value;
+			// The view box into width by height: one scale for both axes, the spare centred.
+			let w = (document.Width > 0.0f) ? document.Width : view.Width;
+			let h = (document.Height > 0.0f) ? document.Height : view.Height;
+			let fit = Math.Min(w / view.Width, h / view.Height);
+			vg.Translate((w - (view.Width * fit)) * 0.5f, (h - (view.Height * fit)) * 0.5f);
+			vg.Scale(fit, fit);
+			vg.Translate(-view.X, -view.Y);
+		}
 
 		for (let element in document.Elements)
 			RenderElement(vg, element, tint, document);
@@ -82,9 +93,9 @@ static class SVGRenderer
 			? FindGradient(document, element.FillGradientId) : null;
 
 		if ((gradient != null) && !gradient.Stops.IsEmpty)
-			FillWithGradient(vg, element.Path, gradient);
+			FillWithGradient(vg, element.Path, gradient, element.FillRule);
 		else if (element.FillColor != null)
-			vg.FillPath(element.Path, (tint != null) ? tint.Value : element.FillColor.Value);
+			vg.FillPath(element.Path, (tint != null) ? tint.Value : element.FillColor.Value, element.FillRule);
 
 		if ((element.StrokeColor != null) && (element.StrokeWidth > 0.0f))
 		{
@@ -106,7 +117,7 @@ static class SVGRenderer
 	/// The default units are a FRACTION of the path's own bounds, so one definition serves
 	/// every element that references it whatever their sizes. User space units are document
 	/// coordinates, which the context's transform already maps to the screen.
-	private static void FillWithGradient(VGContext vg, Path path, SVGGradient gradient)
+	private static void FillWithGradient(VGContext vg, Path path, SVGGradient gradient, FillRule fillRule)
 	{
 		let bounds = path.GetBounds();
 
@@ -130,7 +141,7 @@ static class SVGRenderer
 			}
 			fill.Spread = gradient.Spread;
 			fill.Stops.AddRange(gradient.Stops);
-			vg.FillPath(path, fill);
+			vg.FillPath(path, fill, fillRule);
 			return;
 		}
 
@@ -149,7 +160,7 @@ static class SVGRenderer
 		}
 		fill.Spread = gradient.Spread;
 		fill.Stops.AddRange(gradient.Stops);
-		vg.FillPath(path, fill);
+		vg.FillPath(path, fill, fillRule);
 	}
 
 	/// Draws a text element.

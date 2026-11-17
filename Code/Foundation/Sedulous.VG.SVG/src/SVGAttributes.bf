@@ -84,8 +84,12 @@ class SVGAttributes
 		if (end == 0)
 			return .Err(.InvalidArgument);
 
+		// Past what a float holds: refused, as no number.
 		if (float.Parse(text.Substring(0, end)) case .Ok(let value))
-			return value;
+		{
+			if (value.IsFinite)
+				return value;
+		}
 		return .Err(.InvalidArgument);
 	}
 

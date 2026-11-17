@@ -32,6 +32,8 @@ class SVGElement
 	public VGLineCap StrokeCap = .Butt;
 	/// stroke-linejoin.
 	public VGLineJoin StrokeJoin = .Miter;
+	/// fill-rule (SVG's default is nonzero).
+	public FillRule FillRule = .NonZero;
 	public float Opacity = 1.0f;
 
 	public List<SVGElement> Children = new .() ~ DeleteContainerAndItems!(_);

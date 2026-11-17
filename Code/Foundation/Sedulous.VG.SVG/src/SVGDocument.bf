@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 
 namespace Sedulous.VG.SVG;
 
@@ -8,6 +9,9 @@ class SVGDocument
 {
 	public float Width = 0.0f;
 	public float Height = 0.0f;
+	/// The user coordinates the elements are in (`viewBox`), null when none: it is fitted into
+	/// Width by Height, uniformly and centred (SVG's default `xMidYMid meet`).
+	public Rectangle? ViewBox = null;
 
 	public List<SVGElement> Elements = new .() ~ DeleteContainerAndItems!(_);
 

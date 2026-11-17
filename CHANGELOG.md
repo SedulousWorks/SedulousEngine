@@ -131,6 +131,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- SVG: an image with a width, a height and a `viewBox` is drawn at its size (it was scaled by its
+  raw coordinates); `fill-rule` is honoured and defaults to nonzero as SVG says; an out-of-range
+  number no longer turns a shape into nothing.
 - Vector drawing: round and bevel stroke corners draw round and bevelled, with smooth edges, rather
   than as sharp mitres.
 - GUI: a box sized in percent inside a container that sizes to its content now grows that container

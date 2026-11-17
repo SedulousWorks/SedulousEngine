@@ -531,4 +531,28 @@ class SVGRendererTests
 				&& (vertex.Color.B == 0.0f), "the stand in the loader recorded");
 		}
 	}
+
+	/// The view box was read only without a width and height, so an icon exported as width="24"
+	/// viewBox="0 0 960 960" drew its 960-unit coordinates as if they were 24: forty times too big.
+	[Test]
+	public static void AViewBoxBesideAWidthAndHeightMapsItsCoordinatesIntoThem()
+	{
+		let document = Load("<svg width=\"24\" height=\"24\" viewBox=\"0 0 960 960\"><rect x=\"0\" y=\"0\" width=\"960\" height=\"960\" fill=\"red\"/></svg>");
+		defer delete document;
+		Test.Assert(Near(document.Width, 24.0f));
+		Test.Assert(document.ViewBox.HasValue);
+		let context = scope VGContext();
+		SVGRenderer.Render(context, document, .(0, 0, 48, 48));
+		let drawn = Extent(context);
+		Test.Assert(drawn.X + drawn.Width <= 49.0f, scope $"{drawn.Width}"); // the bounds, give or take an antialiasing fringe
+		Test.Assert(drawn.Y + drawn.Height <= 49.0f);
+		Test.Assert(drawn.X + drawn.Width >= 47.0f);
+
+		// A view box with another aspect than the box is fitted whole and centred (xMidYMid meet).
+		let wide = Load("<svg width=\"100\" height=\"100\" viewBox=\"0 0 200 100\"><rect width=\"200\" height=\"100\"/></svg>");
+		defer delete wide;
+		let wideContext = scope VGContext();
+		SVGRenderer.Render(wideContext, wide, .(0, 0, 100, 100));
+		Test.Assert(Extent(wideContext).Y >= 24.0f, scope $"{Extent(wideContext).Y}"); // 50 tall, centred in 100
+	}
 }
