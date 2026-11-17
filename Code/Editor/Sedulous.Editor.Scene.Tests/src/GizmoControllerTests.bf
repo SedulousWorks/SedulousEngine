@@ -261,4 +261,71 @@ class GizmoControllerTests
 		Test.Assert(Near(ctl.Gizmo.Position.Y, -3.0f, 0.0001f));
 		Test.Assert(Near(ctl.Gizmo.Position.Z, 2.0f, 0.0001f));
 	}
+
+	/// The gizmo moved the primary only, the rest of the selection staying put.
+	[Test]
+	public static void ADragMovesEverySelectedEntityOnceAsOneUndoEntry()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let ctl = scope GizmoController(edit);
+		let a = edit.CreateEntity("A");
+		let b = edit.CreateEntity("B");
+		let child = edit.CreateEntity("Child", b);
+		{
+			var t = Transform();
+			t.Position = .(0.0f, 3.0f, 0.0f);
+			scene.SetLocalTransform(edit.Resolve(b), t);
+		}
+		Guid[3] picked = .(a, b, child); // the child moves with B, not twice
+		edit.EntitySelection.Set(picked);
+		commands.Clear();
+
+		let size = TransformGizmo.ScreenScale(CamPos, CamFwd, 1.0472f, .Zero);
+		let grab = Float3(size * 0.6f, 0.0f, 0.0f);
+		Test.Assert(ctl.Update(Frame(grab, false, false, false)));
+		Test.Assert(ctl.Update(Frame(grab, true, true, false)));
+		Test.Assert(ctl.Update(Frame(grab + Float3(2.0f, 0, 0), false, true, false)));
+		Test.Assert(ctl.Update(Frame(grab + Float3(2.0f, 0, 0), false, false, true)));
+
+		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(a)).Position.X, 2.0f, 0.1f));
+		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(b)).Position.X, 2.0f, 0.1f));
+		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(b)).Position.Y, 3.0f, 0.0001f));
+		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(child)).Position.X, 0.0f, 0.0001f)); // moved by its parent only
+		commands.Undo();
+		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(a)).Position.X, 0.0f, 0.0001f));
+		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(b)).Position.X, 0.0f, 0.0001f));
+		Test.Assert(!commands.CanUndo);
+	}
+
+	/// Each axis was clamped to at least 0.001, so a negative scale became 0.001 on the first frame.
+	[Test]
+	public static void ScalingAMirroredEntityKeepsItMirrored()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let ctl = scope GizmoController(edit);
+		let id = edit.CreateEntity("Mirrored");
+		{
+			var t = Transform();
+			t.Scale = .(-1.0f, 1.0f, 1.0f);
+			scene.SetLocalTransform(edit.Resolve(id), t);
+		}
+		edit.EntitySelection.Set(id);
+		var input = Frame(.(5, 5, 0), false, false, false);
+		input.KeyScale = true;
+		ctl.Update(input);
+		Test.Assert(ctl.Mode == .Scale);
+		// The centre (uniform) handle, dragged outward a little: the magnitude grows on every axis.
+		Test.Assert(ctl.Update(Frame(.(0, 0, 0), false, false, false)));
+		Test.Assert(ctl.Update(Frame(.(0, 0, 0), true, true, false)));
+		Test.Assert(ctl.Update(Frame(.(0.3f, 0.3f, 0.0f), false, true, false)));
+		Test.Assert(ctl.Update(Frame(.(0.3f, 0.3f, 0.0f), false, false, true)));
+		let s = scene.GetLocalTransform(edit.Resolve(id)).Scale;
+		Test.Assert(s.X < -1.0f, scope $"x {s.X}");
+		Test.Assert(s.Y > 1.0f, scope $"y {s.Y}");
+		Test.Assert(Near(s.X, -s.Y, 0.0001f));
+	}
 }

@@ -264,4 +264,37 @@ class EditContextEntityTests
 		edit.SetEntityActive(id, true); // already active: dropped
 		Test.Assert(commands.Count == baseline + 1);
 	}
+
+	/// Both acted on the primary alone.
+	[Test]
+	public static void DeleteAndDuplicateTakeTheWholeSelectionOneUndoStepEach()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let a = edit.CreateEntity("A");
+		let b = edit.CreateEntity("B");
+		let child = edit.CreateEntity("Child", b);
+		Guid[3] picked = .(a, b, child); // the child goes with B, not on its own
+		edit.EntitySelection.Set(picked);
+		commands.Clear();
+		let roots = scope List<Guid>();
+		edit.SelectionRoots(roots);
+		Test.Assert(roots.Count == 2);
+
+		edit.DuplicateSelection();
+		Test.Assert(scene.EntityCount == 6, scope $"{scene.EntityCount}"); // A, B and Child copied once each
+		Test.Assert(edit.EntitySelection.Count == 2); // the copies
+		commands.Undo();
+		Test.Assert(scene.EntityCount == 3);
+		Test.Assert(!commands.CanUndo);
+
+		edit.EntitySelection.Set(picked);
+		edit.DestroySelection();
+		Test.Assert(scene.EntityCount == 0);
+		commands.Undo();
+		Test.Assert(scene.EntityCount == 3);
+		Test.Assert(scene.GetParent(edit.Resolve(child)) == edit.Resolve(b));
+		Test.Assert(!commands.CanUndo);
+	}
 }

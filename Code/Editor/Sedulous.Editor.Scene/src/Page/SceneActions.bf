@@ -315,17 +315,17 @@ static class SceneActions
 			actions.Register(d);
 		}
 		{
-			let d = new EditorActionDeclaration(SceneActionIds.EntityDuplicate, "Duplicate", "Duplicate the selected entity's subtree beside it", "Scene/Entity/Duplicate", 200);
+			let d = new EditorActionDeclaration(SceneActionIds.EntityDuplicate, "Duplicate", "Duplicate the selected entities' subtrees beside them", "Scene/Entity/Duplicate", 200);
 			d.Shortcut = .Of("ctrl-d");
 			d.Enabled = new (page) => PrimaryOf(page) != .();
-			d.Execute = new (page) => { EditablePage(page).EditContext.DuplicateEntity(PrimaryOf(page)); };
+			d.Execute = new (page) => { EditablePage(page).EditContext.DuplicateSelection(); };
 			actions.Register(d);
 		}
 		{
-			let d = new EditorActionDeclaration(SceneActionIds.EntityDelete, "Delete", "Delete the selected entity and its subtree", "Scene/Entity/Delete", 201);
+			let d = new EditorActionDeclaration(SceneActionIds.EntityDelete, "Delete", "Delete the selected entities and their subtrees", "Scene/Entity/Delete", 201);
 			d.Shortcut = .Of("delete");
 			d.Enabled = new (page) => PrimaryOf(page) != .();
-			d.Execute = new (page) => { EditablePage(page).EditContext.DestroyEntity(PrimaryOf(page)); };
+			d.Execute = new (page) => { EditablePage(page).EditContext.DestroySelection(); };
 			actions.Register(d);
 		}
 		{

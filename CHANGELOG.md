@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- The move, rotate and scale gizmo, Delete and Duplicate act on every selected entity, not the first
+  only; scaling a mirrored entity keeps it mirrored.
 - Separate inspector actions of one kind (adding two components, two Active toggles) are separate
   undo steps; Undo took them all back at once.
 - Prefab Apply and Revert can be undone, each as one step, and Apply marks the scene changed.

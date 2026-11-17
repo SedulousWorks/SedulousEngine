@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Render;
@@ -21,10 +22,23 @@ class GizmoController
 	private bool mActive = false;
 	private bool mInGroup = false;
 
-	private Guid mDragEntity = .();
-	private Transform mDragStartLocal = .();
-	private Float4x4 mParentInverseWorld = .Identity();
-	private Quaternion mParentRotation = .Identity;
+	/// A drag's target: a selection root as it was when the drag began, with its parent's frame, so
+	/// world deltas convert into its parent's space.
+	private struct DragTarget
+	{
+		public Guid Entity;
+		public Transform StartLocal;
+		public Float4x4 ParentInverseWorld = .Identity();
+		public Quaternion ParentRotation = .Identity;
+
+		public this(Guid entity, Transform startLocal)
+		{
+			Entity = entity;
+			StartLocal = startLocal;
+		}
+	}
+	/// Every selection root (the primary first) the drag moves.
+	private List<DragTarget> mDragTargets = new .() ~ delete _;
 	private bool mVertexSnapMode = false;
 	private bool mHandlesShown = true;
 	private bool mSnapMode = false;
@@ -178,20 +192,26 @@ class GizmoController
 		mGizmo.UpdateHover(input.Ray, mMode);
 		if (input.LeftPressed && (mGizmo.Hovered != .None) && mGizmo.BeginDrag(input.Ray, mMode))
 		{
-			mDragEntity = primary;
-			mDragStartLocal = scene.GetLocalTransform(entity);
-
-			let parent = scene.GetParent(entity);
-			mParentInverseWorld = .Identity();
-			mParentRotation = .Identity;
-			if (parent.IsAssigned)
+			// Every selection root moves (an entity under a selected one moves with it); parent
+			// frames captured once, so world deltas convert into each parent's space.
+			mDragTargets.Clear();
+			let roots = scope List<Guid>();
+			mEdit.SelectionRoots(roots);
+			for (let id in roots)
 			{
-				let parentWorld = scene.ComposeWorldMatrix(parent);
-				mParentInverseWorld = Inverse(parentWorld);
-				Float3 t = ?, s = ?;
-				Quaternion r = ?;
-				if (Decompose(parentWorld, out t, out r, out s))
-					mParentRotation = r;
+				let e = mEdit.Resolve(id);
+				var target = DragTarget(id, scene.GetLocalTransform(e));
+				let parent = scene.GetParent(e);
+				if (parent.IsAssigned)
+				{
+					let parentWorld = scene.ComposeWorldMatrix(parent);
+					target.ParentInverseWorld = Inverse(parentWorld);
+					Float3 t = ?, s = ?;
+					Quaternion r = ?;
+					if (Decompose(parentWorld, out t, out r, out s))
+						target.ParentRotation = r;
+				}
+				mDragTargets.Add(target);
 			}
 
 			mEdit.Commands.BeginGroup("gizmo_drag");
@@ -215,18 +235,22 @@ class GizmoController
 		}
 	}
 
-	/// The vertex under `ray` to snap the dragged entity onto: on any drawn surface but the
-	/// dragged entity's own and its descendants'.
-	private Float3? FindSnapVertex(GizmoRay ray, EntityHandle dragged)
+	/// The vertex under `ray` to snap the dragged entities onto: on any drawn surface but theirs and
+	/// their descendants'.
+	private Float3? FindSnapVertex(GizmoRay ray)
 	{
 		let scene = mEdit.Scene;
-		// Never onto itself: the dragged entity and everything under it move with the drag.
+		// Never onto what moves: the dragged entities and everything under them.
 		delegate bool(EntityHandle entity) accept = scope [&] (candidate) =>
 			{
 				for (var e = candidate; e.IsAssigned; e = scene.GetParent(e))
 				{
-					if (e == dragged)
-						return false;
+					let id = scene.GetEntityId(e);
+					for (let target in mDragTargets)
+					{
+						if (target.Entity == id)
+							return false;
+					}
 				}
 				return true;
 			};
@@ -257,42 +281,69 @@ class GizmoController
 		}
 	}
 
-	/// Applies the drag so far as a local transform against the START: world deltas are
-	/// brought into the parent's space, so a child of a rotated parent moves where the
-	/// handle points.
+	/// Applies the drag so far to every target as a local transform against its START: world deltas
+	/// are brought into each parent's space, so a child of a rotated parent moves where the handle
+	/// points, and each rotates and scales about its own pivot.
 	private void UpdateDrag(in GizmoFrameInput input)
 	{
-		let entity = mEdit.Resolve(mDragEntity);
-		if (!entity.IsAssigned)
+		if (mDragTargets.IsEmpty || !mEdit.Resolve(mDragTargets[0].Entity).IsAssigned)
 		{
 			AbortDrag();
 			return;
 		}
 
-		var t = mDragStartLocal;
+		let snap = input.Snap || mSnapMode;
+		// The handle's delta, once per frame, applied to every target.
+		var worldDelta = Float3(0.0f, 0.0f, 0.0f);
+		var worldRotation = Quaternion.Identity;
+		var scaleDelta = Float3(0.0f, 0.0f, 0.0f);
 		switch (mMode)
 		{
 		case .Translate:
-			let worldDelta = mGizmo.UpdateTranslateDrag(input.Ray, input.Snap || mSnapMode);
-			t.Position = mDragStartLocal.Position
-				+ TransformDirection(worldDelta, mParentInverseWorld);
-			// Vertex snap: the pivot ON the vertex under the cursor, whichever handle is held;
-			// over no surface, the drag as it is.
-			mSnapTarget = (input.VertexSnap || mVertexSnapMode) ? FindSnapVertex(input.Ray, entity) : null;
+			worldDelta = mGizmo.UpdateTranslateDrag(input.Ray, snap);
+			// Vertex snap: the primary's pivot ON the vertex under the cursor, whichever handle is
+			// held, the others keeping their offsets; over no surface, the drag as it is.
+			mSnapTarget = (input.VertexSnap || mVertexSnapMode) ? FindSnapVertex(input.Ray) : null;
 			if (mSnapTarget.HasValue)
-				t.Position = TransformPoint(mSnapTarget.Value, mParentInverseWorld);
+			{
+				let primary = mDragTargets[0];
+				let parentWorld = Inverse(primary.ParentInverseWorld);
+				worldDelta = mSnapTarget.Value - TransformPoint(primary.StartLocal.Position, parentWorld);
+			}
 		case .Rotate:
-			let d = mGizmo.UpdateRotateDrag(input.Ray, input.Snap || mSnapMode);
-			let worldDelta = Quaternion.FromAxisAngle(d.Axis, d.Angle);
-			t.Rotation = Normalized(Inverse(mParentRotation) * worldDelta * mParentRotation
-				* mDragStartLocal.Rotation);
+			let d = mGizmo.UpdateRotateDrag(input.Ray, snap);
+			worldRotation = Quaternion.FromAxisAngle(d.Axis, d.Angle);
 		case .Scale:
-			let d = mGizmo.UpdateScaleDrag(input.Ray, input.Snap || mSnapMode);
-			t.Scale.X = Max(mDragStartLocal.Scale.X + d.X, 0.001f);
-			t.Scale.Y = Max(mDragStartLocal.Scale.Y + d.Y, 0.001f);
-			t.Scale.Z = Max(mDragStartLocal.Scale.Z + d.Z, 0.001f);
+			scaleDelta = mGizmo.UpdateScaleDrag(input.Ray, snap);
 		}
-		mEdit.SetLocalTransform(mDragEntity, t);
+
+		for (let target in mDragTargets)
+		{
+			if (!mEdit.Resolve(target.Entity).IsAssigned)
+				continue;
+			var t = target.StartLocal;
+			switch (mMode)
+			{
+			case .Translate:
+				t.Position = target.StartLocal.Position + TransformDirection(worldDelta, target.ParentInverseWorld);
+			case .Rotate:
+				// Each about its own pivot: the world delta conjugated into its parent's space.
+				t.Rotation = Normalized(Inverse(target.ParentRotation) * worldRotation * target.ParentRotation
+					* target.StartLocal.Rotation);
+			case .Scale:
+				t.Scale = .(Scaled(target.StartLocal.Scale.X, scaleDelta.X), Scaled(target.StartLocal.Scale.Y, scaleDelta.Y),
+					Scaled(target.StartLocal.Scale.Z, scaleDelta.Z));
+			}
+			mEdit.SetLocalTransform(target.Entity, t);
+		}
+	}
+
+	/// A scale grown or shrunk in magnitude, its sign kept: a mirrored entity stays mirrored (clamping
+	/// the value itself to 0.001 flipped it on the first frame of a drag).
+	private static float Scaled(float start, float delta)
+	{
+		let sign = (start < 0.0f) ? -1.0f : 1.0f;
+		return sign * Max(Math.Abs(start) + delta, 0.001f);
 	}
 
 	private void FinishDrag()
@@ -305,7 +356,7 @@ class GizmoController
 			mEdit.Commands.LockGroup(); // the next drag is its own undo entry
 			mInGroup = false;
 		}
-		mDragEntity = .();
+		mDragTargets.Clear();
 	}
 
 	private void AbortDrag()

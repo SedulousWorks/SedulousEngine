@@ -49,6 +49,57 @@ class SceneEditContext
 	}
 	public Selection<Guid> EntitySelection => mSelection;
 
+	/// The selection's roots, into `outRoots`: each selected entity that is alive and has no
+	/// selected ancestor (moving, deleting or copying an ancestor takes it along), the primary first.
+	public void SelectionRoots(List<Guid> outRoots)
+	{
+		for (let id in mSelection.Items)
+		{
+			let e = Resolve(id);
+			if (!e.IsAssigned)
+				continue;
+			var underSelected = false;
+			for (var up = mScene.GetParent(e); up.IsAssigned && !underSelected; up = mScene.GetParent(up))
+				underSelected = mSelection.Contains(mScene.GetEntityId(up));
+			if (!underSelected)
+				outRoots.Add(id);
+		}
+	}
+
+	/// Duplicates every selection root, as one undo step; the copies become the selection.
+	public void DuplicateSelection()
+	{
+		let roots = scope List<Guid>();
+		SelectionRoots(roots);
+		if (roots.IsEmpty)
+			return;
+		let copies = scope List<Guid>();
+		mCommands.BeginGroup("entity.duplicate");
+		for (let root in roots)
+		{
+			let copy = DuplicateEntity(root);
+			if (!copy.IsNil)
+				copies.Add(copy);
+		}
+		mCommands.EndGroup();
+		mCommands.LockGroup();
+		mSelection.Set(copies);
+	}
+
+	/// Destroys every selection root and its subtree, as one undo step.
+	public void DestroySelection()
+	{
+		let roots = scope List<Guid>();
+		SelectionRoots(roots);
+		if (roots.IsEmpty)
+			return;
+		mCommands.BeginGroup("entity.delete");
+		for (let root in roots)
+			DestroyEntity(root);
+		mCommands.EndGroup();
+		mCommands.LockGroup();
+	}
+
 	/// The manager a restored reference rebinds through. Borrowed; null leaves restored
 	/// references unbound until the next load.
 	public void SetResources(ResourceManager resources) => mResources = resources;
