@@ -47,11 +47,11 @@ class MaterialInstanceTests
 
 		instance.SetFloat("roughness", 0.9f);
 		Test.Assert(instance.IsUniformDirty);
-		// A second set while already queued must NOT enqueue it again.
 		instance.SetFloat("roughness", 0.8f);
 
-		fixture.System.PrepareDirtyInstances();
-		Test.Assert(!instance.IsUniformDirty, "drained and re-prepped");
+		// The next prepare (a draw's) writes it.
+		Test.Assert(fixture.System.PrepareInstance(instance) != null);
+		Test.Assert(!instance.IsUniformDirty, "re-prepped");
 
 		// One float, rounded to sixteen.
 		Test.Assert(instance.UniformData.Length == 16);
@@ -70,11 +70,11 @@ class MaterialInstanceTests
 		fixture.System.PrepareInstance(instance);
 
 		instance.SetFloat("roughness", 0.9f);
-		fixture.System.PrepareDirtyInstances();
+		Test.Assert(fixture.System.PrepareInstance(instance) != null);
 		Test.Assert(FirstFloat(instance.UniformData) == 0.9f);
 
 		instance.ResetProperty("roughness");
-		fixture.System.PrepareDirtyInstances();
+		Test.Assert(fixture.System.PrepareInstance(instance) != null);
 		Test.Assert(FirstFloat(instance.UniformData) == 0.5f);
 		Test.Assert(!instance.IsOverridden(0), "and the override is gone, not merely equal");
 	}
@@ -166,8 +166,7 @@ class MaterialInstanceTests
 		Test.Assert(At("tint") == 0.5f, "a float into a Float4 sets its first component");
 	}
 
-	/// Dropping an instance takes its GPU resources with it, and takes it out of the dirty
-	/// list so the next drain does not walk a dead reference.
+	/// Dropping an instance takes its GPU resources with it, dirty or not.
 	[Test]
 	public static void DroppingAnInstanceReleasesItFromTheSystem()
 	{
@@ -178,14 +177,10 @@ class MaterialInstanceTests
 		{
 			let instance = scope MaterialInstance(material);
 			Test.Assert(fixture.System.PrepareInstance(instance) != null);
-			// Dirty and queued when it dies, which is the case that would otherwise leave
-			// a dangling entry behind.
+			// Dirty when it dies.
 			instance.SetFloat("roughness", 0.1f);
-			Test.Assert(instance.IsInDirtyList);
+			Test.Assert(instance.IsUniformDirty);
 		}
-
-		// The drain must survive the instance having gone.
-		fixture.System.PrepareDirtyInstances();
 	}
 
 	/// The mask is what makes "is this overridden" a shift and a test rather than a search.

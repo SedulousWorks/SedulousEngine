@@ -138,7 +138,7 @@ class MaterialEffectTests
 
 		// A later override rewrites it.
 		instance.SetFloat("Wind.Height", 0.5f);
-		fixture.System.PrepareDirtyInstances();
+		Test.Assert(fixture.System.PrepareInstance(instance) != null);
 
 		// Handed over for retirement with the uniform buffer, then gone from the system; it holds
 		// the instance's values, by the effect's offsets.

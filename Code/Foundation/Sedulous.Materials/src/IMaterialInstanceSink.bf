@@ -7,11 +7,6 @@ namespace Sedulous.Materials;
 /// is a cycle that has to be broken somewhere and this is the honest place.
 interface IMaterialInstanceSink
 {
-	/// The instance just became dirty, having been clean. Called on the TRANSITION only,
-	/// so the system's re-prep is proportional to what changed rather than to how many
-	/// instances exist.
-	void MarkInstanceDirty(MaterialInstance instance);
-
 	/// The instance is going away and must be dropped from every list holding it.
 	void ReleaseInstance(MaterialInstance instance);
 }

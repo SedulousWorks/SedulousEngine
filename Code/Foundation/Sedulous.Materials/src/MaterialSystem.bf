@@ -14,8 +14,8 @@ namespace Sedulous.Materials;
 /// follows.
 ///
 /// Layouts are cached by content, so materials sharing a property shape share one layout.
-/// Buffers and bind groups are built lazily, and an instance notifies on becoming dirty, so
-/// the per frame pass costs what CHANGED rather than what exists.
+/// Buffers and bind groups are built lazily, when a draw prepares a dirty instance
+/// (PrepareInstance), so a frame costs what it draws and what changed of it.
 class MaterialSystem : IMaterialInstanceSink
 {
 	/// How many frames a replaced bind group waits before it is freed.
@@ -51,7 +51,6 @@ class MaterialSystem : IMaterialInstanceSink
 	/// ShaderProperties.cEffectRegister).
 	private const uint32 cFirstEffectBinding = 1;
 	private Dictionary<MaterialInstance, IBindGroup> mBindGroups = new .() ~ delete _;
-	private List<MaterialInstance> mDirty = new .() ~ delete _;
 	private List<RetiredBindGroup> mRetiredBindGroups = new .() ~ delete _;
 
 	public ~this()
@@ -217,22 +216,6 @@ class MaterialSystem : IMaterialInstanceSink
 		return null;
 	}
 
-	/// Re-preps everything dirtied since the last drain, which is proportional to what
-	/// changed.
-	public void PrepareDirtyInstances()
-	{
-		for (let instance in mDirty)
-		{
-			if (instance == null)
-				continue;
-
-			instance.SetInDirtyList(false);
-			if (instance.IsUniformDirty || instance.IsBindGroupDirty)
-				PrepareInstance(instance);
-		}
-		mDirty.Clear();
-	}
-
 	/// Frees retired bind groups once the frame ring has cycled past them. Called once a
 	/// frame, alongside whatever else the renderer retires.
 	public void TickRetired()
@@ -255,15 +238,6 @@ class MaterialSystem : IMaterialInstanceSink
 
 	// ---- IMaterialInstanceSink ----
 
-	public void MarkInstanceDirty(MaterialInstance instance)
-	{
-		if ((instance == null) || instance.IsInDirtyList)
-			return;
-
-		instance.SetInDirtyList(true);
-		mDirty.Add(instance);
-	}
-
 	/// Frees the instance's GPU resources IMMEDIATELY.
 	///
 	/// Anything that in flight frames may still be binding must have had both its bind
@@ -274,12 +248,6 @@ class MaterialSystem : IMaterialInstanceSink
 	{
 		if (instance == null)
 			return;
-
-		if (instance.IsInDirtyList)
-		{
-			RemoveFromDirty(instance);
-			instance.SetInDirtyList(false);
-		}
 
 		if (mBindGroups.TryGetValue(instance, var group))
 		{
@@ -653,18 +621,6 @@ class MaterialSystem : IMaterialInstanceSink
 
 	/// Nulled in place rather than removed, so the drain's walk is not disturbed by an
 	/// instance dying while it runs.
-	private void RemoveFromDirty(MaterialInstance instance)
-	{
-		for (int i = 0; i < mDirty.Count; i++)
-		{
-			if (mDirty[i] == instance)
-			{
-				mDirty[i] = null;
-				return;
-			}
-		}
-	}
-
 	private void Shutdown()
 	{
 		if (mDevice == null)
@@ -711,7 +667,6 @@ class MaterialSystem : IMaterialInstanceSink
 		mLayoutCache.Clear();
 		mSamplerCache.Clear();
 		mRetiredBindGroups.Clear();
-		mDirty.Clear();
 
 		// Views before their textures: a view refers to one, and a validating backend
 		// objects to outliving it.

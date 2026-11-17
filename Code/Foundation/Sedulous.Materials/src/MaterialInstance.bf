@@ -51,7 +51,6 @@ class MaterialInstance
 	// which is exactly what dirty means.
 	private bool mUniformDirty = true;
 	private bool mBindGroupDirty = true;
-	private bool mInDirtyList = false;
 
 	public this(Material material)
 	{
@@ -217,8 +216,6 @@ class MaterialInstance
 	// ---- wiring, used only by the material system ----
 
 	public void SetSink(IMaterialInstanceSink sink) => mSink = sink;
-	public bool IsInDirtyList => mInDirtyList;
-	public void SetInDirtyList(bool value) => mInDirtyList = value;
 
 	/// The layout the system inferred, which pipeline creation needs.
 	public IBindGroupLayout BindGroupLayout => mBindGroupLayout;
@@ -254,16 +251,12 @@ class MaterialInstance
 		SetUniformDirty();
 	}
 
-	/// The notification is on the TRANSITION, and only while the instance is not already
-	/// queued: a setter called a hundred times in a frame must not enqueue it a hundred
-	/// times.
+	/// Dirty until a draw prepares it again (MaterialSystem.PrepareInstance).
 	private void SetUniformDirty()
 	{
 		if (mUniformDirty)
 			return;
 		mUniformDirty = true;
-		if (!mInDirtyList && (mSink != null))
-			mSink.MarkInstanceDirty(this);
 	}
 
 	private void SetBindGroupDirty()
@@ -271,7 +264,5 @@ class MaterialInstance
 		if (mBindGroupDirty)
 			return;
 		mBindGroupDirty = true;
-		if (!mInDirtyList && (mSink != null))
-			mSink.MarkInstanceDirty(this);
 	}
 }
