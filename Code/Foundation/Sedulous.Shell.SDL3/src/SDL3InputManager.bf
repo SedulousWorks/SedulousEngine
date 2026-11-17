@@ -47,7 +47,7 @@ class SDL3InputManager : IInputManager
 		mKeyboard.BeginFrame();
 		mMouse.BeginFrame();
 		for (let pad in mGamepads)
-			pad.BeginFrame();
+			pad?.BeginFrame();
 	}
 
 	/// Closes every SDL owned device. Called BEFORE SDL_Quit, and idempotent so the
@@ -68,8 +68,9 @@ class SDL3InputManager : IInputManager
 	public void SetHoverWindow(uint32 id) => mHoverWindow = id;
 	public void SetFocusWindow(uint32 id) => mFocusWindow = id;
 
-	/// Opens a pad SDL just reported. Its INDEX is its position in this list, which is what
-	/// a caller iterates, and is not SDL's instance id.
+	/// Opens a pad SDL just reported, in the first free slot: a pad keeps its number while it
+	/// is connected, and one that comes back after another left takes the place that one left.
+	/// Its INDEX is its slot, which is what a caller iterates, and is not SDL's instance id.
 	public void AddGamepad(uint32 instanceId)
 	{
 		if (FindGamepadById(instanceId) != null)
@@ -80,32 +81,39 @@ class SDL3InputManager : IInputManager
 			return;
 
 		let name = StringView(SDL3.SDL_GetGamepadName(handle));
-		mGamepads.Add(new SDL3Gamepad(handle, instanceId, (int32)mGamepads.Count,
-			(name.Ptr != null) ? name : "Gamepad"));
+		int slot = 0;
+		while ((slot < mGamepads.Count) && (mGamepads[slot] != null))
+			slot++;
+		let pad = new SDL3Gamepad(handle, instanceId, (int32)slot, (name.Ptr != null) ? name : "Gamepad");
+		if (slot == mGamepads.Count)
+			mGamepads.Add(pad);
+		else
+			mGamepads[slot] = pad;
 	}
 
-	/// Removes a pad and RENUMBERS the rest, so the indices stay a contiguous run: a caller
-	/// iterating zero to GamepadCount must not step over a hole.
+	/// Removes a pad, emptying its slot: the others keep their numbers, so player 2's pad stays
+	/// player 2's when player 1's is unplugged (bindings and events name a pad by number). A
+	/// caller iterating zero to GamepadCount meets the holes as null pads; trailing ones drop.
 	public void RemoveGamepad(uint32 instanceId)
 	{
 		for (int i = mGamepads.Count - 1; i >= 0; i--)
 		{
-			if (mGamepads[i].Id == instanceId)
+			if ((mGamepads[i] != null) && (mGamepads[i].Id == instanceId))
 			{
 				mGamepads[i].Disconnect();
 				delete mGamepads[i];
-				mGamepads.RemoveAt(i);
+				mGamepads[i] = null;
 			}
 		}
-		for (int i < mGamepads.Count)
-			mGamepads[i].SetIndex((int32)i);
+		while (!mGamepads.IsEmpty && (mGamepads.Back == null))
+			mGamepads.PopBack();
 	}
 
 	public SDL3Gamepad FindGamepadById(uint32 instanceId)
 	{
 		for (let pad in mGamepads)
 		{
-			if (pad.Id == instanceId)
+			if ((pad != null) && (pad.Id == instanceId))
 				return pad;
 		}
 		return null;

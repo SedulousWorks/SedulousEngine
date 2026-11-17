@@ -129,6 +129,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Input: unplugging a gamepad no longer renumbers the others, so each player keeps their pad; a
+  pad plugged in takes the free number.
+- Editor: a file dialog's answer is handled on the editor's own thread, not the dialog's.
 - Input: actions read the frame's own input, not the last frame's. `WasPressed` and `WasReleased`
   in `onFixedUpdate` see each press once, whether the frame runs two fixed steps or none; a key
   tapped inside one frame counts; and no action reads pressed before the first frame.

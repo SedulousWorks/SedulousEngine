@@ -649,4 +649,51 @@ class SDL3ShellTests
 		let none = SDL3WindowManager.CapabilitiesFor(default);
 		Test.Assert(none.MultipleWindows && none.PlacesWindows);
 	}
+
+	private static SDL_JoystickID AttachVirtualPad()
+	{
+		var desc = SDL_VirtualJoystickDesc();
+		desc.version = (uint32)sizeof(SDL_VirtualJoystickDesc); // SDL_INIT_INTERFACE
+		desc.type = (uint16)SDL_JoystickType.SDL_JOYSTICK_TYPE_GAMEPAD;
+		desc.naxes = (uint16)SDL_GamepadAxis.SDL_GAMEPAD_AXIS_COUNT;
+		desc.nbuttons = (uint16)SDL_GamepadButton.SDL_GAMEPAD_BUTTON_COUNT;
+		return SDL3.SDL_AttachVirtualJoystick(&desc);
+	}
+
+	/// Removing a pad shifted the ones after it down a number, so player 2's pad became player
+	/// 1's (bindings and pad events name a pad by number).
+	[Test]
+	public static void UnpluggingAPadLeavesTheOthersTheirNumbers()
+	{
+		let fixture = scope ShellFixture();
+		if (!fixture.Usable)
+			return;
+		let input = fixture.Shell.Input;
+		let first = AttachVirtualPad();
+		let second = AttachVirtualPad();
+		if ((first == 0) || (second == 0))
+			return; // no virtual joysticks in this SDL
+		fixture.Shell.ProcessEvents();
+		Test.Assert(input.GamepadCount == 2, scope $"{input.GamepadCount} pads");
+		let secondPad = input.GetGamepad(1);
+		Test.Assert(secondPad != null);
+
+		SDL3.SDL_DetachVirtualJoystick(first);
+		fixture.Shell.ProcessEvents();
+		Test.Assert(input.GetGamepad(0) == null, "its slot is empty");
+		Test.Assert(input.GetGamepad(1) === secondPad, "the other keeps its number");
+		Test.Assert(secondPad.Index == 1);
+
+		let third = AttachVirtualPad(); // a pad plugged in takes the free slot
+		fixture.Shell.ProcessEvents();
+		Test.Assert(input.GetGamepad(0) != null, "the new pad took the free slot");
+		Test.Assert(input.GetGamepad(0).Index == 0);
+		Test.Assert(input.GamepadCount == 2);
+
+		SDL3.SDL_DetachVirtualJoystick(second);
+		fixture.Shell.ProcessEvents();
+		Test.Assert(input.GamepadCount == 1, "trailing empty slots go");
+		SDL3.SDL_DetachVirtualJoystick(third);
+		fixture.Shell.ProcessEvents();
+	}
 }

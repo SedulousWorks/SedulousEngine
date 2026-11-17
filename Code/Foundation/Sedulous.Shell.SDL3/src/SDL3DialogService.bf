@@ -7,9 +7,10 @@ namespace Sedulous.Shell.SDL3;
 
 /// Native file and folder dialogs.
 ///
-/// ASYNC: every Show returns at once and SDL calls back later, during the shell's event
-/// pump. So a caller must not block waiting for a result, and the callback runs on the main
-/// thread like everything else the pump delivers.
+/// ASYNC: every Show returns at once and SDL calls back later. So a caller must not block
+/// waiting for a result. SDL calls back on a thread of its own on some platforms (the portal
+/// and zenity dialogs on Linux, Windows'), so the result is carried to the main thread and the
+/// callback runs there, at the next event pump, like everything else the pump delivers.
 class SDL3DialogService : IDialogService
 {
 	private SDL3WindowManager mWindows;
@@ -84,19 +85,32 @@ class SDL3DialogService : IDialogService
 	private static void Trampoline(void* userData, char8** fileList, int32 filter)
 	{
 		let pending = (PendingDialog)Internal.UnsafeCastToObject(userData);
-		let paths = scope List<String>();
-		defer { ClearAndDeleteItems!(paths); }
-
 		if (fileList != null)
 		{
 			var cursor = fileList;
 			while (*cursor != null)
 			{
-				paths.Add(new String(StringView(*cursor)));
+				pending.Paths.Add(new String(StringView(*cursor)));
 				cursor++;
 			}
 		}
 
-		pending.Complete(paths);
+		// The callback touches the caller's state (the editor's pages), which belongs to the
+		// main thread: it runs there.
+		if (SDL3.SDL_IsMainThread())
+			pending.Complete();
+		else if (!SDL3.SDL_RunOnMainThread(=> Deliver, userData, false))
+		{
+			Sedulous.Core.Logging.GlobalLog(.Error, "Shell: a file dialog's result could not reach the main thread: {}",
+				StringView(SDL3.SDL_GetError()));
+			pending.[Friend]mOwner.[Friend]Retire(pending);
+		}
+	}
+
+	/// Hands the result to the caller, on the main thread.
+	private static void Deliver(void* userData)
+	{
+		let pending = (PendingDialog)Internal.UnsafeCastToObject(userData);
+		pending.Complete();
 	}
 }

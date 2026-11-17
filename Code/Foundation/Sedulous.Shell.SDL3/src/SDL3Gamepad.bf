@@ -72,7 +72,6 @@ class SDL3Gamepad : IGamepad
 		SDL3.SDL_RumbleGamepad(mPad, low, high, durationMs);
 	}
 
-	public void SetIndex(int32 index) => mIndex = index;
 	public void SetButton(GamepadButton button, bool down) => mButtons[Index_(button)].Set(down);
 
 	/// The device is gone but the object stays, so a caller mid frame reads disconnected

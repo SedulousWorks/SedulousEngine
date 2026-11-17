@@ -18,6 +18,8 @@ class PendingDialog
 	private SDL_DialogFileFilter* mFilters ~ delete _;
 	private int mFilterCount;
 	private String mDefaultPath = new .() ~ delete _;
+	/// The result, carried to the main thread.
+	private List<String> mPaths = new .() ~ DeleteContainerAndItems!(_);
 
 	public this(SDL3DialogService owner, delegate void(Span<String>) callback,
 		Span<FileFilter> filters, StringView defaultPath)
@@ -49,12 +51,15 @@ class PendingDialog
 	/// Null rather than an empty string, which is how SDL spells "no preference".
 	public char8* DefaultPathOrNull => mDefaultPath.IsEmpty ? null : mDefaultPath.CStr();
 
-	/// Runs the callback and retires: SDL is finished with this dialog either way, whether
-	/// the user chose something or cancelled.
-	public void Complete(List<String> paths)
+	/// What the user chose; empty when they cancelled. Filled where SDL calls back.
+	public List<String> Paths => mPaths;
+
+	/// Runs the callback and retires, on the main thread: SDL is finished with this dialog
+	/// either way, whether the user chose something or cancelled.
+	public void Complete()
 	{
 		if (mCallback != null)
-			mCallback(.(paths.Ptr, paths.Count));
+			mCallback(.(mPaths.Ptr, mPaths.Count));
 		mOwner.[Friend]Retire(this);
 	}
 }
