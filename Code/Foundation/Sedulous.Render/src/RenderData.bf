@@ -44,6 +44,11 @@ class RenderData
 	/// readback decodes. Nought is untagged. Every producer whose draws should be pickable
 	/// stamps it: meshes, instanced sets, terrain.
 	public uint64 EntityId = 0;
+
+	/// The producer's scene (Scene.Serial), nought when it has none. Scenes drawn in one frame (two
+	/// editor pages, a page and its play) reuse entity handles, so what a renderer keeps per entity
+	/// across frames (motion history, override instances) is kept per scene too.
+	public uint64 Scene = 0;
 }
 
 /// The one layout of the tag a producer stamps on RenderData for picking: the scene entity's

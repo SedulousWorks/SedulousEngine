@@ -131,6 +131,7 @@ static class RenderExtract
 		data.Mesh = component.Mesh.Get;
 		data.Material = primary;
 		data.EntityId = PackEntity(entity);
+		data.Scene = scene.Serial;
 		data.Fade = Math.Clamp(component.Fade, 0.0f, 1.0f);
 		// A faded opaque mesh leaves the depth prepass, whose depth would hide what the dither
 		// lets through.
@@ -421,6 +422,7 @@ static class RenderExtract
 				data.WorldCenter = component.CachedCenter;
 				data.WorldRadius = component.CachedRadius;
 				data.EntityId = PackEntity(entity);
+				data.Scene = scene.Serial;
 				data.Category = RenderCategories.CategoryForMaterial(primary);
 				data.SortBatchKey = SortKeys.BatchKey(
 					Internal.UnsafeCastToPtr(component.Mesh.Get),

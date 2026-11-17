@@ -158,6 +158,7 @@ class MeshRenderer : Renderer
 	/// for itself alone (MeshRenderData.Overrides).
 	private struct OverrideInstance
 	{
+		public uint64 Scene;
 		public uint64 EntityId;
 		public uint32 Slot;
 		public uint64 MaterialUid;
@@ -203,7 +204,7 @@ class MeshRenderer : Renderer
 	/// Keyed by the material's IDENTITY, never its reference: a reloaded material can land at
 	/// the freed address, and a reference keyed instance would serve the dead one's textures.
 	private Dictionary<uint64, InstanceEntry> mInstances = new .() ~ delete _;
-	/// By (entity, slot), mixed into one key; the entry's own fields tell a collision apart.
+	/// By (scene, entity, slot), mixed into one key; the entry's own fields tell a collision apart.
 	private Dictionary<uint64, OverrideInstance> mOverrideInstances = new .() ~ delete _;
 
 	/// One slot per distinct view block a frame: a view's runs and passes share one.
@@ -233,14 +234,26 @@ class MeshRenderer : Renderer
 	/// A depth like draw's ranges, reused.
 	private List<DepthLikeRange> mDepthRanges = new .() ~ delete _;
 
-	/// The per entity previous world, for a rigid object's motion vectors. A FLAT double
-	/// buffer indexed by the entity's own index rather than a map: direct, with no hashing or
-	/// probing, which is what the per instance lookup cost at scale. One holds LAST frame's,
-	/// read by every view; a resolve writes this frame's into the other; the two swap at the
+	/// The per entity previous world, for a rigid object's motion vectors, kept per scene: scenes
+	/// drawn in one frame (two editor pages, a page and its play) reuse entity handles, and one
+	/// history for all of them gave an entity another scene's last position (a smear). Within a
+	/// scene a FLAT double buffer indexed by the entity's own index rather than a map: direct,
+	/// with no hashing or probing, which is what the per instance lookup cost at scale; the
+	/// scene's history is found once per run of its draws (the last one is kept). Prev holds LAST
+	/// frame's, read by every view; a resolve writes this frame's into Cur; the two swap at the
 	/// end. An entry never written reads back as the current world, so a newly visible object
 	/// does not smear on its first frame.
-	private List<Float4x4> mPrevWorld = new .() ~ delete _;
-	private List<Float4x4> mCurWorld = new .() ~ delete _;
+	private class MotionHistory
+	{
+		public List<Float4x4> Prev = new .() ~ delete _;
+		public List<Float4x4> Cur = new .() ~ delete _;
+		/// mFrameClock when a draw last read it; a scene gone for a while is dropped.
+		public uint32 LastUsed;
+	}
+	private Dictionary<uint64, MotionHistory> mMotion = new .() ~ DeleteDictionaryAndValues!(_);
+	private uint64 mMotionScene = uint64.MaxValue;
+	/// mMotion's entry for mMotionScene.
+	private MotionHistory mMotionLast = null;
 
 	/// The camera prepass fills the full instance data for each opaque run once and records
 	/// the range here; the forward looks it up and REUSES it rather than filling it again.
@@ -709,9 +722,27 @@ class MeshRenderer : Renderer
 		// no clearing, since each visible entity overwrites its own slot when it resolves and a
 		// slot for one that is no longer visible is never read. Both keep their capacity, so
 		// the steady state allocates nothing.
-		let recycled = mPrevWorld;
-		mPrevWorld = mCurWorld;
-		mCurWorld = recycled;
+		// Per scene; a scene no draw has read for a while (a page closed) is dropped.
+		let gone = scope List<uint64>();
+		for (let pair in mMotion)
+		{
+			let history = pair.value;
+			if ((mFrameClock - history.LastUsed) > 600)
+			{
+				gone.Add(pair.key);
+				continue;
+			}
+			let recycled = history.Prev;
+			history.Prev = history.Cur;
+			history.Cur = recycled;
+		}
+		for (let scene in gone)
+		{
+			if (mMotion.GetAndRemove(scene) case .Ok(let removed))
+				delete removed.value;
+		}
+		mMotionScene = uint64.MaxValue; // the map may have changed
+		mMotionLast = null;
 		mReady = false;
 	}
 
@@ -1797,7 +1828,7 @@ class MeshRenderer : Renderer
 
 		var objectData = MeshObjectData();
 		objectData.World = md.World;
-		objectData.PrevWorld = context.NeedsMotion ? PrevWorldFor(md.EntityId, md.World) : md.World;
+		objectData.PrevWorld = context.NeedsMotion ? PrevWorldFor(md.Scene, md.EntityId, md.World) : md.World;
 		objectData.Tint = md.Color;
 		objectData.BoneBase = boneBase;
 		objectData.PrevBoneBase = prevBoneBase;
@@ -1875,7 +1906,7 @@ class MeshRenderer : Renderer
 			{
 				let md = (MeshRenderData)items[first + (int)k].Data;
 				instanceData[k] = .(md.World,
-					context.NeedsMotion ? PrevWorldFor(md.EntityId, md.World) : md.World,
+					context.NeedsMotion ? PrevWorldFor(md.Scene, md.EntityId, md.World) : md.World,
 					md.Color);
 
 				uint32 boneBase = 0;
@@ -2068,7 +2099,7 @@ class MeshRenderer : Renderer
 		{
 			let md = (MeshRenderData)items[first + (int)k].Data;
 			let previous = (feedsForward && context.NeedsMotion)
-				? PrevWorldFor(md.EntityId, md.World)
+				? PrevWorldFor(md.Scene, md.EntityId, md.World)
 				: md.World;
 			instanceData[k] = .(md.World, previous, md.Color);
 
@@ -2704,10 +2735,11 @@ class MeshRenderer : Renderer
 		if (!overridden)
 			return InstanceFor(material);
 
-		let key = md.EntityId &* 0x9E3779B97F4A7C15UL &+ slot;
+		uint64[3] identity = .(md.Scene, md.EntityId, slot);
+		let key = HashBytes(&identity[0], sizeof(uint64[3]));
 		OverrideInstance* entry = null;
 		if (mOverrideInstances.TryGetRef(key, ?, out entry)
-			&& ((entry.EntityId != md.EntityId) || (entry.Slot != slot)
+			&& ((entry.Scene != md.Scene) || (entry.EntityId != md.EntityId) || (entry.Slot != slot)
 				|| (entry.MaterialUid != material.Uid)))
 		{
 			// Another mesh mixed to this key, or the slot's material changed: start over with
@@ -2719,6 +2751,7 @@ class MeshRenderer : Renderer
 		if (entry == null)
 		{
 			var created = OverrideInstance();
+			created.Scene = md.Scene;
 			created.EntityId = md.EntityId;
 			created.Slot = slot;
 			created.MaterialUid = material.Uid;
@@ -3300,17 +3333,29 @@ class MeshRenderer : Renderer
 	/// Indexed by the entity's own index, so several views resolving the same object read a
 	/// STABLE previous: writing the current one never touches it, the two being separate
 	/// buffers. An entry never written reads back as the current world, which is no motion.
-	private Float4x4 PrevWorldFor(uint64 entityId, Float4x4 current)
+	private Float4x4 PrevWorldFor(uint64 scene, uint64 entityId, Float4x4 current)
 	{
+		if ((scene != mMotionScene) || (mMotionLast == null))
+		{
+			if (!mMotion.TryGetValue(scene, out mMotionLast))
+			{
+				mMotionLast = new MotionHistory();
+				mMotion[scene] = mMotionLast;
+			}
+			mMotionScene = scene;
+		}
+		let history = mMotionLast;
+		history.LastUsed = mFrameClock;
+
 		// The identifier is a generation and an index; the index is the low half.
 		let index = (int)(uint32)entityId;
 
 		// Grows toward the highest live index and then stays put.
-		while (mCurWorld.Count <= index)
-			mCurWorld.Add(Float4x4.Identity());
-		mCurWorld[index] = current;
+		while (history.Cur.Count <= index)
+			history.Cur.Add(Float4x4.Identity());
+		history.Cur[index] = current;
 
-		return (index < mPrevWorld.Count) ? mPrevWorld[index] : current;
+		return (index < history.Prev.Count) ? history.Prev[index] : current;
 	}
 
 	/// Keyed by the VIEW rather than its index: the main view's prepass and forward share one

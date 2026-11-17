@@ -225,6 +225,74 @@ class MaterialOverrideProbeTests
 		Test.Assert(Grey(cleared.Value[1]), clearedReport);
 		Test.Assert(Math.Abs(cleared.Value[1].X - cleared.Value[0].X) < 8.0f, clearedReport);
 
+		// Two scenes in one frame, their middle cards on one entity handle, red in one and green in
+		// the other at the same version: the override instances were keyed by entity and slot
+		// alone, so the second scene drew the first's red.
+		let other = scope ExtractedScene();
+		other.SetAmbient(.(1.0f, 1.0f, 1.0f));
+		MeshRenderData otherMiddle = null;
+		for (int32 i = -1; i <= 1; i++)
+		{
+			let at = Float3(1.15f * (float)i, 0.0f, -3.0f);
+			let data = other.Add<MeshRenderData>();
+			data.World = Float4x4.Translation(at);
+			data.Mesh = card;
+			data.Material = material;
+			data.RendererId = meshRenderer.RendererId;
+			data.Category = RenderCategories.Opaque;
+			data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(card), Internal.UnsafeCastToPtr(material));
+			data.WorldCenter = at;
+			data.WorldRadius = 1.0f;
+			data.EntityId = (uint64)(i + 2);
+			data.Scene = 2;
+			if (i == 0)
+				otherMiddle = data;
+		}
+		for (let item in scene.Items)
+			(item as MeshRenderData).Scene = 1;
+		var greenOverrides = MaterialPropertyOverride[1](tint);
+		greenOverrides[0].Value = .(0.05f, 0.9f, 0.05f, 1.0f);
+		overrides[0].Value = .(0.9f, 0.05f, 0.05f, 1.0f);
+		middle.Overrides = &overrides[0];
+		middle.OverrideCount = 1;
+		middle.OverrideVersion = 7;
+		otherMiddle.Overrides = &greenOverrides[0];
+		otherMiddle.OverrideCount = 1;
+		otherMiddle.OverrideVersion = 7;
+		var otherTarget = device.CreateTexture(textureDesc).Value;
+		defer device.DestroyTexture(ref otherTarget);
+		var otherView = device.CreateTextureView(otherTarget, viewDesc).Value;
+		defer device.DestroyTextureView(ref otherView);
+		var otherSettings = settings;
+		otherSettings.TargetTexture = otherTarget;
+		for (uint32 i < 2)
+		{
+			var encoder = pool.CreateEncoder().Value;
+			settings.TargetCurrentState = .CopySrc;
+			otherSettings.TargetCurrentState = (i == 0) ? .Undefined : .CopySrc;
+			frame.Begin(encoder, (uint32)(submitted % 2));
+			frame.AddView(scene, camera, settings, targetView, .RGBA8Unorm, cSize, cSize);
+			frame.AddView(other, camera, otherSettings, otherView, .RGBA8Unorm, cSize, cSize);
+			frame.End();
+			let commandBuffer = encoder.Finish();
+			Test.Assert(commandBuffer != null, scope $"{kind}: the two-scene frame recorded");
+			var buffers = ICommandBuffer[1](commandBuffer);
+			submitted++;
+			queue.Submit(.(&buffers[0], 1), fence, submitted);
+			fence.Wait(submitted);
+			pool.DestroyEncoder(ref encoder);
+		}
+		let firstImage = RhiTestSupport.Readback(device, target, cSize, cSize);
+		defer delete firstImage;
+		let secondImage = RhiTestSupport.Readback(device, otherTarget, cSize, cSize);
+		defer delete secondImage;
+		let first = ((firstImage != null) && firstImage.Valid) ? Measure(firstImage) : null;
+		let second = ((secondImage != null) && secondImage.Valid) ? Measure(secondImage) : null;
+		Test.Assert((first != null) && (second != null), scope $"{kind}: both scenes rendered");
+		let twoReport = scope $"{kind}: first{Describe(first.Value, .. scope .())} second{Describe(second.Value, .. scope .())}";
+		Test.Assert(first.Value[1].X > first.Value[1].Y * 3.0f, twoReport); // the first scene's card: red
+		Test.Assert(second.Value[1].Y > second.Value[1].X * 3.0f, twoReport); // the second's: green, its own
+
 		device.WaitIdle();
 	}
 }

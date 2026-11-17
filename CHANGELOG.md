@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Two scenes drawn at once (two editor pages, a page and its play) no longer share a mesh's material
+  overrides or its motion history when their entities have the same handle.
 - A navigation zone with a zero (or non-number) Cell Size or Cell Height is no longer baked into
   nonsense; the bake says what to fix, and the inspector keeps both above zero.
 - glTF and FBX models without authored tangents get them generated, so their normal maps shade
