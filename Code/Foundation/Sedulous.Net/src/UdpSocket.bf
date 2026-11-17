@@ -27,6 +27,14 @@ class UdpSocket : IDatagramSocket
 		{
 			SocketInheritance.KeepFromChildren(mSocket);
 			mSocket.Blocking = false;
+#if BF_PLATFORM_WINDOWS
+			// A datagram to a port nobody listens on comes back as an ICMP port-unreachable, which
+			// Windows reports on the next receive as a connection reset: one client that left would
+			// stop the frame's receive loop with the others' datagrams still queued. Off.
+			int32 report = 0;
+			uint32 returned = 0;
+			WSAIoctl(mSocket.NativeSocket, cSioUdpConnReset, &report, sizeof(int32), null, 0, &returned, null, null);
+#endif
 			mBoundPort = NetAddress.BoundPort(mSocket);
 		}
 	}
@@ -61,18 +69,26 @@ class UdpSocket : IDatagramSocket
 		mScratch.Count = cMaxDatagram;
 		Socket.SockAddr_in from = default;
 		int received = 0;
-		switch (mSocket.RecvFrom(mScratch.Ptr, cMaxDatagram, out from))
+		while (true)
 		{
-		case .Ok(let count):
-			received = count;
-		case .Err(let error):
-			// The socket reads recvfrom's 0 as a closed stream, but for a datagram socket 0 is an
-			// EMPTY DATAGRAM, not "none waiting": reading it as none stopped the receive loop with
-			// the rest still queued, so a stream of them held back every real packet. Would-block
-			// and real errors are none.
-			if (error != .ConnectionClosed)
-				return false;
-			received = 0;
+			switch (mSocket.RecvFrom(mScratch.Ptr, cMaxDatagram, out from))
+			{
+			case .Ok(let count):
+				received = count;
+			case .Err(let error):
+				// An earlier send's ICMP error (Windows, when the reset report could not be turned
+				// off), consumed: the next datagram is still there.
+				if ((error == .ConnectionReset) || (error == .NetworkReset))
+					continue;
+				// The socket reads recvfrom's 0 as a closed stream, but for a datagram socket 0 is
+				// an EMPTY DATAGRAM, not "none waiting": reading it as none stopped the receive loop
+				// with the rest still queued, so a stream of them held back every real packet.
+				// Would-block and real errors are none.
+				if (error != .ConnectionClosed)
+					return false;
+				received = 0;
+			}
+			break;
 		}
 
 		outData.Clear();
@@ -82,6 +98,15 @@ class UdpSocket : IDatagramSocket
 			(uint16)Socket.htons((int16)from.sin_port));
 		return true;
 	}
+
+#if BF_PLATFORM_WINDOWS
+	/// SIO_UDP_CONNRESET, _WSAIOW(IOC_VENDOR, 12): defined here, as not every SDK's mstcpip.h has it.
+	private const uint32 cSioUdpConnReset = 0x9800000C;
+
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern int32 WSAIoctl(Socket.HSocket socket, uint32 code, void* inBuffer, uint32 inLength,
+		void* outBuffer, uint32 outLength, uint32* outReturned, void* overlapped, void* completion);
+#endif
 
 	/// Loopback plus the bound port: the address a peer ON THIS HOST connects to. A real
 	/// remote needs the machine's public or LAN address, which comes from ResolveEndpoint.

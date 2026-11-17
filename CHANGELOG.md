@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Windows: a server whose client left no longer stops reading the frame's other datagrams (the
+  connection-reset error a send to the gone client brought back).
 - `Sedulous.Tools.Cook` exits with failure when a source cannot be read, instead of 0.
 - MCP: opening a project whose plugins add tools no longer changes the tool table under the running
   call (a possible crash).

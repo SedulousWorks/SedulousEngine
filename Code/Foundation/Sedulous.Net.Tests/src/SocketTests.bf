@@ -451,4 +451,34 @@ class SocketTests
 		let second = scope UdpSocket(first.BoundPort);
 		Test.Assert(!second.IsOpen, "the held port is refused");
 	}
+
+	/// On Windows the ICMP port-unreachable for a datagram to a client that left came back as an
+	/// error on the next receive, and the frame's receive loop stopped there with live peers'
+	/// datagrams still queued. (Linux reports nothing on an unconnected socket; a Windows run is
+	/// the one this tells apart.)
+	[Test]
+	public static void ASendToAPortNobodyHoldsDoesNotStopTheNextReceive()
+	{
+		let a = scope UdpSocket(0);
+		let b = scope UdpSocket(0);
+		Test.Assert(a.IsOpen && b.IsOpen);
+		DatagramEndpoint gone;
+		{
+			let left = scope UdpSocket(0);
+			Test.Assert(left.IsOpen);
+			gone = left.LocalEndpoint;
+		}
+		uint8[1] message = .(0x42);
+		a.Send(gone, message);
+		System.Threading.Thread.Sleep(50); // the port-unreachable is back by then
+		b.Send(a.LocalEndpoint, message);
+		System.Threading.Thread.Sleep(50);
+
+		let got = scope List<uint8>();
+		DatagramEndpoint from = ?;
+		let received = a.Receive(out from, got);
+		Test.Assert(received);
+		Test.Assert(NetAddress.EndpointPort(from) == b.BoundPort);
+		Test.Assert(got.Count == 1);
+	}
 }
