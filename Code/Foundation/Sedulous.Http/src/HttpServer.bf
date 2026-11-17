@@ -349,7 +349,15 @@ class HttpServer
 		let head = scope String();
 		head.AppendF("HTTP/1.1 {} {}\r\n", response.Status, HttpStatus.Text(response.Status));
 		for (let header in response.Headers)
+		{
+			if (!HttpHeader.IsWritable(header.Name, header.Value))
+			{
+				// Written, it would end the head early and put what follows in as headers or body.
+				Sedulous.Core.Logging.GlobalLog(.Warning, "Http: a response header '{}' left out: it has a line break", header.Name);
+				continue;
+			}
 			head.AppendF("{}: {}\r\n", header.Name, header.Value);
+		}
 		// Written HERE and not by the handler: the length has to match the body actually
 		// sent, and this is the only place that knows both.
 		head.AppendF("Content-Length: {}\r\n", response.Body.Count);

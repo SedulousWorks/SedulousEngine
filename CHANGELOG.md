@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- HTTP: a request whose header, method or URL holds a line break is refused before anything is
+  sent, so a game's data can no longer write headers of its own into a request.
 - Networking: two scene objects whose ids happened to clash no longer drive each other; the later
   one takes another id, the same on every player, with a warning naming both.
 - Networking: changing scenes in a networked game starts replication afresh, rather than keeping

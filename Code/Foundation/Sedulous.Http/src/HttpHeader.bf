@@ -6,6 +6,44 @@ namespace Sedulous.Http;
 /// One header field. Owns its name and value.
 class HttpHeader
 {
+	/// Whether `name: value` may be written into a message head as one header: a name of token
+	/// characters, and a value with no line break or NUL. A CR or LF in either would end the line
+	/// and start a header (or a body) the caller never wrote.
+	public static bool IsWritable(StringView name, StringView value)
+	{
+		if (name.IsEmpty)
+			return false;
+		for (let c in name.RawChars)
+		{
+			let b = (uint8)c;
+			if ((b <= 0x20) || (b >= 0x7F))
+				return false;
+			switch (c)
+			{
+			case ':', '(', ')', '<', '>', '@', ',', ';', '\\', '"', '/', '[', ']', '?', '=', '{', '}':
+				return false;
+			default:
+			}
+		}
+		for (let c in value.RawChars)
+		{
+			if ((c == '\r') || (c == '\n') || (c == '\0'))
+				return false;
+		}
+		return true;
+	}
+
+	/// The first of `headers` that may not be written (IsWritable), or null when all may.
+	public static HttpHeader FirstUnwritable(List<HttpHeader> headers)
+	{
+		for (let header in headers)
+		{
+			if (!IsWritable(header.Name, header.Value))
+				return header;
+		}
+		return null;
+	}
+
 	public String Name = new .() ~ delete _;
 	public String Value = new .() ~ delete _;
 

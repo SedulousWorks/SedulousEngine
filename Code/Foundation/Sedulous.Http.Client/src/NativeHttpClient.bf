@@ -419,6 +419,24 @@ class NativeHttpClient : IHttpClient
 			outError.Append("https needs a TLS backend, and this client has none");
 			return false;
 		}
+		// A line break in a header, the method or the URL would write lines the caller never meant
+		// (a header injected, or a second request): refused before anything is sent.
+		if (let bad = HttpHeader.FirstUnwritable(headers))
+		{
+			outError.AppendF("the header '{}' has a line break or a character a name may not have", bad.Name);
+			return false;
+		}
+		if (!HttpHeader.IsWritable("Method", method) || method.Contains(' '))
+		{
+			outError.Append("the method has a line break or a space");
+			return false;
+		}
+		if (!HttpHeader.IsWritable("Host", at.Host) || !HttpHeader.IsWritable("Target", at.Target)
+			|| StringView(at.Target).Contains(' '))
+		{
+			outError.Append("the URL has a line break or a space");
+			return false;
+		}
 		// A name that does not resolve leaves the socket closed; a refused connect is the
 		// stream's to say ("the connection could not be made").
 		let socket = TcpSocket.Connect(at.Host, at.Port);

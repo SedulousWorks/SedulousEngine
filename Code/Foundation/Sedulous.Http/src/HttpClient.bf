@@ -22,6 +22,14 @@ static class HttpClient
 	public static Result<HttpResponse, String> Fetch(StringView address, uint16 port,
 		HttpRequest request, uint32 timeoutMilliseconds = 5000)
 	{
+		// A line break in a header, the method or the target would write lines the caller never
+		// meant (a header injected, or a second request): refused before anything is sent.
+		if (let bad = HttpHeader.FirstUnwritable(request.Headers))
+			return .Err(new $"the header '{bad.Name}' has a line break or a character a name may not have");
+		if (!HttpHeader.IsWritable("Method", request.Method) || !HttpHeader.IsWritable("Target", request.Target)
+			|| StringView(request.Target).Contains(' '))
+			return .Err(new $"the request's method or target has a line break or a space");
+
 		let socket = TcpSocket.Connect(address, port);
 		defer delete socket;
 

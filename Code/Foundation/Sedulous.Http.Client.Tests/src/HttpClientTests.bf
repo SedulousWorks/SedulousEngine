@@ -661,4 +661,40 @@ class HttpClientTests
 		Test.Assert(r.Status == 200, r.Error);
 		Test.Assert(r.BodyText.Contains("<html", true));
 	}
+
+	/// Header values went onto the wire as given, so one carrying CR LF wrote a header (or a
+	/// whole request) of the caller's data the caller never meant.
+	[Test]
+	public static void ALineBreakInAHeaderTheMethodOrTheUrlIsRefusedBeforeAnythingIsSent()
+	{
+		Test.Assert(HttpHeader.IsWritable("X-Token", "abc"));
+		Test.Assert(!HttpHeader.IsWritable("X-Token", "abc\r\nX-Admin: 1"));
+		Test.Assert(!HttpHeader.IsWritable("X Token", "abc"));
+		Test.Assert(!HttpHeader.IsWritable("X-Token:", "abc"));
+		Test.Assert(!HttpHeader.IsWritable("", "abc"));
+
+		let client = scope NativeHttpClient(null);
+		let injected = HttpClientRequest.Get("http://127.0.0.1:1/");
+		injected.Headers.Add(new .("X-Token", "a\r\nX-Admin: 1"));
+		let header = scope HttpClientResponse();
+		Fetch(client, injected, scope () => {}, header);
+		Test.Assert(header.Error.Contains("line break"), header.Error);
+		let method = HttpClientRequest.Get("http://127.0.0.1:1/");
+		method.Method.Set("GET / HTTP/1.1\r\nX: y\r\n\r\nGET");
+		let methodGot = scope HttpClientResponse();
+		Fetch(client, method, scope () => {}, methodGot);
+		Test.Assert(methodGot.Error.Contains("line break"), methodGot.Error);
+
+		let raw = scope HttpRequest();
+		raw.Headers.Add(new .("X", "1\n2"));
+		switch (HttpClient.Fetch("127.0.0.1", 1, raw, 10))
+		{
+		case .Ok(let response):
+			delete response;
+			Test.Assert(false, "the raw fetch was refused");
+		case .Err(let error):
+			Test.Assert(error.Contains("line break"), error);
+			delete error;
+		}
+	}
 }
