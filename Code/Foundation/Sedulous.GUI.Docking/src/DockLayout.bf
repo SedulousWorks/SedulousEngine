@@ -904,7 +904,12 @@ class DockLayout
 				float sum = 0.0f;
 				for (int c < node.Children.Count)
 				{
-					sum += node.Weights[c];
+					// Each a positive number: a NaN made the sum NaN, which no comparison refuses, and
+					// a negative share could be made up by the others.
+					let share = node.Weights[c];
+					if (!share.IsFinite || (share <= 0.0f))
+						return "a share that is not a positive number";
+					sum += share;
 					let child = FindNode(node.Children[c]);
 					if ((child == null) || (child.Parent != id))
 						return "a child's parent is not its split";

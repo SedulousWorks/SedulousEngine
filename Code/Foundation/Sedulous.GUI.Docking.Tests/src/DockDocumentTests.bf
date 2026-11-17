@@ -193,4 +193,31 @@ class DockDocumentTests
 		Save(reused, again);
 		Test.Assert(again == text);
 	}
+
+	/// The check summed the shares and compared the sum with one: a NaN share made the sum NaN,
+	/// which no comparison refuses, so a saved layout with one was adopted and its splits laid out
+	/// as NaN. A negative share made up by the others summed to one too.
+	[Test]
+	public static void ASplitShareThatIsNotAPositiveNumberIsRefused()
+	{
+		let layout = scope DockLayout();
+		Sample(layout);
+		let why = scope String();
+		Test.Assert(layout.CheckInvariants(why), why);
+		let split = layout.FindNode(layout.FindNode(layout.StackOf("hierarchy")).Parent);
+		Test.Assert((split != null) && (split.Weights.Count == 2));
+		let first = split.Weights[0];
+		let second = split.Weights[1];
+
+		split.Weights[0] = float.NaN;
+		Test.Assert(!layout.CheckInvariants(why..Clear()) && why.Contains("positive number"), why);
+
+		split.Weights[0] = -0.5f;
+		split.Weights[1] = 1.5f; // summing to one
+		Test.Assert(!layout.CheckInvariants(why..Clear()) && why.Contains("positive number"), why);
+
+		split.Weights[0] = first;
+		split.Weights[1] = second;
+		Test.Assert(layout.CheckInvariants(why..Clear()), why);
+	}
 }
