@@ -39,6 +39,12 @@ static
 			codepoint = (codepoint << 6) | (cont & 0x3F);
 			index++;
 		}
+		// What well-formed UTF-8 never holds: a character written in more bytes than it needs (an
+		// overlong form, which can smuggle a '/' or a NUL past a check of the bytes), a surrogate
+		// (a UTF-16 half), or one past U+10FFFF.
+		uint32[4] least = .(0, 0x80, 0x800, 0x10000);
+		if ((codepoint < least[extra]) || ((codepoint >= 0xD800) && (codepoint <= 0xDFFF)) || (codepoint > 0x10FFFF))
+			return 0xFFFD;
 		return codepoint;
 	}
 

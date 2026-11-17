@@ -96,7 +96,7 @@ static
 		outStem.Append(StringView(name, 0, name.Length - @extension.Length));
 	}
 
-	/// Everything before the last separator, or empty if there is none.
+	/// Everything before the last separator, or empty if there is none; a root keeps its separator.
 	public static void PathParent(StringView path, String outParent)
 	{
 		outParent.Clear();
@@ -109,6 +109,14 @@ static
 		}
 		if (lastSeparator == path.Length)
 			return;
+		// A root keeps its separator: the parent of "/file" is "/" and of "C:\\file" is "C:\\" (cut
+		// before it, they read as a relative nothing and a drive's current folder).
+		let driveRoot = (lastSeparator == 2) && (path[1] == ':');
+		if (((lastSeparator == 0) || driveRoot) && (path.Length > (lastSeparator + 1)))
+		{
+			outParent.Append(StringView(path, 0, lastSeparator + 1));
+			return;
+		}
 		outParent.Append(StringView(path, 0, lastSeparator));
 	}
 

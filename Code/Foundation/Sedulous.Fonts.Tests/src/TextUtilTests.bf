@@ -169,4 +169,24 @@ class TextUtilTests
 		while (index < prefix.Length)
 			Test.Assert(DecodeCodepoint(prefix, ref index) == 0x20AC, "and every one still decodes");
 	}
+
+	private static uint32 DecodeFirst(params uint8[] bytes)
+	{
+		int at = 0;
+		return DecodeCodepoint(StringView((char8*)bytes.Ptr, bytes.Count), ref at);
+	}
+
+	/// They decoded as the values they spelt: an overlong '/' (C0 AF) passed a check of the bytes
+	/// for '/', and a surrogate half came through as a character.
+	[Test]
+	public static void DecodingRefusesOverlongFormsSurrogatesAndValuesPastU10FFFF()
+	{
+		Test.Assert(DecodeFirst(0xC0, 0xAF) == 0xFFFD); // '/' in two bytes
+		Test.Assert(DecodeFirst(0xE0, 0x80, 0xAF) == 0xFFFD); // '/' in three
+		Test.Assert(DecodeFirst(0xF0, 0x80, 0x80, 0xAF) == 0xFFFD); // '/' in four
+		Test.Assert(DecodeFirst(0xED, 0xA0, 0x80) == 0xFFFD); // U+D800
+		Test.Assert(DecodeFirst(0xF4, 0x90, 0x80, 0x80) == 0xFFFD); // U+110000
+		Test.Assert(DecodeFirst(0xC2, 0xA9) == 0xA9); // the shortest forms still decode
+		Test.Assert(DecodeFirst(0xF4, 0x8F, 0xBF, 0xBF) == 0x10FFFF);
+	}
 }

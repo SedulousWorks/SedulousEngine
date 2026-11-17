@@ -167,4 +167,16 @@ class PathTests
 		Test.Assert(!PathStaysInside("a//x"));
 		Test.Assert(!PathStaysInside("http://x/y"));
 	}
+
+	/// The parent of "/file" was empty (a relative nothing) and of "C:\\file" "C:" (that drive's
+	/// current folder).
+	[Test]
+	public static void TheParentOfAFileAtARootIsTheRootItsSeparatorKept()
+	{
+		Test.Assert(PathParent("/file", .. scope String()) == "/");
+		Test.Assert(PathParent("C:\\file", .. scope String()) == "C:\\");
+		Test.Assert(PathParent("C:/file", .. scope String()) == "C:/");
+		Test.Assert(PathParent("/", .. scope String()) == "");
+		Test.Assert(PathParent("/a/b", .. scope String()) == "/a");
+	}
 }
