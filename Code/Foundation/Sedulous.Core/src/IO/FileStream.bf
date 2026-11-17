@@ -46,22 +46,51 @@ class FileStream : IStream
 
 	public override bool IsValid => mIsValid;
 
+	/// The most one read or write asks of the system: Linux moves at most about 2 GiB in a call, so
+	/// a request for a file that size came back short, which callers read as failure.
+	private const int cChunk = 1024 * 1024 * 1024;
+
+	/// Reads until `destination` is full, the file ends or a read fails, in chunks: one call can
+	/// come back short (a file past 2 GiB, a pipe), and a short read is not the end.
 	public override int Read(Span<uint8> destination)
 	{
 		if (!mIsValid)
 			return 0;
-		if (mFile.TryRead(destination) case .Ok(let read))
-			return read;
-		return 0;
+		int total = 0;
+		while (total < destination.Length)
+		{
+			let wanted = Math.Min(destination.Length - total, cChunk);
+			if (mFile.TryRead(.(destination.Ptr + total, wanted)) case .Ok(let read))
+			{
+				if (read <= 0)
+					break;
+				total += read;
+			}
+			else
+				break;
+		}
+		return total;
 	}
 
+	/// Writes all of `source` unless a write fails, in chunks as Read reads.
 	public override int Write(Span<uint8> source)
 	{
 		if (!mIsValid)
 			return 0;
-		if (mFile.TryWrite(source) case .Ok(let written))
-			return written;
-		return 0;
+		int total = 0;
+		while (total < source.Length)
+		{
+			let wanted = Math.Min(source.Length - total, cChunk);
+			if (mFile.TryWrite(.(source.Ptr + total, wanted)) case .Ok(let written))
+			{
+				if (written <= 0)
+					break;
+				total += written;
+			}
+			else
+				break;
+		}
+		return total;
 	}
 
 	public override int64 Seek(int64 offset, SeekOrigin origin)

@@ -289,4 +289,31 @@ class FileStreamTests
 
 		RemoveDirectoryRecursive(kScratch);
 	}
+
+#if BF_PLATFORM_LINUX
+	/// One system read can come back short (a file past 2 GiB: Linux moves at most about 2 GiB a
+	/// call), and a short read was returned as the whole, which callers took for failure. A pipe
+	/// whose writer pauses between two parts gives the same short read without 2 GiB of disk.
+	[Test]
+	public static void AReadKeepsGoingPastAShortReadUntilItIsWhole()
+	{
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+		let path = PathJoin(kScratch, "parts.fifo", .. scope String());
+		let made = scope ProcessResult();
+		Process.Run("/usr/bin/mkfifo", scope StringView[](path), made);
+		Test.Assert(made.Ok);
+		let script = scope String()..AppendF("(printf abc; sleep 0.3; printf def) > '{}'", path);
+		Test.Assert(Process.Start("/bin/sh", scope StringView[]("-c", script)));
+
+		uint8[6] read = default;
+		{
+			let file = scope FileStream(path, .Read);
+			Test.Assert(file.IsValid);
+			Test.Assert(file.Read(.(&read[0], 6)) == 6);
+		}
+		Test.Assert(StringView((char8*)&read[0], 6) == "abcdef");
+		RemoveDirectoryRecursive(kScratch);
+	}
+#endif
 }

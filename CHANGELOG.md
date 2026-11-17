@@ -131,6 +131,7 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Files of 2 GiB and more read and write whole.
 - Text: malformed UTF-8 (overlong forms, surrogates, values past U+10FFFF) reads as the replacement
   character rather than as the character it spelt.
 - Export: a failed build's errors at the end of a long log are kept in what the editor shows
