@@ -881,4 +881,51 @@ class ReplicationTests
 		Test.Assert(client.GetSystem<NetworkComponentManager>().Get(clientFirst).Id == a, "the same on the client");
 		Test.Assert(client.GetSystem<NetworkComponentManager>().Get(clientSecond).Id == b);
 	}
+
+	/// Whether a peer's client ends up with `id` after one delta from `replication`.
+	private static bool Received(StateReplication replication, Scene server, uint32 peer, NetworkId id)
+	{
+		let client = scope Scene("client");
+		AddManagers(client);
+		let clientReplication = scope StateReplication();
+		let writer = scope BitWriter();
+		replication.ForgetPeer(peer);
+		replication.CaptureDelta(server, peer, writer);
+		let reader = scope BitReader(writer.Data);
+		clientReplication.ApplyDelta(client, reader);
+		return clientReplication.FindEntity(id).IsAssigned;
+	}
+
+	/// SetRelevance had no caller, so every networked entity went to every peer. The built-in
+	/// distance relevance is off by default and sends a player what is near its own entity.
+	[Test]
+	public static void TheBuiltInRelevanceRadiusSendsAPlayerWhatIsNearItsOwnEntity()
+	{
+		let server = scope Scene("server");
+		AddManagers(server);
+		let replication = scope StateReplication();
+		NetworkId Place(StringView name, float x, uint32 owner)
+		{
+			let entity = server.CreateEntity(name);
+			server.GetSystem<MoverManager>().Add(entity);
+			server.SetLocalPosition(entity, .(x, 0, 0));
+			return replication.AssignNetworkId(server, entity, default, owner);
+		}
+		let mine = Place("Mine", 100.0f, 1); // peer 1's own, far from the rest
+		let near = Place("Near", 105.0f, 0);
+		let far = Place("Far", 0.0f, 0);
+		server.UpdateTransforms();
+
+		Test.Assert(replication.RelevanceRadius == 0.0f, "off by default");
+		Test.Assert(Received(replication, server, 1, far), "off: everything to everyone");
+
+		replication.SetRelevanceRadius(10.0f);
+		Test.Assert(Received(replication, server, 1, mine), "its own, always");
+		Test.Assert(Received(replication, server, 1, near), "what is near it");
+		Test.Assert(!Received(replication, server, 1, far), "not what is far");
+		Test.Assert(Received(replication, server, 2, far), "a peer that owns nothing sees everything");
+
+		replication.SetRelevance(new (peer, id, entity) => true); // a hook replaces it
+		Test.Assert(Received(replication, server, 1, far), "the game's hook decides");
+	}
 }

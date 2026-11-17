@@ -94,6 +94,8 @@ class StateReplication : IReplicationModel
 	private List<uint32> mAuthoredIds = new .() ~ delete _;
 	private SpawnHandler mSpawnHandler ~ delete _;
 	private RelevanceFn mRelevance ~ delete _;
+	/// SetRelevanceRadius; nought is off.
+	private float mRelevanceRadius = 0.0f;
 
 	/// OWNERSHIP transfers; setting a second one deletes the first.
 	public void SetSpawnHandler(SpawnHandler handler)
@@ -105,6 +107,12 @@ class StateReplication : IReplicationModel
 	/// Whether a spawn handler is installed. The network controller re-applies its injected
 	/// resolver to each fresh endpoint, and this lets that wiring be asserted.
 	public bool HasSpawnHandler => mSpawnHandler != null;
+
+	/// The built-in relevance, off until a game turns it on: a peer is sent the entities within
+	/// `radius` of the entity it owns (its own always), and everything when it owns none. Nought
+	/// turns it off. A hook set with SetRelevance replaces it.
+	public void SetRelevanceRadius(float radius) => mRelevanceRadius = (radius > 0.0f) ? radius : 0.0f;
+	public float RelevanceRadius => mRelevanceRadius;
 
 	/// OWNERSHIP transfers; setting a second one deletes the first.
 	public void SetRelevance(RelevanceFn relevance)
@@ -326,6 +334,23 @@ class StateReplication : IReplicationModel
 		/// Every present networked id, so a despawn can be told from an irrelevancy.
 		let present = scope HashSet<uint32>();
 
+		// The built-in relevance, when it is on and no hook replaces it: measured from the first
+		// entity this peer owns. A peer that owns none sees everything.
+		bool byDistance = false;
+		Float3 viewer = .(0, 0, 0);
+		if ((mRelevance == null) && (mRelevanceRadius > 0.0f))
+		{
+			manager.ForEach(scope [&](component, entity) =>
+				{
+					if (!byDistance && component.Id.IsValid && (component.Owner == peerId))
+					{
+						viewer = scene.GetWorldPosition(entity);
+						byDistance = true;
+					}
+				});
+		}
+		let reachSq = mRelevanceRadius * mRelevanceRadius;
+
 		manager.ForEach(scope [&](component, entity) =>
 			{
 				if (!component.Id.IsValid)
@@ -338,7 +363,15 @@ class StateReplication : IReplicationModel
 				// Relevancy: an irrelevant entity is NEVER sent, and if the peer currently
 				// holds it, it is REMOVED. Leaving it in place would leave hidden state in a
 				// client's memory for anyone willing to read it.
-				if ((mRelevance != null) && !mRelevance(peerId, component.Id, entity))
+				bool relevant = true;
+				if (mRelevance != null)
+					relevant = mRelevance(peerId, component.Id, entity);
+				else if (byDistance && (component.Owner != peerId))
+				{
+					let d = scene.GetWorldPosition(entity) - viewer;
+					relevant = (d.X * d.X + d.Y * d.Y + d.Z * d.Z) <= reachSq;
+				}
+				if (!relevant)
 				{
 					if (previous != null)
 						entries.Add(new DeltaEntry(networkId, true, false, default));

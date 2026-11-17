@@ -79,4 +79,23 @@ class NetFacadeSpawnTests
 		clientController.SetReplicatedScene(null);
 		controller.SetReplicatedScene(null);
 	}
+
+	/// Net.SetRelevanceRadius reaches the host's replication, and is kept for an endpoint the
+	/// controller opens later.
+	[Test]
+	public static void SetRelevanceRadiusReachesTheHostAndAnEndpointOpenedLater()
+	{
+		let scene = scope Scene("Field");
+		NetworkScene.AddNetworkSceneManagers(scene);
+		let controller = scope NetworkController();
+		controller.SetReplicatedScene(scene);
+		let net = scope NetFacade(controller);
+
+		net.SetRelevanceRadius(40.0f); // before hosting: kept
+		Test.Assert(controller.StartServer(0, true));
+		Test.Assert(controller.NetEndpoint.Replication.RelevanceRadius == 40.0f, "the endpoint opened later has it");
+		net.SetRelevanceRadius(25.0f);
+		Test.Assert(controller.NetEndpoint.Replication.RelevanceRadius == 25.0f, "and a later call reaches it");
+		controller.StopNetworking();
+	}
 }

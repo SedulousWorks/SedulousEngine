@@ -54,6 +54,8 @@ class NetFacade : IScriptEntityScene
 	/// OnJoin and OnLeave's handlers, OWNED, kept beside the message handlers for the same reason.
 	private ScriptDelegate mJoinHandler ~ delete _;
 	private ScriptDelegate mLeaveHandler ~ delete _;
+	/// SetRelevanceRadius: kept here, so a host opened after the call uses it too.
+	private float mRelevanceRadius = 0.0f;
 
 	public this(NetworkController controller)
 	{
@@ -63,6 +65,7 @@ class NetFacade : IScriptEntityScene
 				{
 					InstallHandlers(endpoint);
 					InstallPlayerEvents(endpoint);
+					endpoint.Replication.SetRelevanceRadius(mRelevanceRadius); // the script's, if it set one
 				});
 	}
 
@@ -110,6 +113,16 @@ class NetFacade : IScriptEntityScene
 	{
 		if (Endpoint != null)
 			Endpoint.SetWaitForReady(wait);
+	}
+
+	/// Host: send each player only the networked entities within `radius` of the one it owns (its
+	/// own always; everything to a player that owns none). Nought, the default, sends all.
+	[Scriptable]
+	public void SetRelevanceRadius(float radius)
+	{
+		mRelevanceRadius = (radius > 0.0f) ? radius : 0.0f;
+		if (Endpoint != null)
+			Endpoint.Replication.SetRelevanceRadius(mRelevanceRadius);
 	}
 
 	/// Client: its scene is the host's, loaded; the host's state starts, from a full snapshot.

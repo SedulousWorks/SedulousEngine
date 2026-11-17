@@ -9,6 +9,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Networking: `Net.SetRelevanceRadius(r)` on the host sends each player only the networked
+  entities within `r` of the one it owns, for less traffic in large worlds. Off by default.
 - Scripts: `onAnimationEvent(string name)` on an entity's behaviours when its animation passes one
   of its clip's events (a footstep or hit marker authored on the clip), in the order passed.
 - Export: a game exports to Android, as an APK to install or an App Bundle for Google Play. An

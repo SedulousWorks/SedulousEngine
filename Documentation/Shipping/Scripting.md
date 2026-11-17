@@ -241,6 +241,9 @@ A joiner that loads the host's map after connecting can wait for it: the host ca
 `Net.WaitForReady(true)` once hosting, and a client then hears no state, only messages (the
 host's welcome naming the map), until it calls `Net.Ready()`; its first state is then the
 whole snapshot. Off by default: state flows at once.
+`Net.SetRelevanceRadius(radius)` on the host sends each player only the networked entities
+within `radius` of the one it owns (its own always, and everything to a player that owns none);
+nought, the default, sends everything. Set before hosting too.
 Offline every call does nothing.
 
 ## Saving
