@@ -66,10 +66,11 @@ class PakFileSystem : IFileSystem, IEnumerableFileSystem
 
 	// ---- IFileSystem ----
 
-	/// Reads an entry into memory and hands back a stream over it, which THE CALLER OWNS.
+	/// A stream over the entry's region of the archive, which THE CALLER OWNS, read as the caller
+	/// reads: a scan that wants an envelope's header pays for the header, not the envelope.
 	///
-	/// The archive is reopened per call rather than kept open, so two readers never
-	/// contend for one seek position.
+	/// Each one opens the archive on a handle of its own, so two readers never contend for one
+	/// seek position.
 	public IStream Open(StringView locator, FileMode mode)
 	{
 		if (!mIsValid || (mode != .Read))
@@ -82,25 +83,12 @@ class PakFileSystem : IFileSystem, IEnumerableFileSystem
 		if (entry.Compression != cCompressionNone)
 			return null;
 
-		let file = scope FileRegionStream(mPath, mBase, mLength);
-		if (!file.IsValid)
-			return null;
-		if (file.Seek((int64)entry.Offset, .Begin) < 0)
-			return null;
-
-		let stream = new MemoryStream();
-		if (entry.StoredSize > 0)
+		let stream = new FileRegionStream(mPath, mBase + entry.Offset, entry.StoredSize);
+		if (!stream.IsValid)
 		{
-			let bytes = scope List<uint8>();
-			let raw = bytes.GrowUninitialized((int)entry.StoredSize);
-			if (file.Read(.(raw, (int)entry.StoredSize)) != (int)entry.StoredSize)
-			{
-				delete stream;
-				return null;
-			}
-			stream.Write(.(raw, (int)entry.StoredSize));
+			delete stream;
+			return null;
 		}
-		stream.Seek(0, .Begin);
 		return stream;
 	}
 

@@ -406,5 +406,60 @@ class PakTests
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
 
+	/// Open read the entry whole into a buffer and copied it again into a memory stream, so a scan
+	/// that wants an envelope's header paid for the whole of it. An entry is now a view over its
+	/// region, and every one of thousands is found.
+	[Test]
+	public static void AnEntryOpensAsAViewOverItsRegionAndEveryOneOfThousandsIsFound()
+	{
+		FreshScratch();
+		let path = PakPath(.. scope String());
+		const int cEntries = 3000;
+		{
+			let builder = scope PakBuilder();
+			let name = scope String();
+			let text = scope String();
+			for (int i < cEntries)
+			{
+				name..Clear().AppendF("set/entry{}.bin", i);
+				text..Clear().AppendF("payload-{}-", i);
+				for (int r < 20)
+					text.Append("0123456789");
+				Add(builder, name, text);
+			}
+			Test.Assert(builder.Write(path) case .Ok);
+		}
+
+		let pak = scope PakFileSystem(path);
+		Test.Assert(pak.IsValid);
+		Test.Assert(pak.EntryCount == cEntries);
+		int[3] probes = .(0, 1234, cEntries - 1);
+		for (let i in probes)
+		{
+			let name = scope String()..AppendF("set/entry{}.bin", i);
+			let stream = pak.Open(name, .Read);
+			Test.Assert(stream != null);
+			defer delete stream;
+			// Read in place, never copied out first.
+			Test.Assert(stream is FileRegionStream);
+
+			let head = scope String()..AppendF("payload-{}-", i);
+			Test.Assert(stream.Size() == head.Length + 200);
+			let buffer = scope List<uint8>();
+			let raw = buffer.GrowUninitialized(head.Length);
+			Test.Assert(stream.Read(.(raw, head.Length)) == head.Length);
+			Test.Assert(StringView((char8*)raw, head.Length) == head);
+
+			// A seek within the region reads from it, not from the archive's start.
+			Test.Assert(stream.Seek(-10, .End) >= 0);
+			uint8[10] tail = default;
+			Test.Assert(stream.Read(.(&tail[0], 10)) == 10);
+			Test.Assert(StringView((char8*)&tail[0], 10) == "0123456789");
+		}
+		Test.Assert(!pak.Exists("set/entry3000.bin"));
+
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
+
 	private static void PathValid(String outPath) => PathJoin(kScratch, "crafted.pak", outPath);
 }
