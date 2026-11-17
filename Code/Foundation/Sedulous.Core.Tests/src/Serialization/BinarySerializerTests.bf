@@ -317,4 +317,52 @@ class BinarySerializerTests
 		for (int i < 64)
 			Test.Assert(back[i] == values[i], scope $"element {i}");
 	}
+
+	/// A byte read straight into a bool is not a bool's value past 0 and 1, and a matrix stored with
+	/// more than 16 elements was read 16 in, leaving the rest to be misread as what came after.
+	[Test]
+	public static void ABoolByteOtherThan0Or1AndAMatrixOfAnotherCountAreRefused()
+	{
+		{
+			let stream = scope MemoryStream();
+			uint8 corrupt = 7;
+			stream.Write(.(&corrupt, 1));
+			stream.Seek(0, .Begin);
+			let loader = scope BinarySerializer(stream, .Read);
+			bool flag = true;
+			Serialize(loader, ref flag);
+			Test.Assert(!loader.IsOk);
+			Test.Assert(!flag);
+		}
+		{
+			let stream = scope MemoryStream();
+			{
+				let saver = scope BinarySerializer(stream, .Write);
+				let eighteen = scope List<float>();
+				for (int i < 18)
+					eighteen.Add((float)i);
+				SerializeList(saver, eighteen); // a count and 18 floats, as a matrix would be framed
+			}
+			stream.Seek(0, .Begin);
+			let loader = scope BinarySerializer(stream, .Read);
+			var m = Float4x4.Identity();
+			Serialize(loader, ref m);
+			Test.Assert(!loader.IsOk);
+		}
+		{
+			let stream = scope MemoryStream(); // and a real matrix still round-trips
+			var original = Float4x4.Identity();
+			original.M[3][0] = 5.0f;
+			{
+				let saver = scope BinarySerializer(stream, .Write);
+				Serialize(saver, ref original);
+			}
+			stream.Seek(0, .Begin);
+			let loader = scope BinarySerializer(stream, .Read);
+			var read = Float4x4.Identity();
+			Serialize(loader, ref read);
+			Test.Assert(loader.IsOk);
+			Test.Assert(read.M[3][0] == 5.0f);
+		}
+	}
 }

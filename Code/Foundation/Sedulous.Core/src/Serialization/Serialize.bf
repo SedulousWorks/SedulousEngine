@@ -123,8 +123,15 @@ static
 	{
 		uint32 count = 16;
 		ar.BeginArray(ref count);
-		let n = (count < 16) ? (int)count : 16;
-		for (int i < n)
+		// Any other count is not a matrix: read as one, a stream with more elements was left
+		// part-read and everything after it misread.
+		if (count != 16)
+		{
+			ar.FailPayload(.InvalidArgument);
+			ar.EndArray();
+			return;
+		}
+		for (int i < 16)
 			Serialize(ar, ref m.M[i / 4][i % 4]);
 		ar.EndArray();
 	}

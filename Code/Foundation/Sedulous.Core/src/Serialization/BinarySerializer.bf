@@ -53,7 +53,24 @@ class BinarySerializer : Serializer
 		}
 	}
 
-	public override void Scalar(void* value, ScalarKind kind) => RawBytes(value, kind.Size);
+	public override void Scalar(void* value, ScalarKind kind)
+	{
+		// A bool read is a byte checked: a byte other than 0 or 1 copied into a bool is not a
+		// value a bool holds, and such a byte here means the stream is not what was written.
+		if ((kind == .Bool) && IsReading)
+		{
+			uint8 byteValue = 0;
+			RawBytes(&byteValue, 1);
+			if (byteValue > 1)
+			{
+				Fail(.Internal);
+				byteValue = 0;
+			}
+			*(bool*)value = byteValue != 0;
+			return;
+		}
+		RawBytes(value, kind.Size);
+	}
 
 	public override void Blob(void* data, int size) => RawBytes(data, size);
 
