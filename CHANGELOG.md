@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: "Add transition" in an animation graph's node menu starts the transition, rather than
+  being cancelled by the click that chose it.
 - Fonts: text whose size animates no longer builds a new font for every size it passes through,
   and a size that cannot be built is not rebuilt on every frame.
 - SVG: an image with a width, a height and a `viewBox` is drawn at its size (it was scaled by its

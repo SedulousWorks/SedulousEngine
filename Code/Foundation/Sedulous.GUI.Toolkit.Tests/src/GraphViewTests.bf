@@ -954,6 +954,33 @@ class GraphViewTests
 		Test.Assert(bed.LinkCount == 0);
 	}
 
+	/// The link took the pointer during the item's release, the release ended and took the pointer
+	/// back, and the view cancelled the link as the pointer left it: clicking "Add transition" did
+	/// nothing. (Activating the item directly, as the test above does, never released anything.)
+	[Test]
+	public static void ANodeLinkBegunByClickingTheMenusItemOutlivesTheClickThatChoseIt()
+	{
+		let bed = scope GraphViewBed();
+		bed.Graph.NodeLinks = true;
+		bed.Pause();
+		bed.RightClick(bed.Middle(bed.A));
+		let menu = bed.View.Menu;
+		Test.Assert(menu != null);
+		bed.Root.UpdateLayout();
+		let item = GraphViewBed.Item(menu, "Add transition");
+		Test.Assert(item != null);
+		let at = item.ConvertToRootSpace(.(item.Size.X * 0.5f, item.Size.Y * 0.5f));
+		bed.D.InjectMouseMove(at);
+		bed.D.InjectMouseDown(at, .Left);
+		bed.D.InjectMouseUp(at, .Left);
+		Test.Assert(bed.View.IsLinking);
+		bed.D.InjectMouseMove(bed.Middle(bed.B));
+		Test.Assert(bed.View.IsLinking);
+		bed.Click(bed.Middle(bed.B));
+		Test.Assert(!bed.View.IsLinking);
+		Test.Assert(bed.LinkCount == 1);
+	}
+
 	[Test]
 	public static void AFrameStandsBehindTheNodesDraggedByItsTitleItMovesWithWhatLiesInsideOneChange()
 	{
