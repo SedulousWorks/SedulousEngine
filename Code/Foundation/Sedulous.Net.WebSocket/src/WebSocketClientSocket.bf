@@ -216,16 +216,23 @@ class WebSocketClientSocket : IDatagramSocket
 	private Stopwatch mSinceStart = new .() ~ delete _;
 	private double mUpgradeSeconds = 10.0;
 	/// Masking keys and the handshake key: unpredictable to a page script is what the RFC asks
-	/// (they defeat cache poisoning through proxies); a seeded PCG is not cryptographic, and
-	/// over wss the TLS layer makes the mask moot.
+	/// (they defeat cache poisoning through proxies), so seeded from the system's entropy; over wss
+	/// the TLS layer makes the mask moot.
 	private Sedulous.Core.Random mRandom;
 
 	/// Dials ws:// or wss://host:port/path; the name lookup blocks. Check IsOpen.
 	public this(WebSocketClientConfig config)
 	{
-		mRandom = .((uint64)DateTime.UtcNow.Ticks ^ (uint64)(int)Internal.UnsafeCastToPtr(this));
+		mRandom = Sedulous.Core.Random.FromSystemEntropy();
 		mSinceStart.Start();
 		mUpgradeSeconds = config.UpgradeTimeoutSeconds;
+		// A config made by hand (not by ParseAddress) is checked too: its host and path go into the
+		// request as they are.
+		if (!WebSocketClientConfig.IsRequestTextSafe(config.Host) || !WebSocketClientConfig.IsRequestTextSafe(config.Path))
+		{
+			Fail("the host or path holds a space or a control character");
+			return;
+		}
 		if (config.Secure && (config.Tls == null))
 		{
 			Fail("wss needs a TLS backend, and none was given");

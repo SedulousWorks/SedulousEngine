@@ -360,4 +360,24 @@ class WssTests
 		Test.Assert(!c.ParseAddress("wss://", 7000));
 		Test.Assert(!c.ParseAddress("ws://host:99999", 7000));
 	}
+
+	/// The client wrote its address's path and host into the upgrade request as they were: a line
+	/// break in either ended the line and began a header of the address's choosing.
+	[Test]
+	public static void AnAddressOrConfigWithALineBreakInItsHostOrPathIsRefused()
+	{
+		let parsed = scope WebSocketClientConfig();
+		Test.Assert(!parsed.ParseAddress("ws://host/ball\r\nX-Injected: 1", 7000));
+		Test.Assert(!parsed.ParseAddress("ws://ho\nst/", 7000));
+		Test.Assert(!parsed.ParseAddress("ws://host/a b", 7000));
+		Test.Assert(parsed.ParseAddress("ws://host/ball", 7000));
+
+		let config = scope WebSocketClientConfig();
+		config.Host.Set("127.0.0.1");
+		config.Port = 1;
+		config.Path.Set("/ball\r\nX-Injected: 1");
+		let client = scope WebSocketClientSocket(config);
+		Test.Assert(!client.IsOpen);
+		Test.Assert(client.Failure.Contains("control character"), scope String(client.Failure));
+	}
 }

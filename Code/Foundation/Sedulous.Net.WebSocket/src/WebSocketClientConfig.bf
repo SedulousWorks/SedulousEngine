@@ -21,11 +21,27 @@ class WebSocketClientConfig
 	/// Native only: a host that has not upgraded the connection by then is given up on.
 	public float UpgradeTimeoutSeconds = 10.0f;
 
+	/// Whether `text` may go into the upgrade request's request line or Host header as it is: no
+	/// control characters, spaces or DEL (a line break in either would end the line and start a
+	/// header of the caller's choosing).
+	public static bool IsRequestTextSafe(StringView text)
+	{
+		for (let c in text)
+		{
+			if (((uint8)c <= (uint8)' ') || ((uint8)c == 0x7F))
+				return false;
+		}
+		return true;
+	}
+
 	/// Reads a join address with a scheme, "ws://host[:port][/path]" or "wss://...", into the
 	/// host, port (`defaultPort` when the address names none, else the scheme's own), Secure and
-	/// path. False when `address` has no ws:// or wss:// scheme (a bare host) or names no host.
+	/// path. False when `address` has no ws:// or wss:// scheme (a bare host), names no host, or
+	/// holds a control character, a space or DEL (IsRequestTextSafe).
 	public bool ParseAddress(StringView address, uint16 defaultPort)
 	{
+		if (!IsRequestTextSafe(address))
+			return false;
 		StringView rest;
 		if ((address.Length >= 6) && address.Substring(0, 6).Equals("wss://", true))
 		{
