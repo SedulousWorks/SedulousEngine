@@ -251,4 +251,39 @@ class HttpParserTests
 		Test.Assert(capped.Push(Bytes("HTTP/1.1 200 OK\r\nContent-Length: 9\r\n\r\n")) == .Failed);
 		Test.Assert(capped.TooLarge);
 	}
+
+	/// A WebSocket upgrade's first frames can follow its head in one read. Push reported no
+	/// count, so the gateways pushed a byte at a time (and the head search rescanned the buffer
+	/// each time).
+	[Test]
+	public static void WhatFollowsAMessageIsNotConsumedSoACallerCanHandItOn()
+	{
+		let head = "GET /ws HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\n\r\n";
+		let wire = scope String(head);
+		wire.Append("FRAME");
+		let request = scope HttpMessageParser(.Request);
+		Test.Assert(request.Push(Bytes(wire)) == .Complete);
+		Test.Assert(request.Consumed == head.Length, scope $"consumed {request.Consumed}");
+
+		// Split: the part before the head's end is all consumed, then the rest of the head only.
+		let split = scope HttpMessageParser(.Request);
+		Test.Assert(split.Push(Bytes(wire.Substring(0, 10))) == .NeedMore);
+		Test.Assert(split.Consumed == 10);
+		Test.Assert(split.Push(Bytes(wire.Substring(10))) == .Complete);
+		Test.Assert(split.Consumed == head.Length - 10);
+
+		// A 101 with bytes after it, and a body with bytes after it.
+		let switching = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n";
+		let answer = scope String(switching);
+		answer.Append("xy");
+		let response = scope HttpMessageParser(.Response);
+		Test.Assert(response.Push(Bytes(answer)) == .Complete);
+		Test.Assert(response.Consumed == switching.Length, scope $"101 consumed {response.Consumed}");
+		let sized = "HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nabc";
+		let bodied = scope String(sized);
+		bodied.Append("zz");
+		let body = scope HttpMessageParser(.Response);
+		Test.Assert(body.Push(Bytes(bodied)) == .Complete);
+		Test.Assert(body.Consumed == sized.Length, scope $"body consumed {body.Consumed}");
+	}
 }

@@ -378,11 +378,12 @@ class WebSocketClientSocket : IDatagramSocket
 			var offset = 0;
 			if (!mUpgraded)
 			{
-				// Byte-wise, so frames arriving with the 101 land in the frame parser.
+				// The whole read at once; what follows the 101's head (frames sent with it) is left
+				// past Consumed for the frame parser.
 				while ((offset < got) && !mUpgraded && !mFailed)
 				{
-					let state = mHandshake.Push(.(&chunk[offset], 1));
-					offset++;
+					let state = mHandshake.Push(.(&chunk[offset], (int)got - offset));
+					offset += mHandshake.Consumed;
 					if (state == .Failed)
 						Fail("the server's answer is not HTTP");
 					else if (state == .Complete)

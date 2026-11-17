@@ -44,6 +44,10 @@ class HttpMessageParser
 
 	/// Head accumulation. Emptied once the head is parsed; the body goes to mBody.
 	private List<uint8> mBuffer = new .() ~ delete _;
+	/// Where the head terminator's search resumes in mBuffer.
+	private int mScanFrom = 0;
+	/// Consumed.
+	private int mConsumed = 0;
 	private String mMethod = new .() ~ delete _;
 	private String mTarget = new .() ~ delete _;
 	private int32 mStatus = 0;
@@ -96,10 +100,16 @@ class HttpMessageParser
 	private int BodySoFar => mBodyTaken + mBody.Count;
 
 	/// Feeds bytes. The returned state is also what State reports afterwards.
+	/// How many bytes of the last Push belong to the message: all of them until it completes,
+	/// and on the Push that completes it, those before what follows it (a WebSocket's first
+	/// frames after the upgrade's head), which the parser does not keep.
+	public int Consumed => mConsumed;
+
 	public HttpParseState Push(Span<uint8> bytes)
 	{
 		if (mState != .NeedMore)
 			return mState;
+		mConsumed = bytes.Length;
 
 		if (!mHeadParsed)
 		{
@@ -128,6 +138,7 @@ class HttpMessageParser
 			mBuffer.Clear();
 			if (mNoBody)
 			{
+				mConsumed = bytes.Length - spill.Count; // what follows the head is not this message's
 				mState = .Complete;
 				return mState;
 			}
@@ -153,8 +164,9 @@ class HttpMessageParser
 
 		if (BodySoFar >= mBodyExpected)
 		{
-			// Drop any over-read. One request per connection means anything past the declared
-			// length is not ours to interpret.
+			// Drop any over-read: bytes past the body are not this message's, not kept and not
+			// counted consumed.
+			mConsumed = bytes.Length - Math.Min(bytes.Length, BodySoFar - mBodyExpected);
 			mBody.Count = mBodyExpected - mBodyTaken;
 			mState = .Complete;
 		}
@@ -176,12 +188,15 @@ class HttpMessageParser
 	/// arrived yet.
 	private int FindHeadEnd()
 	{
-		for (int i = 0; (i + 3) < mBuffer.Count; i++)
+		// From where the last search stopped (less the terminator's length, which may straddle
+		// two pushes): a head arriving a byte at a time is scanned once, not once per byte.
+		for (int i = mScanFrom; (i + 3) < mBuffer.Count; i++)
 		{
 			if ((mBuffer[i] == '\r') && (mBuffer[i + 1] == '\n') && (mBuffer[i + 2] == '\r')
 				&& (mBuffer[i + 3] == '\n'))
 				return i + 4;
 		}
+		mScanFrom = (mBuffer.Count >= 3) ? mBuffer.Count - 3 : 0;
 		return -1;
 	}
 

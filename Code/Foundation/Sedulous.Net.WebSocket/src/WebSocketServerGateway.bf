@@ -305,9 +305,8 @@ class WebSocketServerGateway
 	/// Feeds handshake bytes and, on completion, answers. False when the client is finished
 	/// with, either way.
 	///
-	/// Fed ONE BYTE AT A TIME because the parser reports no consumed count: an eager client
-	/// can put its first frame in the same segment as the request, and those bytes belong to
-	/// the frame parser rather than the HTTP one.
+	/// The whole read at once: the parser says how much was the request's, and what follows its
+	/// head (an eager client's first frame in the same segment) goes to the frame parser.
 	private bool AdvanceHandshake(Client client, uint8[] chunk, int got, ref int offset)
 	{
 		while (offset < got)
@@ -324,8 +323,8 @@ class WebSocketServerGateway
 				}
 				client.Started = true;
 			}
-			let state = client.Handshake.Push(.(&chunk[offset], 1));
-			offset++;
+			let state = client.Handshake.Push(.(&chunk[offset], got - offset));
+			offset += client.Handshake.Consumed;
 
 			if (state == .Failed)
 			{

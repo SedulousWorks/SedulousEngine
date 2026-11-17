@@ -324,4 +324,47 @@ static class WebSocketGatewayTests
 		for (let c in text.RawChars)
 			outBytes.Add((uint8)c);
 	}
+
+	/// The gateway pushes a whole read into the request parser and hands what follows the
+	/// request's head to the frame parser: a frame sent in the same segment arrives.
+	[Test]
+	public static void AFrameSentInTheSameSegmentAsTheUpgradeRequestArrives()
+	{
+		let gateway = scope WebSocketServerGateway(cEphemeral);
+		Test.Assert(gateway.IsOpen);
+		let socket = TcpSocket.Connect("127.0.0.1", gateway.BoundPort);
+		defer delete socket;
+		for (int i = 0; (i < 300) && (socket.ConnectStatus == 0); i++)
+		{
+			gateway.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(socket.ConnectStatus == 1);
+
+		let wire = scope List<uint8>();
+		Bytes("GET /game HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n", wire);
+		let hello = scope List<uint8>();
+		Bytes("eager", hello);
+		WebSocketFrame.Encode(.Binary, .(hello.Ptr, hello.Count), true, 0x12345678, wire);
+		socket.Send(.(wire.Ptr, wire.Count));
+
+		let event = scope WsGatewayEvent();
+		var connected = false;
+		let message = scope List<uint8>();
+		for (int i = 0; (i < 500) && message.IsEmpty; i++)
+		{
+			gateway.Pump();
+			while (gateway.Poll(event))
+			{
+				connected |= event.Kind == .Connected;
+				if (event.Kind == .Message)
+					message.AddRange(event.Payload);
+			}
+			Thread.Sleep(1);
+		}
+		Test.Assert(connected, "upgraded");
+		Test.Assert(message.Count == hello.Count, scope $"got {message.Count} bytes");
+		for (int j < hello.Count)
+			Test.Assert(message[j] == hello[j], "intact");
+	}
 }
