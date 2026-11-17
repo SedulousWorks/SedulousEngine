@@ -33,4 +33,17 @@ class ReflectedListTests
 		Test.Assert(((Object)empty as IReflectedList).Count == 0);
 		Test.Assert((Object)scope String() as IReflectedList == null, "not a list");
 	}
+
+	/// The index comes from a tool or an agent, and the list's own check is not in every build:
+	/// past the count, or before the start, there is no address.
+	[Test]
+	public static void AnIndexOutsideTheListHasNoAddress()
+	{
+		let floats = scope List<float>() { 1.5f, 2.5f };
+		let list = (Object)floats as IReflectedList;
+		Test.Assert(list.ElementAddress(1) != null);
+		Test.Assert(list.ElementAddress(2) == null, "one past the count");
+		Test.Assert(list.ElementAddress(-1) == null, "before the start");
+		Test.Assert(((Object)scope List<int>() as IReflectedList).ElementAddress(0) == null, "an empty list");
+	}
 }

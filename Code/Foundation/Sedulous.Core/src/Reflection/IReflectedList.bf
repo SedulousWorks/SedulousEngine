@@ -15,7 +15,9 @@ namespace Sedulous.Core
 		/// a nought, but a null object, so a caller grows only a list of plain data.
 		int Count { get; set; }
 		Type ElementType { get; }
-		/// The element's address inside the list's storage; valid until the list changes.
+		/// The element's address inside the list's storage; valid until the list changes. Null past
+		/// the count: the index comes from a tool or an agent, and the list's own check is gone
+		/// from a build without runtime checks.
 		void* ElementAddress(int index);
 	}
 }
@@ -26,6 +28,6 @@ namespace System.Collections
 	{
 		public Type ElementType => typeof(T);
 
-		public void* ElementAddress(int index) => &this[index];
+		public void* ElementAddress(int index) => ((uint)index < (uint)Count) ? &this[index] : null;
 	}
 }
