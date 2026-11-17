@@ -112,6 +112,7 @@ static class ExportAndroidTests
 		Test.Assert(!ExportAndroid.CheckExport(fx.Project, preset, null, why..Clear()) && why.Contains(ExportAndroid.cStorePasswordVariable));
 		{
 			let given = scope ScopedVariable(ExportAndroid.cStorePasswordVariable, "secret");
+			Test.Assert(given != null);
 			Test.Assert(ExportAndroid.CheckExport(fx.Project, preset, null, why..Clear()), why);
 		}
 		preset.AndroidKeystore.Clear();
