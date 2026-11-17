@@ -440,4 +440,15 @@ class SocketTests
 		let datagrams = scope UdpSocket(0);
 		Test.Assert(SocketInheritance.IsKeptFromChildren(datagrams.[Friend]mSocket), "a datagram socket");
 	}
+
+	/// A second server on a game's port must not bind it too and take datagrams meant for the
+	/// first. UDP sockets here never set SO_REUSEADDR; this holds them to it.
+	[Test]
+	public static void APortALiveSocketHoldsIsNotBoundByASecondOne()
+	{
+		let first = scope UdpSocket(0);
+		Test.Assert(first.IsOpen);
+		let second = scope UdpSocket(first.BoundPort);
+		Test.Assert(!second.IsOpen, "the held port is refused");
+	}
 }
