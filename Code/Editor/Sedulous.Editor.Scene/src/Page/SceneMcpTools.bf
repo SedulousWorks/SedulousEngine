@@ -849,6 +849,7 @@ static class SceneMcpTools
 		shotSchema.Str("page", cPageArgument);
 		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
 		let pending = new PendingCapture();
+		let allowed = server.Paths;
 		server.RegisterTool("viewport_screenshot",
 			"What a scene page's viewport renders, as a PNG file at the viewport's size: the scene from the editor camera (viewport_camera_set moves it) with what the viewport draws into its image - the grid, the entity markers, the selection's gizmo. The HUD over the view (its chips, the stats, the view gizmo, the tool's status) and the panels docked over the viewport are not in it: editor_screenshot shows them. Brings the page to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {page, path, width, height}; read the file. `path` is where to write (an existing directory; default: <user-data>/screenshots/<page>-<pid>-<n>.png). Gives up after ten seconds without a rendered frame.",
 			shotSchema.Build(), .ReadOnly,
@@ -894,6 +895,9 @@ static class SceneMcpTools
 					outError.AppendF("page '{}' has no viewport", page.Title);
 					return .Failed;
 				}
+				// A given path only where the tools may write.
+				if (!allowed.CheckArgument(arguments, "path", scope .(), outError))
+					return .Failed;
 				let path = scope String();
 				let pathArg = arguments.Get("path");
 				if ((pathArg != null) && pathArg.IsString)
@@ -1035,6 +1039,9 @@ static class SceneMcpTools
 					}
 					running.ShotTimes.Sort(scope (a, b) => a <=> b);
 				}
+				// A given folder only where the tools may write.
+				if (!allowed.CheckArgument(arguments, "screenshotDir", scope .(), outError))
+					return .Failed;
 				running.ShotDir.Clear();
 				let dirArg = arguments.Get("screenshotDir");
 				if ((dirArg != null) && dirArg.IsString)

@@ -73,6 +73,7 @@ static class PluginMcpToolsTests
 		defer RemoveDirectoryRecursive(plain);
 		let pluginTools = scope McpPluginServices();
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		let manifestXml = GreeterManifest();

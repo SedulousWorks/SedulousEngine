@@ -188,6 +188,18 @@ behaviour's properties under `live` beside what is authored.
   is refused and nothing is written, naming what holds it (another type's asset: pick another
   name; one of the tool's own type: pass its `guid` to overwrite it). A generator that runs again
   looks its asset up by name first and passes the guid it finds.
+- **Paths stay where the user put them in reach.** A file path a tool takes (asset_import's
+  `source`, project_export's `out`, a screenshot's `path` or `screenshotDir` in
+  editor_screenshot, viewport_screenshot, viewport_run, pie_screenshot and pie_run,
+  project_create's and project_open's `directory`, script_declarations' `directory`) must be
+  inside the open project, the user-data folder, the temp folder, the engine's data root, or a
+  folder the user allowed: for `Sedulous.Tools.Mcp`, the folder it was started in and each
+  `--allow-path <dir>`; for the editor, the MCP settings' `allowedFolders` (in the editor's
+  settings file). Anything else is refused, naming the folders that are allowed; ask the user to
+  allow a folder (a downloads folder to import from) rather than copying the file around it. A
+  relative path is taken against the host's working directory. plugin_enable's `path` stays
+  inside the project. The tools that take such paths outside the project say so with
+  `openWorldHint`.
 - **Read before destructive changes.** `asset_uses` before deleting anything;
   `project_health` after: dangling references surface later, not at delete time.
 - **Arguments are checked by name.** An argument a tool does not declare is refused as a

@@ -133,12 +133,19 @@ static class PieRunTool
 		untilSchema.Any("value", "the value to cross: a number, or with == and != a boolean or a string");
 		schema.Obj("until", untilSchema, "end the run early when one value crosses: {entity, field, op, value}, {script, op, value} or {level, op, value}; `value` is a number, or with == and != a boolean or a string");
 		let runs = new Runs();
+		let allowed = server.Paths;
 		server.RegisterTool("pie_run",
 			"""
 			Playtest one running PIE instance (pie_start first): play a device-level input timeline into it for `duration` run seconds and answer what happened. The timeline replaces that tab's real input for the run (the user's mouse and keys do not reach it; other instances keep theirs) and goes through the project's input map as a player's would: keys by KeyCode name ("D", "Space", "LeftShift"), mouse buttons ("Left"), gamepad buttons ("South", "DPadUp") and axes ("LeftX", -1 to 1). Held keys are let go when the run ends. `probes` read entity fields (the paths are `worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>` as entity_inspect names them, then `.x`/`.y`/`.z` or a key or index to go inside), game script properties and the scene's level script's (`level`), sampled `every` N seconds or at `sampleAt` times, one row per sample {t, frame, values} with a final row at the end; an entity missing at a sample reads null. `screenshots` writes the tab at those run times. `until` ends the run when its value crosses ("player worldPosition.y < -10", "script score >= 3"). Returns {pie, endedBy: duration | until | stopped | timeout, gameTime, frames, samples, screenshots, until, state}. Runs are real frames: a time lands within a frame of where it was asked, so compare with tolerances. Start from pie_start for a reproducible run. One run per instance at a time.
 			""",
 			schema.Build(), .Adjusts,
-			new (call, arguments, outResult, outError) => Handle(context, runs, call, arguments, outResult, outError),
+			new (call, arguments, outResult, outError) =>
+			{
+				// A given folder only where the tools may write, checked as the run starts.
+				if (!call.IsReentry && !allowed.CheckArgument(arguments, "screenshotDir", scope .(), outError))
+					return .Failed;
+				return Handle(context, runs, call, arguments, outResult, outError);
+			},
 			runs);
 	}
 

@@ -18,6 +18,9 @@ connected agent: read `docs://McpGuide.md` via `resources/read` right after conn
   `Code/build/Debug_Linux64/Sedulous.Tools.Mcp/Sedulous.Tools.Mcp`).
 - Wire: `claude mcp add engine -- <repo>/Code/build/Debug_Linux64/Sedulous.Tools.Mcp/Sedulous.Tools.Mcp`
   (stdio; the server identifies as `engine-mcp`).
+- Paths: tools read and write files only in the open project, the user-data and temp folders,
+  the folder the host started in, the engine's data root, and each `--allow-path <dir>` (add one
+  to import from a folder outside those).
 - Run it from inside the checkout, or with the cwd in it: the `docs://` resources and
   `known_issues` resolve `Documentation/Shipping/` by walking up from the executable, then
   the cwd.

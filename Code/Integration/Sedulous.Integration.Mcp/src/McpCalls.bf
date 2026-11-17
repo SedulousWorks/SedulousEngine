@@ -7,6 +7,7 @@ using Sedulous.Mcp;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
+using Sedulous.VFS;
 
 namespace Sedulous.Integration.Mcp;
 
@@ -88,6 +89,15 @@ static class McpCalls
 	{
 		arguments.Set(key, JsonValue.MakeNumber(value));
 		return arguments;
+	}
+
+	/// Lets the tools that take a path reach the test's scratch folders (the working directory),
+	/// as a host allows the folder it starts in; with `dataRoot`, the engine's data as well.
+	public static void AllowScratch(McpServer server, bool dataRoot = false)
+	{
+		server.Paths.AddFolder(Directory.GetCurrentDirectory(.. scope .()));
+		if (dataRoot)
+			server.Paths.AddFolder(FindDataRoot(.. scope .()));
 	}
 
 	/// A fresh scratch directory under the working directory, removed first.

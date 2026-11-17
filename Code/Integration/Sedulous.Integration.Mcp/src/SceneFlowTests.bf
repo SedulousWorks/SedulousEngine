@@ -24,6 +24,7 @@ static class SceneFlowTests
 		let dir = Scratch("mcp_scene_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -200,6 +201,7 @@ static class SceneFlowTests
 		let dir = Scratch("mcp_scene_prefabs", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -262,6 +264,7 @@ static class SceneFlowTests
 		let dir = Scratch("mcp_host_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		server.SetServerInfo("test-host", "9.9.9");
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();

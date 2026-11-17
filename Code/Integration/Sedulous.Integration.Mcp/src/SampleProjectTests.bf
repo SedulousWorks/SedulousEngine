@@ -87,6 +87,7 @@ static class SampleProjectTests
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllImporters(importers);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);

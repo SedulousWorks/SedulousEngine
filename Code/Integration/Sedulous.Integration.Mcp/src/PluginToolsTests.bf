@@ -100,6 +100,7 @@ static class PluginToolsTests
 		let dir = Scratch("mcp_plugins", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -236,6 +237,7 @@ static class PluginToolsTests
 		let dir = Scratch("mcp_plugins_enable", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -312,6 +314,7 @@ static class PluginToolsTests
 		let dir = Scratch("mcp_plugin_available", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		let meterXml = MeterManifest();
@@ -361,6 +364,7 @@ static class PluginToolsTests
 		let dir = Scratch("mcp_plugin_scaffold", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);

@@ -22,6 +22,7 @@ static class ScriptToolsTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		ScriptValidateTool.Register(server);
 
 		let cook = ScriptLanguageCooks.Find("angelscript");
@@ -80,6 +81,7 @@ static class ScriptToolsTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);

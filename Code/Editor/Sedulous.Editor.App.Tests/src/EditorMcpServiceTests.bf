@@ -378,6 +378,33 @@ class EditorMcpServiceTests
 		Test.Assert(bench.Preference.Token == token);
 	}
 
+	/// The host's tools read and write by a given path only in the project, the user data and
+	/// temp folders, the data root and the folders the settings allow; the allowed folders are
+	/// kept with the settings.
+	[Test]
+	public static void TheHostAllowsTheProjectAndTheSettingsFoldersOnly()
+	{
+		let bench = scope Bench("mcp_service_paths");
+		bench.Preference.Enabled = true;
+		bench.Preference.Port = 0; // the OS's choice
+		bench.Preference.AllowedFolders.Add(new .("/mcp_allowed_downloads"));
+		let service = scope EditorMcpService(bench.Services());
+		Test.Assert(service.Start(bench.Project)); // mints the token, so the settings are saved
+		let policy = service.Host.Server.Paths;
+		let resolved = scope String();
+		let refusal = scope String();
+		Test.Assert(policy.Check(PathJoin(bench.ProjectDir, "Sources/rock.png", .. scope .()), resolved, refusal), refusal);
+		Test.Assert(policy.Check(PathJoin(bench.UserData, "screenshots/a.png", .. scope .()), resolved, refusal), refusal);
+		Test.Assert(policy.Check("/mcp_allowed_downloads/rock.glb", resolved, refusal), refusal);
+		Test.Assert(!policy.Check("/mcp_not_allowed/rock.glb", resolved, refusal));
+		Test.Assert(refusal.Contains("allowedFolders"));
+
+		let saved = scope Settings();
+		Test.Assert(EditorSettingsStore.Load(scope NativeFileSystem(bench.UserData), saved) case .Ok);
+		let folders = saved.Section<EditorMcpSettings>().AllowedFolders;
+		Test.Assert((folders.Count == 1) && (folders[0] == "/mcp_allowed_downloads"));
+	}
+
 	[Test]
 	public static void StartingWhileRunningAndStoppingWhenStoppedAreHarmless()
 	{

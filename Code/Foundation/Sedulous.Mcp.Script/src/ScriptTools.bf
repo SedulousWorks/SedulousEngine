@@ -25,6 +25,8 @@ static class ScriptTools
 	private class Context
 	{
 		public ScriptSurface Surface;
+		/// Where a declarations `directory` may be written.
+		public McpPathPolicy Paths;
 	}
 
 	/// Registers script_api and script_declarations against `server`. `surface` is the surface each backend binds,
@@ -33,6 +35,7 @@ static class ScriptTools
 	{
 		let context = new Context();
 		context.Surface = surface;
+		context.Paths = server.Paths;
 
 		let schema = scope SchemaBuilder();
 		schema.Str("language", "backend language id (e.g. \"angelscript\"); default: all");
@@ -57,13 +60,16 @@ static class ScriptTools
 
 	private static bool ScriptDeclarations(Context context, JsonValue arguments, JsonValue outResult, String outError)
 	{
-		let directory = scope String();
+		let given = scope String();
 		let wanted = scope String();
 		if ((arguments.Get("directory") != null) && arguments.Get("directory").IsString)
-			directory.Set(arguments.Get("directory").AsString());
+			given.Set(arguments.Get("directory").AsString());
 		if ((arguments.Get("language") != null) && arguments.Get("language").IsString)
 			wanted.Set(arguments.Get("language").AsString());
-		if (directory.IsEmpty || !DirectoryExists(directory))
+		let directory = scope String();
+		if (!context.Paths.Check(given, directory, outError))
+			return false;
+		if (!DirectoryExists(directory))
 		{
 			outError.AppendF("no such folder '{}'", directory);
 			return false;

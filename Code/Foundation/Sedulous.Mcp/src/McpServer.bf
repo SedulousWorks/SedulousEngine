@@ -89,6 +89,7 @@ class McpServer
 	private String mClientName = new .() ~ delete _;
 	private String mClientVersion = new .() ~ delete _;
 	private uint64 mNextSerial = 1;
+	private McpPathPolicy mPaths = new .() ~ delete _;
 
 	public StringView ServerName => mServerName;
 	public StringView ServerVersion => mServerVersion;
@@ -139,6 +140,10 @@ class McpServer
 		delete mToolObserver;
 		mToolObserver = observer;
 	}
+
+	/// Where the tools may read and write files by a path they are given; the host fills it, and
+	/// a tool keeps it for its calls (it lives as long as the server).
+	public McpPathPolicy Paths => mPaths;
 
 	/// The client that last initialized, by its clientInfo; empty before any did.
 	public StringView ClientName => mClientName;

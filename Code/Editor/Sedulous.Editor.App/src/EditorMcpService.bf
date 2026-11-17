@@ -193,6 +193,15 @@ class EditorMcpService
 		mOperations = new EditorProjectOperations(operations);
 		mHost = new EditorMcpHost(mServices.Context, mSession, mServices.Log, mServices.Builders, mServices.Context.Importers,
 			paths, mOperations, BuildStamp(.. scope .()));
+		// Where the tools may read and write by a path an agent gives: the project, the user-data
+		// and temp folders, the engine's data root, and the folders the user allowed in the settings.
+		let allowed = mHost.Server.Paths;
+		allowed.SetProject((project != null) ? project.Directory : "");
+		allowed.AddStandardFolders();
+		allowed.AddFolder(userData);
+		allowed.AddFolder(mServices.DataRoot); // the engine's own data (its fonts, say)
+		for (let folder in settings.AllowedFolders)
+			allowed.AddFolder(folder);
 		let context = mServices.Context;
 		mHost.OnCall = new [=] (report) =>
 			{

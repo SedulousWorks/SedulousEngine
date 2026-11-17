@@ -41,6 +41,7 @@ static class FullFlowTests
 		// The flow runs over the SHARED engine surface (what every host serves) plus the
 		// stdio host's project_create and project_open.
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let logBuffer = scope EditorLogBuffer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
@@ -105,6 +106,7 @@ static class FullFlowTests
 		let session = scope ProjectSession();
 
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let operations = scope InlineProjectOperations(session, builders, "", "");
 		EngineTools.Register(server, session, builders, importers, scope AssetCreatorRegistry(), logBuffer, scope EngineToolPaths(), operations);
 		Test.Assert(server.ToolCount == EngineTools.cEngineToolCount, scope $"{server.ToolCount} tools");
@@ -288,6 +290,7 @@ static class FullFlowTests
 		PipelineRegistration.RegisterAllImporters(importers);
 
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		let slow = scope SlowOperations();

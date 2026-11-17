@@ -28,6 +28,8 @@ static class AssetWriteTools
 		public ProjectSession Session;
 		public ImporterRegistry Importers;
 		public IProjectOperations Operations;
+		/// Where a `source` may be read from.
+		public McpPathPolicy Paths;
 	}
 
 	public static void Register(McpServer server, ProjectSession session, ImporterRegistry importers,
@@ -37,9 +39,10 @@ static class AssetWriteTools
 		context.Session = session;
 		context.Importers = importers;
 		context.Operations = operations;
+		context.Paths = server.Paths;
 
 		let importSchema = scope SchemaBuilder();
-		importSchema.Str("source", "absolute path to the file to import", true);
+		importSchema.Str("source", "absolute path to the file to import (in the project, the temp or user-data folder, or a folder the user allowed)", true);
 		importSchema.Str("group", "source-DB group path to place it in (slash-joined; default root)");
 		importSchema.Str("importer", "which importer to use when several claim the extension, by label (the result of an unhinted import lists them)");
 		importSchema.Map("options", "the importer's settings, as the import window shows them: {\"<setting>\": value}, a flag true or false, a number, or a choice by its value's name (a model's \"Up axis\": \"Z\"), the setting named by its label, case and spaces ignored (a model's: Scale, Up axis, Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Convex collision, Generate LODs, Root motion); an unknown one is refused with the importer's list, unnamed settings keep their defaults, and the result lists every setting's value");
@@ -49,7 +52,7 @@ static class AssetWriteTools
 			"""
 			Import an OS file into the open project: copy it under Sources/ and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. A name held by an asset of another type is refused; one held by another file's asset of its type is refused unless `onConflict` says `replace` (that asset takes the new file, its guid and references kept) or `keepBoth` (the next free name); re-importing the same file replaces its asset. Does not cook - call asset_cook next.
 			""",
-			importSchema.Build(), .Creates,
+			importSchema.Build(), ToolAnnotations.Creates.OpenWorld,
 			new (call, arguments, outResult, outError) => Import(context, call, arguments, outResult, outError),
 			context);
 
@@ -69,7 +72,9 @@ static class AssetWriteTools
 			outError.Append(McpTools.cNoProject);
 			return false;
 		}
-		let source = McpTools.ArgString(arguments, "source", .. scope .());
+		let source = scope String();
+		if (!context.Paths.Check(McpTools.ArgString(arguments, "source", .. scope .()), source, outError))
+			return .Failed;
 		let hint = McpTools.ArgString(arguments, "importer", .. scope .());
 		let suffix = ImportPaths.ExtensionLower(source, .. scope .());
 

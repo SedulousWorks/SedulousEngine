@@ -125,10 +125,17 @@ static class PieMcpTools
 		shotSchema.Str("pie", cPieArgument);
 		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
 		let serial = new CaptureSerial();
+		let allowed = server.Paths;
 		server.RegisterTool("pie_screenshot",
 			"What one running PIE instance's Game tab renders, as a PNG: the game through its own camera, with its UI and overlays, without the letterbox bars, as the pixels the tab drew. Brings the tab to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {pie, path, width, height}; read the file. When the tab is smaller than the game's render resolution it draws the game scaled down, and the answer adds renderWidth, renderHeight and scale (width / renderWidth): the PNG is that scaled image, so soft text there is the scale, and pie_run's mouse positions (render resolution pixels) are its pixels divided by scale. `path` is where to write (an existing directory; default: <user-data>/screenshots/<pie>-<pid>-<n>.png). Refused for a stopped instance; gives up after ten seconds without a rendered frame.",
 			shotSchema.Build(), .ReadOnly,
-			new (call, arguments, outResult, outError) => Screenshot(context, serial, call, arguments, outResult, outError),
+			new (call, arguments, outResult, outError) =>
+			{
+				// A given path only where the tools may write, checked as the call starts.
+				if (!call.IsReentry && !allowed.CheckArgument(arguments, "path", scope .(), outError))
+					return .Failed;
+				return Screenshot(context, serial, call, arguments, outResult, outError);
+			},
 			serial);
 
 		PieRunTool.Register(server, context);

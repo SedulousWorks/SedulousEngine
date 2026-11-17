@@ -144,6 +144,7 @@ static class ScriptToolsTests
 		FixtureSurface.Populate(surface);
 		let server = scope McpServer();
 		ScriptTools.Register(server, surface);
+		server.Paths.AddFolder(Sedulous.Core.IO.GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let folder = "scratch_script_declarations";
 		Sedulous.Core.IO.RemoveDirectoryRecursive(folder);
 		Test.Assert(Sedulous.Core.IO.CreateDirectory(folder));
@@ -166,5 +167,11 @@ static class ScriptToolsTests
 		let refused = CallResponse(server, "script_declarations", Arg("directory", "no_such_folder_here"));
 		defer delete refused;
 		Test.Assert((refused.Get("error") != null) || refused.Get("result").Get("isError").AsBool());
+
+		// A folder outside what the host allows is refused before anything is written there.
+		let outside = CallResponse(server, "script_declarations", Arg("directory", ".."));
+		defer delete outside;
+		Test.Assert(outside.Get("result").Get("isError").AsBool());
+		Test.Assert(outside.Get("result").Get("content").At(0).Get("text").AsString().Contains("outside the folders this host allows"));
 	}
 }

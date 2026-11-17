@@ -86,6 +86,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- MCP tools read and write files by a given path only in the open project, the user-data and temp
+  folders, the engine's data root, and folders the user allows (`Sedulous.Tools.Mcp --allow-path
+  <dir>` and the folder it starts in; the editor's MCP `allowedFolders` setting); other paths are
+  refused.
 - Scripting: a struct value read from an engine property is a copy, as a C# struct is:
   `light.Color.R = 0.5f` no longer compiles (it would change the copy); copy, change and write
   back (`Color c = light.Color; c.R = 0.5f; light.Color = c;`). It wrote the light.

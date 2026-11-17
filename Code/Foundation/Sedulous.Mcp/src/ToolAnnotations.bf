@@ -12,7 +12,7 @@ struct ToolAnnotations
 	public bool IsDestructive;
 	/// idempotentHint: calling again with the same arguments changes nothing more.
 	public bool IsIdempotent;
-	/// openWorldHint: reaches outside the project (never, here).
+	/// openWorldHint: reaches outside the project, by a path McpPathPolicy allows.
 	public bool IsOpenWorld;
 
 	public this(bool readOnly, bool destructive, bool idempotent, bool openWorld)
@@ -43,4 +43,16 @@ struct ToolAnnotations
 	/// Overwrites, Deletes), where a read, a rebuild of derived output or a change to the
 	/// editor's session leaves the project's data as it was.
 	public bool ChangesAuthoredData => !IsReadOnly && (IsDestructive || !IsIdempotent);
+
+	/// The same, for a tool that takes a path outside the project (a file to import, a project to
+	/// open): only in the folders McpPathPolicy allows.
+	public Self OpenWorld
+	{
+		get
+		{
+			var annotations = this;
+			annotations.IsOpenWorld = true;
+			return annotations;
+		}
+	}
 }

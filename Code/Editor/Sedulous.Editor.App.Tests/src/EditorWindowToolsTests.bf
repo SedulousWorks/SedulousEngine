@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Editor.App;
@@ -98,12 +99,13 @@ class EditorWindowToolsTests
 		let server = scope McpServer();
 		EditorWindowTools.Register(server, fake.Seams());
 		Test.Assert(server.ToolCount == EditorWindowTools.cWindowToolCount);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 
 		// The first pump asks for the main window alone, to the path given.
-		let args = "{\"path\":\"/tmp/editor.png\"}";
+		let args = "{\"path\":\"shots/editor.png\"}";
 		Test.Assert(Pending(server, args));
 		Test.Assert(fake.Shots.Count == 1);
-		Test.Assert((fake.Shots[0].Window == 7) && fake.Shots[0].Main && (fake.Shots[0].Path == "/tmp/editor.png"));
+		Test.Assert((fake.Shots[0].Window == 7) && fake.Shots[0].Main && (fake.Shots[0].Path == "shots/editor.png"));
 
 		// Re-entered until it lands; the same request, not a new one.
 		Test.Assert(Pending(server, args));
@@ -112,7 +114,7 @@ class EditorWindowToolsTests
 		Test.Assert(Pump(server, args, let got) == .Answered);
 		defer delete got;
 		Test.Assert(got.Ok, got.Error);
-		Test.Assert(got.Payload.Get("path").AsString() == "/tmp/editor.png");
+		Test.Assert(got.Payload.Get("path").AsString() == "shots/editor.png");
 		let shots = got.Payload.Get("shots");
 		Test.Assert(shots.Count == 1);
 		Test.Assert(shots.At(0).Get("window").AsNumber() == 7);
@@ -145,13 +147,14 @@ class EditorWindowToolsTests
 		fake.Windows.Add(12);
 		let server = scope McpServer();
 		EditorWindowTools.Register(server, fake.Seams());
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 
-		let args = "{\"window\":\"all\",\"path\":\"/tmp/all.png\"}";
+		let args = "{\"window\":\"all\",\"path\":\"shots/all.png\"}";
 		Test.Assert(Pending(server, args));
 		Test.Assert(fake.Shots.Count == 3);
-		Test.Assert((fake.Shots[0].Path == "/tmp/all.png") && fake.Shots[0].Main);
-		Test.Assert((fake.Shots[1].Path == "/tmp/all-window9.png") && !fake.Shots[1].Main);
-		Test.Assert(fake.Shots[2].Path == "/tmp/all-window12.png");
+		Test.Assert((fake.Shots[0].Path == "shots/all.png") && fake.Shots[0].Main);
+		Test.Assert((fake.Shots[1].Path == "shots/all-window9.png") && !fake.Shots[1].Main);
+		Test.Assert(fake.Shots[2].Path == "shots/all-window12.png");
 
 		// Not done while one window has yet to draw.
 		fake.Shots[0].State = .Written;
@@ -161,7 +164,7 @@ class EditorWindowToolsTests
 		defer delete got;
 		Test.Assert(got.Ok, got.Error);
 		Test.Assert(got.Payload.Get("shots").Count == 3);
-		Test.Assert(got.Payload.Get("path").AsString() == "/tmp/all.png");
+		Test.Assert(got.Payload.Get("path").AsString() == "shots/all.png");
 	}
 
 	/// Says why when it cannot capture: no window that can draw, a failed capture, no frame
@@ -172,6 +175,14 @@ class EditorWindowToolsTests
 		let fake = scope FakeWindows();
 		let server = scope McpServer();
 		EditorWindowTools.Register(server, fake.Seams());
+
+		// A path outside the folders the host allows (none here): refused, nothing asked for.
+		fake.Windows.Add(7);
+		Test.Assert(Pump(server, "{\"path\":\"/mcp_outside_folder/editor.png\"}", let outside) == .Answered);
+		defer delete outside;
+		Test.Assert(!outside.Ok && outside.Error.Contains("outside the folders this host allows"), outside.Error);
+		Test.Assert(fake.Requests == 0);
+		fake.Windows.Clear();
 
 		// No window that can draw (the editor minimised).
 		Test.Assert(Pump(server, "{}", let none) == .Answered);

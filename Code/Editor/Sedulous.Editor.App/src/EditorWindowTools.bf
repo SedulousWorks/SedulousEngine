@@ -75,6 +75,7 @@ static class EditorWindowTools
 		let schema = scope SchemaBuilder();
 		schema.Enum("window", cWindowChoices, "\"main\" (default) or \"all\" its windows");
 		schema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
+		let allowed = server.Paths;
 		server.RegisterTool("editor_screenshot",
 			"The whole editor window as the user sees it, as a PNG: the panels, the pages, the menus, the dialogs and the toasts, where viewport_screenshot and pie_screenshot show one viewport. `window` \"main\" (the default) is the main window; \"all\" also writes each floating window, beside the first file with -window<id> before its extension. Waits for the next frame and the GPU, then returns {path, shots: [{window, main, path, width, height}]}; read the file. `path` is where to write the main window (its directory must exist; default: <user-data>/screenshots/editor-<pid>-<n>.png). Gives up after ten seconds without a frame (a minimised editor draws none).",
 			schema.Build(), .ReadOnly,
@@ -125,6 +126,9 @@ static class EditorWindowTools
 				}
 				let all = McpTools.ArgString(arguments, "window", .. scope .()) == "all";
 				let path = McpTools.ArgString(arguments, "path", .. scope .());
+				// A given path only where the tools may write.
+				if (!allowed.CheckArgument(arguments, "path", scope .(), outError))
+					return .Failed;
 				if (path.IsEmpty && !NewScreenshotPath("editor", path))
 				{
 					outError.Append("could not create <user-data>/screenshots");

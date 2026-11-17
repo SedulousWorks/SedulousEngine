@@ -21,6 +21,8 @@ static class ProjectExportTool
 	{
 		public ProjectSession Session;
 		public IProjectOperations Operations;
+		/// Where an `out` may be written.
+		public McpPathPolicy Paths;
 	}
 
 	public static void Register(McpServer server, ProjectSession session, IProjectOperations operations)
@@ -28,16 +30,17 @@ static class ProjectExportTool
 		let context = new Context();
 		context.Session = session;
 		context.Operations = operations;
+		context.Paths = server.Paths;
 
 		let schema = scope SchemaBuilder();
 		schema.Str("preset", "preset name (default: the project's first preset)");
-		schema.Str("out", "output root directory (default: <project>/Dist)");
+		schema.Str("out", "output root directory (default: <project>/Dist; elsewhere, in the temp or user-data folder or a folder the user allowed)");
 		schema.Boolean("rebuild", "force a full re-cook first (default incremental)");
 		server.RegisterTool("project_export",
 			"""
 			Export the open project into a shippable dist: cook everything, stage the scenes, pack the content, cook the shader pack, and stage the preset's player template - the same single entry point the editor's Export menu and the export CLI use, so the result is identical. Long-running (a full cook may run). Presets come from the project's export_presets.xml (default: the first; no file = a synthesized host-platform preset). Returns the output directory and the cook/stage/pack counts; run project_health first to catch breakage before a long export.
 			""",
-			schema.Build(), .Rebuilds,
+			schema.Build(), ToolAnnotations.Rebuilds.OpenWorld,
 			new (call, arguments, outResult, outError) => Export(context, call, arguments, outResult, outError),
 			context);
 	}
@@ -68,11 +71,11 @@ static class ProjectExportTool
 			return false;
 		}
 
-		let outArg = McpTools.ArgString(arguments, "out", .. scope .());
+		// A root given only where the tools may write; none is the project's Dist.
 		let outRoot = scope String();
-		if (!outArg.IsEmpty)
-			outRoot.Set(outArg);
-		else
+		if (!context.Paths.CheckArgument(arguments, "out", outRoot, outError))
+			return .Failed;
+		if (outRoot.IsEmpty)
 			PathJoin(project.Directory, ProjectLayout.DistDir, outRoot);
 		ExportRequest request = .();
 		request.Preset = preset;

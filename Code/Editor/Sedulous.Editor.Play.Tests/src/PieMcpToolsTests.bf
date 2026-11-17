@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Editor.Core;
@@ -302,6 +303,7 @@ class PieMcpToolsTests
 		RegisterPlayActions(context, opened, &projectOpen);
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		Test.Assert(server.ToolCount == PieMcpTools.cPieToolCount);
 		Test.Assert(PieMcpTools.cPieToolCount == 8, "a tripwire: bump deliberately when a PIE tool comes or goes");
 
@@ -433,6 +435,7 @@ class PieMcpToolsTests
 		RegisterPlayActions(context, opened, &projectOpen);
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 
 		Answer primaryAnswer = null;
 		Answer clientAnswer = null;
@@ -463,6 +466,7 @@ class PieMcpToolsTests
 		RegisterPlayActions(context, opened, &projectOpen);
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 
 		// Two new instances asked for with the same arguments: two tabs, one each.
 		Answer first = null;
@@ -494,27 +498,34 @@ class PieMcpToolsTests
 		let tab = opened[0];
 		Answer a = null;
 		Answer b = null;
-		let argsA = "{\"pie\":\"game-page-0\",\"path\":\"/tmp/a.png\"}";
-		let argsB = "{\"pie\":\"game-page-0\",\"path\":\"/tmp/b.png\"}";
+		// A path outside the folders the host allows: refused, nothing asked of the tab.
+		{
+			let outside = Call(server, "pie_screenshot", "{\"pie\":\"game-page-0\",\"path\":\"/mcp_outside_folder/a.png\"}");
+			defer delete outside;
+			Test.Assert(outside.Error.Contains("outside the folders this host allows"), outside.Error);
+			Test.Assert(tab.CaptureRequests == 0);
+		}
+		let argsA = "{\"pie\":\"game-page-0\",\"path\":\"shots/a.png\"}";
+		let argsB = "{\"pie\":\"game-page-0\",\"path\":\"shots/b.png\"}";
 		Test.Assert(Pump(server, 3, "pie_screenshot", argsA, out a) == .NotFinished);
 		Test.Assert(Pump(server, 4, "pie_screenshot", argsB, out b) == .NotFinished);
-		Test.Assert(tab.Capture.Path == "/tmp/b.png", "b replaced a");
+		Test.Assert(tab.Capture.Path == "shots/b.png", "b replaced a");
 		Test.Assert(Pump(server, 3, "pie_screenshot", argsA, out a) == .NotFinished);
 		Test.Assert(tab.CaptureRequests == 2, "a waits while b's is pending");
 		tab.Capture.State = .Written;
 		Test.Assert(Pump(server, 3, "pie_screenshot", argsA, out a) == .NotFinished, "b's file is not a's");
-		Test.Assert((tab.Capture.Path == "/tmp/a.png") && (tab.Capture.State == .Pending), "a asked again");
+		Test.Assert((tab.Capture.Path == "shots/a.png") && (tab.Capture.State == .Pending), "a asked again");
 		Test.Assert(Pump(server, 4, "pie_screenshot", argsB, out b) == .NotFinished, "a's request is not b's");
 		tab.Capture.State = .Written;
 		Test.Assert(Pump(server, 3, "pie_screenshot", argsA, out a) == .Answered);
 		defer delete a;
-		Test.Assert(a.Payload.Get("path").AsString() == "/tmp/a.png");
+		Test.Assert(a.Payload.Get("path").AsString() == "shots/a.png");
 		Test.Assert(Pump(server, 4, "pie_screenshot", argsB, out b) == .NotFinished);
-		Test.Assert(tab.Capture.Path == "/tmp/b.png", "b asked again");
+		Test.Assert(tab.Capture.Path == "shots/b.png", "b asked again");
 		tab.Capture.State = .Written;
 		Test.Assert(Pump(server, 4, "pie_screenshot", argsB, out b) == .Answered);
 		defer delete b;
-		Test.Assert(b.Payload.Get("path").AsString() == "/tmp/b.png");
+		Test.Assert(b.Payload.Get("path").AsString() == "shots/b.png");
 		Test.Assert(server.CallsInFlight == 0);
 	}
 
@@ -526,6 +537,7 @@ class PieMcpToolsTests
 		let client = (HeadlessPiePage)context.AdoptPage(new HeadlessPiePage("game-page-1"));
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 
 		// A stopped instance renders nothing worth a picture.
 		{
@@ -538,7 +550,7 @@ class PieMcpToolsTests
 		primary.Running = true;
 		client.Running = true;
 		context.SetActivePage(primary);
-		let args = "{\"pie\":\"game-page-1\",\"path\":\"/tmp/client.png\"}";
+		let args = "{\"pie\":\"game-page-1\",\"path\":\"shots/client.png\"}";
 		Answer answer;
 		Test.Assert(Pump(server, "pie_screenshot", args, out answer) == .NotFinished);
 		Test.Assert(context.ActivePage == client, "brought to front");
@@ -554,7 +566,7 @@ class PieMcpToolsTests
 			defer delete answer;
 			Test.Assert(answer.Ok, answer.Error);
 			Test.Assert(answer.Payload.Get("pie").AsString() == "game-page-1");
-			Test.Assert(answer.Payload.Get("path").AsString() == "/tmp/client.png");
+			Test.Assert(answer.Payload.Get("path").AsString() == "shots/client.png");
 			Test.Assert(answer.Payload.Get("width").AsNumber() == 1280);
 			Test.Assert(answer.Payload.Get("scale") == null, "drawn at its own resolution: nothing to add");
 		}
@@ -625,6 +637,7 @@ class PieMcpToolsTests
 		let host = RunningPie(context, "game-page");
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		Answer answer;
 
 		// Refusals change nothing: no script is installed.
@@ -658,9 +671,16 @@ class PieMcpToolsTests
 			Test.Assert(host.ScriptsBegun == 0);
 		}
 
+		{
+			let outside = Call(server, "pie_run", "{\"duration\":1,\"screenshots\":[0.5],\"screenshotDir\":\"/mcp_outside_folder\"}");
+			defer delete outside;
+			Test.Assert(outside.Error.Contains("outside the folders this host allows"), outside.Error);
+			Test.Assert(host.ScriptsBegun == 0);
+		}
+
 		// Hold D for a second of a two second run, sampling the player and the score every half
 		// second, with a screenshot at one second.
-		let args = "{\"duration\":2,\"input\":[{\"at\":0,\"key\":\"D\"},{\"at\":1,\"key\":\"D\",\"down\":false}],\"probes\":[{\"entity\":\"Player\",\"fields\":[\"position.x\"]},{\"script\":\"score\"}],\"every\":0.5,\"screenshots\":[1],\"screenshotDir\":\"/tmp\"}";
+		let args = "{\"duration\":2,\"input\":[{\"at\":0,\"key\":\"D\"},{\"at\":1,\"key\":\"D\",\"down\":false}],\"probes\":[{\"entity\":\"Player\",\"fields\":[\"position.x\"]},{\"script\":\"score\"}],\"every\":0.5,\"screenshots\":[1],\"screenshotDir\":\"shots\"}";
 		Test.Assert(Pump(server, "pie_run", args, out answer) == .NotFinished);
 		Test.Assert(host.IsScripted && (host.ScriptsBegun == 1));
 		host.Score = 7;
@@ -695,7 +715,7 @@ class PieMcpToolsTests
 			let shots = result.Get("screenshots");
 			Test.Assert(shots.Count == 1);
 			Test.Assert(shots.At(0).Get("at").AsNumber() == 1);
-			Test.Assert(shots.At(0).Get("path").AsString().StartsWith("/tmp/game-page-"));
+			Test.Assert(shots.At(0).Get("path").AsString().StartsWith("shots/game-page-"));
 			Test.Assert(shots.At(0).Get("width").AsNumber() == 640);
 			Test.Assert(result.Get("until").IsNull);
 			Test.Assert(result.Get("state").Get("running").AsBool());
@@ -713,6 +733,7 @@ class PieMcpToolsTests
 		let host = RunningPie(context, "game-page");
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		Answer answer;
 
 		let args = "{\"duration\":10,\"input\":[{\"at\":0,\"key\":\"d\"}],\"until\":{\"entity\":\"Player\",\"field\":\"position.x\",\"op\":\">=\",\"value\":1.5}}";
@@ -758,6 +779,7 @@ class PieMcpToolsTests
 		let host = RunningPie(context, "game-page");
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		Answer answer;
 
 		{
@@ -803,6 +825,7 @@ class PieMcpToolsTests
 		let host = RunningPie(context, "game-page");
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let args = "{\"duration\":5,\"input\":[{\"at\":0,\"key\":\"D\"}]}";
 		Answer answer = null;
 		Test.Assert(Pump(server, 1, "pie_run", args, out answer) == .NotFinished);
@@ -836,6 +859,7 @@ class PieMcpToolsTests
 		let client = RunningPie(context, "game-page-1");
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		SceneMcpTools.Register(server, context);
 		Answer hostAnswer = null;
 		Answer clientAnswer = null;
@@ -894,6 +918,7 @@ class PieMcpToolsTests
 		let client = RunningPie(context, "game-page-1");
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 
 		// Read: the preset's level first, then the project's levels.
 		{
@@ -940,6 +965,7 @@ class PieMcpToolsTests
 		let client = RunningPie(context, "game-page-1");
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 
 		// Read: the chosen entry, the toggle, and every entry the dropdown offers.
 		{

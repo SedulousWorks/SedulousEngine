@@ -35,6 +35,7 @@ static class MaterialShaderToolTests
 		PipelineRegistration.RegisterAllCreators(creators);
 
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let logBuffer = scope EditorLogBuffer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();

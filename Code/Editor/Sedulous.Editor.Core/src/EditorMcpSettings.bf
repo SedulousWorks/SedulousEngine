@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
@@ -9,7 +10,8 @@ namespace Sedulous.Editor.Core;
 /// HTTP. Off by default. Port is where it listens (one editor per port: a second editor takes
 /// another); Token is the bearer secret the editor generates on first enable (see
 /// GenerateToken) and also writes to <user-data>/mcp-token so a local agent configures
-/// itself. Edited in Preferences; --mcp and --mcp-port override one run.
+/// itself. Edited in Preferences; --mcp and --mcp-port override one run. AllowedFolders widens
+/// where the tools may read and write by a given path (McpPathPolicy).
 [Serializable(1)]
 class EditorMcpSettings
 {
@@ -18,6 +20,11 @@ class EditorMcpSettings
 	public bool Enabled = false;
 	public uint32 Port = DefaultPort;
 	public String Token = new .() ~ delete _;
+	/// Folders beyond the project, the user-data and the temp folder where MCP tools may read and
+	/// write by a path an agent gives (a downloads folder to import from, say). Edited in the
+	/// settings file; a file saved before it reads with none. Added 2026-11-17.
+	[Appended]
+	public List<String> AllowedFolders = new .() ~ DeleteContainerAndItems!(_);
 
 	/// The Preferences fields as typed. portText must name a port in 1024..65535 (below needs
 	/// elevation, 0 cannot be put in a client's URL): anything else leaves the port as it was

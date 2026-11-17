@@ -28,6 +28,7 @@ static class ProjectFlowTests
 		let dir = Scratch("mcp_fixture_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		ReflectionTools.Register(server);
 		let owner = scope ProjectOwner();
@@ -90,6 +91,7 @@ static class ProjectFlowTests
 		defer PipelineRegistration.Teardown();
 
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner, dataRoot);
@@ -122,6 +124,7 @@ static class ProjectFlowTests
 	public static void ProjectInfoBeforeAnyProjectIsOpenIsAToolError()
 	{
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -137,6 +140,7 @@ static class ProjectFlowTests
 		let dir = Scratch("mcp_asset_project", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -187,6 +191,7 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterAllImporters(importers);
 
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -260,6 +265,7 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllImporters(importers);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -304,6 +310,7 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		ScriptTools.Register(server, PipelineRegistration.Surface);
 		let api = CallOk(server, "script_api", With(Obj(), "language", "angelscript"));
 		defer delete api;
@@ -337,6 +344,7 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		ScriptTools.Register(server, PipelineRegistration.Surface);
 		let api = CallOk(server, "script_api", With(Obj(), "language", "angelscript"));
 		defer delete api;
@@ -402,6 +410,7 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterAllCreators(creators);
 
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -469,6 +478,7 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterAllCreators(creators);
 
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -583,6 +593,7 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterAllCreators(creators);
 
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -755,6 +766,7 @@ static class ProjectFlowTests
 	public static void TypeInfoNamesEveryInputCode()
 	{
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		ReflectionTools.Register(server);
 		(StringView type, StringView ns, StringView someCase)[?] expected = .(
 			("KeyCode", "Sedulous.Shell", "Space"),
@@ -794,6 +806,7 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterAllImporters(importers);
 
 		let server = scope McpServer();
+		AllowScratch(server, true); // the scratch folder and the engine's data (the duck), as a host allows them
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -828,5 +841,58 @@ static class ProjectFlowTests
 		delete CallOk(server, "asset_import", noPrefab);
 		Test.Assert(CountOfType(".PrefabDocument") == 1, "no second prefab");
 		Test.Assert(CountOfType(".SceneDocument") == 1, "the scene it asked for");
+	}
+
+	/// A path a tool takes is used only inside the folders the host allows: the project it
+	/// opened and the folders it named. Elsewhere the call is refused before anything is read or
+	/// written, naming what is allowed; a plugin's package stays inside the project. The tools that
+	/// reach outside the project say so with openWorldHint.
+	[Test]
+	public static void APathOutsideTheAllowedFoldersIsRefused()
+	{
+		let dir = Scratch("mcp_path_policy", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		let importers = scope ImporterRegistry();
+		PipelineRegistration.RegisterAllImporters(importers);
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		AssetWriteTools.Register(server, session, importers, operations);
+		ProjectExportTool.Register(server, session, operations);
+		PluginTools.Register(server, session);
+
+		// Nothing allowed yet: not even the scratch folder.
+		let refused = scope String();
+		CallErr(server, "project_create", With(With(Obj(), "directory", dir), "name", "Policy"), refused);
+		Test.Assert(refused.Contains("outside the folders this host allows"), refused);
+		Test.Assert(!DirectoryExists(dir), "nothing was created");
+
+		AllowScratch(server);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Policy"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+		Test.Assert(server.Paths.Project == PathNormalizeLexically(dir, .. scope .()), "the opened project is allowed");
+
+		CallErr(server, "asset_import", With(Obj(), "source", "/mcp_outside_folder/rock.png"), refused..Clear());
+		Test.Assert(refused.Contains("'/mcp_outside_folder/rock.png' is outside") && refused.Contains("--allow-path"), refused);
+		CallErr(server, "project_export", With(Obj(), "out", "/mcp_outside_folder/Dist"), refused..Clear());
+		Test.Assert(refused.Contains("is outside the folders this host allows"), refused);
+		CallErr(server, "plugin_enable", With(With(Obj(), "id", "game"), "path", "../Elsewhere"), refused..Clear());
+		Test.Assert(refused.Contains("'../Elsewhere' is not a path inside the project"), refused);
+		Test.Assert(session.Project.Settings.Plugins.IsEmpty);
+
+		let listed = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
+		defer delete listed;
+		let tools = listed.Get("result").Get("tools");
+		for (let name in scope StringView[]("project_create", "project_open", "asset_import", "project_export"))
+		{
+			let tool = Named(tools, "name", name);
+			Test.Assert((tool != null) && tool.Get("annotations").Get("openWorldHint").AsBool(), scope $"{name} says it reaches outside the project");
+		}
+		Test.Assert(!Named(tools, "name", "asset_cook").Get("annotations").Get("openWorldHint").AsBool());
 	}
 }

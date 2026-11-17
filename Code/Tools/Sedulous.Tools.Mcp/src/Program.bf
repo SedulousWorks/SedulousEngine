@@ -26,8 +26,10 @@ namespace Sedulous.Tools.Mcp;
 /// script_create, project_export, the log tools with the curated known issues, and the read only resources:
 /// the shipping docs as docs://<name> and the open project's scenes as project://.
 ///
-/// Usage: Sedulous.Tools.Mcp [--data-root <dir>]   (run it from inside the engine checkout so
-/// the docs, KnownIssues.md and the data root resolve, or stage them beside the executable)
+/// Usage: Sedulous.Tools.Mcp [--data-root <dir>] [--allow-path <dir>]...   (run it from inside
+/// the engine checkout so the docs, KnownIssues.md and the data root resolve, or stage them
+/// beside the executable). A tool reads or writes by a given path only in the project it opened,
+/// the user-data and temp folders, the folder it started in, the data root and each --allow-path.
 class Program
 {
 	public static int Main(String[] args)
@@ -67,7 +69,17 @@ class Program
 
 		let server = scope McpServer();
 		server.SetServerInfo("engine-mcp", Sedulous.Engine.Project.EngineVersion.Display);
-
+		// Where tools may read and write by a path an agent gives: the project it opens, the
+		// user-data and temp folders, the folder this host was started in (the user chose it),
+		// the engine's data root, and each --allow-path <dir>.
+		server.Paths.AddStandardFolders();
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .()));
+		server.Paths.AddFolder(dataRoot); // the engine's own data (its fonts, say)
+		for (int i = 0; i + 1 < args.Count; i++)
+		{
+			if (args[i] == "--allow-path")
+				server.Paths.AddFolder(args[i + 1]);
+		}
 
 		// The session every tool works through. This host OWNS the project it opens:
 		// project_open stores it in the owner and points the session at it. Both outlive

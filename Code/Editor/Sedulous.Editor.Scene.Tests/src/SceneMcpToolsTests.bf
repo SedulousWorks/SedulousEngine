@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Scene;
@@ -184,6 +185,7 @@ class SceneMcpToolsTests
 
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
 		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 20, "a tripwire: bump deliberately when a live tool comes or goes");
 		let onA = scope $"{{\"page\":\"{sceneA}\"}}";
@@ -289,6 +291,7 @@ class SceneMcpToolsTests
 		let context = scope EditorContext();
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		var rng = Random(77);
 		let page = new HeadlessScenePage("Block", Guid.Generate(ref rng));
 		context.AdoptPage(page);
@@ -404,6 +407,7 @@ class SceneMcpToolsTests
 		let other = (HeadlessGameScenePage)context.AdoptPage(new HeadlessGameScenePage("game-page-1"));
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 
 		let got = Call(server, "entity_inspect", "{\"pie\":\"\",\"entity\":\"Player\"}");
 		defer delete got;
@@ -455,6 +459,7 @@ class SceneMcpToolsTests
 
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let pageGuid = GuidText(sceneId, .. scope .());
 
 		// By guid: the lamp with its child, its transform, and the mesh's references and list.
@@ -533,6 +538,7 @@ class SceneMcpToolsTests
 
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let pageGuid = GuidText(sceneId, .. scope .());
 		let lampGuid = GuidText(lampId, .. scope .());
 		Answer Set(StringView component, StringView property, StringView valueJson)
@@ -655,6 +661,7 @@ class SceneMcpToolsTests
 
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let pageGuid = GuidText(sceneId, .. scope .());
 		let thingGuid = GuidText(thingId, .. scope .());
 		Answer Set(StringView component, StringView property, StringView valueJson)
@@ -743,6 +750,7 @@ class SceneMcpToolsTests
 
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let pageGuid = GuidText(sceneId, .. scope .());
 		let riderGuid = GuidText(riderId, .. scope .());
 		Answer Set(StringView component, StringView property, StringView valueJson)
@@ -839,6 +847,7 @@ class SceneMcpToolsTests
 
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let pageGuid = GuidText(sceneId, .. scope .());
 		let riderGuid = GuidText(riderId, .. scope .());
 		Answer Set(StringView valueJson)
@@ -919,6 +928,7 @@ class SceneMcpToolsTests
 		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage("Bistro", Guid.Create()));
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
 		context.SetActivePage(page);
 
@@ -979,6 +989,7 @@ class SceneMcpToolsTests
 		page.HasViewport = true;
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let pageGuid = GuidText(sceneId, .. scope .());
 
 		// No viewport: every viewport tool refuses by name.
@@ -1069,16 +1080,25 @@ class SceneMcpToolsTests
 			Test.Assert(!page.Camera.Orthographic);
 		}
 
+		// A path outside the folders the host allows: refused, nothing asked of the page.
+		{
+			let got = Call(server, "viewport_screenshot", scope $"{{\"page\":\"{pageGuid}\",\"path\":\"/mcp_outside_folder/bistro.png\"}}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.Contains("outside the folders this host allows"), got.Error);
+			Test.Assert(page.CaptureRequests == 0);
+		}
+
 		// The screenshot: the first pump brings the page to front and asks for the capture,
 		// then the call is re-entered each pump until the page reports the frame written.
 		context.SetActivePage(headless);
-		let shotArgs = scope $"{{\"page\":\"{pageGuid}\",\"path\":\"/tmp/bistro.png\"}}";
+		let shotArgs = scope $"{{\"page\":\"{pageGuid}\",\"path\":\"shots/bistro.png\"}}";
 		Answer answer;
 		Test.Assert(Pump(server, "viewport_screenshot", shotArgs, out answer) == .NotFinished);
 		Test.Assert(context.ActivePage == page);
 		Test.Assert(page.CaptureRequests == 1);
 		Test.Assert(page.Capture.State == .Pending);
-		Test.Assert(page.Capture.Path == "/tmp/bistro.png");
+		Test.Assert(page.Capture.Path == "shots/bistro.png");
 		Test.Assert(Pump(server, "viewport_screenshot", shotArgs, out answer) == .NotFinished, "not yet rendered");
 		Test.Assert(page.CaptureRequests == 1, "the same request, not a new one");
 		page.CompleteCapture(1280, 720);
@@ -1086,12 +1106,12 @@ class SceneMcpToolsTests
 		{
 			defer delete answer;
 			Test.Assert(answer.Ok, answer.Error);
-			Test.Assert(answer.Payload.Get("path").AsString() == "/tmp/bistro.png");
+			Test.Assert(answer.Payload.Get("path").AsString() == "shots/bistro.png");
 			Test.Assert(answer.Payload.Get("width").AsNumber() == 1280);
 			Test.Assert(answer.Payload.Get("height").AsNumber() == 720);
 		}
 		// A failed capture is an error naming the log; a new call starts a new request.
-		let againArgs = scope $"{{\"page\":\"{pageGuid}\",\"path\":\"/tmp/again.png\"}}";
+		let againArgs = scope $"{{\"page\":\"{pageGuid}\",\"path\":\"shots/again.png\"}}";
 		Test.Assert(Pump(server, "viewport_screenshot", againArgs, out answer) == .NotFinished);
 		Test.Assert(page.CaptureRequests == 2);
 		page.FailCapture();
@@ -1114,7 +1134,8 @@ class SceneMcpToolsTests
 		context.SetActivePage(page);
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
-		let args = scope $"{{\"page\":\"{sceneGuid}\",\"duration\":1,\"input\":[{{\"at\":0.1,\"mouseMove\":[100,50]}},{{\"at\":0.2,\"mouseButton\":\"Left\"}}],\"screenshots\":[0.5],\"screenshotDir\":\"/tmp\"}}";
+		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
+		let args = scope $"{{\"page\":\"{sceneGuid}\",\"duration\":1,\"input\":[{{\"at\":0.1,\"mouseMove\":[100,50]}},{{\"at\":0.2,\"mouseButton\":\"Left\"}}],\"screenshots\":[0.5],\"screenshotDir\":\"shots\"}}";
 
 		// Begun: the page holds the playtest's devices, and the call waits on its clock.
 		Answer answer;
@@ -1129,7 +1150,7 @@ class SceneMcpToolsTests
 		page.AdvanceRun(0.6);
 		Test.Assert(Pump(server, "viewport_run", args, out answer) == .NotFinished);
 		Test.Assert(page.CaptureRequests == 1);
-		Test.Assert(page.Capture.Path.StartsWith("/tmp/"), page.Capture.Path);
+		Test.Assert(page.Capture.Path.StartsWith("shots/"), page.Capture.Path);
 		Test.Assert(Pump(server, "viewport_run", args, out answer) == .NotFinished, "not rendered yet");
 		page.CompleteCapture(800, 600);
 		Test.Assert(Pump(server, "viewport_run", args, out answer) == .NotFinished, "the run goes on");
@@ -1159,6 +1180,12 @@ class SceneMcpToolsTests
 			let got = Call(server, "viewport_run", scope $"{{\"page\":\"{sceneGuid}\",\"duration\":0}}");
 			defer delete got;
 			Test.Assert(!got.Ok);
+		}
+		{
+			let got = Call(server, "viewport_run", scope $"{{\"page\":\"{sceneGuid}\",\"duration\":1,\"screenshots\":[0.5],\"screenshotDir\":\"/mcp_outside_folder\"}}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.Contains("outside the folders this host allows"), got.Error);
 		}
 		page.HasViewport = false;
 		{

@@ -29,6 +29,7 @@ static class ExportPresetToolsTests
 		let dir = Scratch("mcp_export_presets", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
@@ -149,6 +150,7 @@ static class ExportPresetToolsTests
 		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllCreators(creators);
 		let server = scope McpServer();
+		AllowScratch(server); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);

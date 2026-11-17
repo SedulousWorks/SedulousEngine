@@ -267,7 +267,15 @@ static class PluginTools
 				platforms.Add(new .(platform));
 		}
 		if (let given = arguments.Get("path"))
+		{
 			path.Set(given.AsString());
+			// Relative to the project and inside it: a package is the project's own.
+			if (!path.IsEmpty && !PathStaysInside(path))
+			{
+				outError.AppendF("'{}' is not a path inside the project", path);
+				return false;
+			}
+		}
 		if (let given = arguments.Get("platforms"))
 		{
 			ClearAndDeleteItems!(platforms);

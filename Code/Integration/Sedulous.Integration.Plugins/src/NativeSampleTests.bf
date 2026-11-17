@@ -338,6 +338,7 @@ static class NativeSampleTests
 		let creators = scope AssetCreatorRegistry();
 		let pluginTools = scope McpPluginServices();
 		let server = scope McpServer();
+		server.Paths.AddFolder(Directory.GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		owner.PluginRegistries = PipelineRegistries(builders, importers, creators);
@@ -499,6 +500,7 @@ static class NativeSampleTests
 
 		// And it COOKS, the stdio host enabling the package as it opens the project.
 		let server = scope McpServer();
+		server.Paths.AddFolder(Directory.GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		owner.PluginRegistries = PipelineRegistries(builders, importers, creators);
