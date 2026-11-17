@@ -123,10 +123,12 @@ static class MeshConvert
 		CopyIndices(mesh, outSource.IndexData);
 		CopyParts(mesh, outSource);
 
-		// NO authored tangent stream, which plenty of models ship without: they are generated
-		// here, or every vertex keeps the default and the tangent basis is wrong across the
-		// whole mesh, so a normal mapped material shades wrong everywhere.
-		if ((tangentElement == null) && (normalElement != null) && (texCoordElement != null)
+		// NO authored tangents, which plenty of models ship without: they are generated here, or
+		// every vertex keeps the default and the tangent basis is wrong across the whole mesh, so a
+		// normal mapped material shades wrong everywhere. Asked of the mesh, not its layout: the glTF
+		// and FBX loaders always declare a tangent element, filled with the default when the source
+		// had none.
+		if (((tangentElement == null) || !mesh.HasTangents) && (normalElement != null) && (texCoordElement != null)
 			&& !outSource.IndexData.IsEmpty)
 		{
 			StaticMesh.GenerateTangents(.(destination, count), outSource.IndexData);

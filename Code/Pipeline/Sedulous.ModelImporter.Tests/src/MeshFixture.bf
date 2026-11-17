@@ -66,7 +66,10 @@ static class MeshFixture
 		mesh.Name.Set("quad");
 		AddPlainElements(mesh);
 		if (withAuthoredTangent)
+		{
 			mesh.AddVertexElement(.(.Tangent, .Float4, 32));
+			mesh.HasTangents = true; // as a loader says of a source that has them
+		}
 
 		let positions = scope Float3[](.(0, 0, 0), .(1, 0, 0), .(1, 1, 0), .(0, 1, 0));
 		let uvs = scope Float2[](.(0, 0), .(0, 1), .(1, 1), .(1, 0));

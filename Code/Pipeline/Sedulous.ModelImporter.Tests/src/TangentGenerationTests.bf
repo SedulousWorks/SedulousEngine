@@ -57,4 +57,26 @@ class TangentGenerationTests
 			Test.Assert(Near(vertices[i].Tangent.W, -1.0f));
 		}
 	}
+
+	/// The glTF and FBX loaders declare a tangent element on every mesh and fill (1,0,0,1) when the
+	/// file has none, so a converter that asked only whether the element was there never generated
+	/// any: every model without authored tangents shaded its normal maps wrong.
+	[Test]
+	public static void ADeclaredStreamTheSourceNeverFilledIsGeneratedToo()
+	{
+		let mesh = MeshFixture.MirroredQuad(true, .(1, 0, 0, 1));
+		defer delete mesh;
+		mesh.HasTangents = false; // the element is there, filled with the default: the source had none
+
+		let source = scope StaticMeshSource();
+		MeshConvert.StaticFromModel(mesh, source);
+
+		let vertices = (StaticMeshVertex*)source.VertexBlob.Ptr;
+		for (int i < 4)
+		{
+			let tangent = vertices[i].Tangent;
+			Test.Assert(Near(Abs(tangent.Y), 1.0f), scope $"tangent y was {tangent.Y}");
+			Test.Assert(Near(tangent.W, -1.0f), scope $"handedness was {tangent.W}");
+		}
+	}
 }

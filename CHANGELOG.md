@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- glTF and FBX models without authored tangents get them generated, so their normal maps shade
+  right; a model imported before keeps its old tangents until it is imported again.
 - Scene physics settings hold the world's budgets (most bodies, body pairs, contact constraints),
   4096, 4096 and 2048 by default as before.
 - The WebSocket client refuses an address whose host or path holds a line break, control character
