@@ -20,6 +20,27 @@ class McpServer
 
 	private List<Tool> mTools = new .() ~ DeleteContainerAndItems!(_);
 
+	/// A change to the tool table made while a handler ran, applied when it returns.
+	private class PendingToolChange
+	{
+		public bool Remove;
+		/// The tool to remove.
+		public String Name = new .() ~ delete _;
+		/// The tool to add. OWNED until applied.
+		public Tool Tool;
+
+		public ~this()
+		{
+			delete Tool;
+		}
+	}
+	/// While a tool's handler runs, changes to the tool table wait here, in order, and apply when it
+	/// returns: a handler that opens a project loads its plugins, which register and unregister
+	/// tools, and a tool or a call entry deleted under the running handler left it running from
+	/// freed memory.
+	private List<PendingToolChange> mPendingToolChanges = new .() ~ DeleteContainerAndItems!(_);
+	private bool mInHandler = false;
+
 	/// A call in flight, known by the transport's id, or by its line when it gave none.
 	private class CallEntry
 	{
@@ -109,6 +130,15 @@ class McpServer
 	/// call to an unknown tool.
 	public bool UnregisterTool(StringView name)
 	{
+		if (mInHandler) // applied when the running handler returns
+		{
+			let known = FindTool(name) != null;
+			let change = new PendingToolChange();
+			change.Remove = true;
+			change.Name.Set(name);
+			mPendingToolChanges.Add(change);
+			return known;
+		}
 		for (int i < mTools.Count)
 		{
 			if (mTools[i].Name != name)
@@ -191,7 +221,7 @@ class McpServer
 	public void RegisterTool(StringView name, StringView description, JsonValue inputSchema,
 		ToolAnnotations annotations, Tool.Handler handler, Object context = null)
 	{
-		mTools.Add(new Tool(name, description, inputSchema, annotations, handler, context));
+		AddTool(new Tool(name, description, inputSchema, annotations, handler, context));
 	}
 
 	/// Registers a tool whose handler sees its call (ToolCall): one that answers NotFinished
@@ -199,7 +229,48 @@ class McpServer
 	public void RegisterTool(StringView name, StringView description, JsonValue inputSchema,
 		ToolAnnotations annotations, Tool.CallHandler handler, Object context = null)
 	{
-		mTools.Add(new Tool(name, description, inputSchema, annotations, handler, context));
+		AddTool(new Tool(name, description, inputSchema, annotations, handler, context));
+	}
+
+	/// Adds `tool` (TAKEN) now, or when the running handler returns.
+	private void AddTool(Tool tool)
+	{
+		if (mInHandler)
+		{
+			let change = new PendingToolChange();
+			change.Tool = tool;
+			mPendingToolChanges.Add(change);
+			return;
+		}
+		mTools.Add(tool);
+	}
+
+	/// The changes made while a handler ran, in order.
+	private void ApplyPendingToolChanges()
+	{
+		while (!mPendingToolChanges.IsEmpty)
+		{
+			let change = mPendingToolChanges.PopFront();
+			if (change.Remove)
+				UnregisterTool(change.Name);
+			else
+			{
+				mTools.Add(change.Tool);
+				change.Tool = null;
+			}
+			delete change;
+		}
+	}
+
+	/// The index of the call with server number `serial`; -1 when it has gone.
+	private int FindCallBySerial(uint64 serial)
+	{
+		for (int i < mCalls.Count)
+		{
+			if (mCalls[i].Serial == serial)
+				return i;
+		}
+		return -1;
 	}
 
 	/// The caller of an unfinished call went away (its connection closed): the call ends, its
@@ -399,9 +470,9 @@ class McpServer
 		defer delete toolResult;
 		let toolError = scope String();
 		// The call this is: the one already in flight under this identity, or a new one.
-		let callIndex = FindOrStartCall();
-		let entry = mCalls[callIndex];
-		let call = entry.Call;
+		var callIndex = FindOrStartCall();
+		var entry = mCalls[callIndex];
+		var call = entry.Call;
 		if (!call.IsReentry)
 		{
 			entry.Tool.Set(tool.Name);
@@ -409,9 +480,31 @@ class McpServer
 			entry.Arguments = arguments.Clone();
 			entry.Annotations = tool.Annotations;
 		}
+		let serial = entry.Serial;
+		let wasInHandler = mInHandler;
+		mInHandler = true;
 		let outcome = (tool.CallRun != null)
 			? tool.CallRun(call, arguments, toolResult, toolError)
 			: tool.Run(arguments, toolResult, toolError);
+		mInHandler = wasInHandler;
+		if (!mInHandler)
+			ApplyPendingToolChanges(); // may end this very call (its tool unregistered)
+		callIndex = FindCallBySerial(serial);
+		if (callIndex < 0)
+		{
+			// Its tool went while it ran: answered as finished all the same.
+			let goneItem = JsonValue.MakeObject();
+			goneItem.Set("type", JsonValue.MakeString("text"));
+			goneItem.Set("text", JsonValue.MakeString("the tool was removed while it ran"));
+			let goneContent = JsonValue.MakeArray();
+			goneContent.Add(goneItem);
+			let goneResult = JsonValue.MakeObject();
+			goneResult.Set("isError", JsonValue.MakeBool(true));
+			goneResult.Set("content", goneContent);
+			return MakeResult(id, goneResult);
+		}
+		entry = mCalls[callIndex];
+		call = entry.Call;
 		if (outcome == .NotFinished)
 		{
 			if (!call.IsReentry)

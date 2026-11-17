@@ -700,4 +700,46 @@ class McpServerTests
 		defer delete second;
 		Test.Assert(second.Get("id").AsInt() == 7);
 	}
+
+	/// A tool whose call changes the tool table (opening a project loads its plugins, which register
+	/// and unregister theirs): the changes wait until it returns. Applied in place, a removal deleted
+	/// the running tool and its call entry under the handler.
+	[Test]
+	public static void ToolsRegisteredOrRemovedByARunningToolApplyWhenItReturns()
+	{
+		let server = scope McpServer();
+		server.RegisterTool("echo", "echoes", scope SchemaBuilder().Build(), .ReadOnly,
+			new (arguments, outResult, outError) => true);
+		server.RegisterTool("plugins", "swaps a plugin's tools", scope SchemaBuilder().Build(), .Rebuilds,
+			new [=server] (arguments, outResult, outError) =>
+			{
+				Test.Assert(server.UnregisterTool("echo"));
+				for (int i < 64)
+				{
+					server.RegisterTool(scope String()..AppendF("added{}", i), "added", scope SchemaBuilder().Build(), .ReadOnly,
+						new (a, r, e) => true);
+				}
+				Test.Assert(!server.HasTool("added0"), "not yet: after this returns");
+				return true;
+			});
+		let answer = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"plugins\",\"arguments\":{}}}");
+		defer delete answer;
+		Test.Assert(!answer.Get("result").Get("isError").AsBool());
+		Test.Assert(server.HasTool("added63"));
+		Test.Assert(!server.HasTool("echo"));
+		Test.Assert(server.CallsInFlight == 0);
+
+		// A tool that removes itself is answered all the same.
+		server.RegisterTool("leaving", "removes itself", scope SchemaBuilder().Build(), .Rebuilds,
+			new [=server] (arguments, outResult, outError) =>
+			{
+				server.UnregisterTool("leaving");
+				return true;
+			});
+		let gone = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"leaving\",\"arguments\":{}}}");
+		defer delete gone;
+		Test.Assert(gone.Get("result").Get("isError").AsBool());
+		Test.Assert(!server.HasTool("leaving"));
+		Test.Assert(server.CallsInFlight == 0);
+	}
 }
