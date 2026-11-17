@@ -365,4 +365,26 @@ class BinarySerializerTests
 			Test.Assert(read.M[3][0] == 5.0f);
 		}
 	}
+
+	/// The count is bounded by the bytes left, an element taking at least one, but the reserve took
+	/// count times the element's size: 200,000 bytes left let a count of 200,000 matrices ask for
+	/// 12.8 MB before the first element failed to read.
+	[Test]
+	public static void AMisreadCountDoesNotReserveThatManyLargeElements()
+	{
+		const uint32 cCount = 200000;
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinaryWriter(stream);
+			writer.Write(cCount);
+			let filler = scope uint8[cCount];
+			writer.WriteBytes(filler);
+		}
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		let loader = scope BinarySerializer(stream, .Read);
+		let matrices = scope List<Float4x4>();
+		SerializeList(loader, matrices);
+		Test.Assert(!loader.IsOk, "200,000 bytes do not hold 200,000 matrices");
+		Test.Assert(matrices.Capacity < (int)cCount / 4, scope $"reserved {matrices.Capacity}");
+	}
 }

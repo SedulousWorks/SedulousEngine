@@ -153,6 +153,12 @@ static
 	/// it binds to whichever candidate comes first and then fails on the argument. This
 	/// dispatches on T instead and hands off. Generated bodies never come through here,
 	/// since they know each field's type and call the overload directly.
+	/// How many elements a list read reserves up front at most. The reader bounds a count by the
+	/// bytes left (an element is at least one), but an element may be far bigger than a byte:
+	/// reserved whole, a misread count asked for that many times the stream. A real list grows
+	/// past it as it reads.
+	private const int cReserveAtMost = 4096;
+
 	public static void SerializeValue<T>(ISerializer ar, ref T value) where T : ValueType
 	{
 		if (typeof(T).IsEnum)
@@ -212,7 +218,7 @@ static
 		if (ar.Mode == .Read)
 		{
 			list.Clear();
-			list.Reserve((int)count);
+			list.Reserve(Math.Min((int)count, cReserveAtMost));
 			for (uint32 i < count)
 			{
 				T element = default;
@@ -255,7 +261,7 @@ static
 		if (ar.Mode == .Read)
 		{
 			ClearAndDeleteItems!(list);
-			list.Reserve((int)count);
+			list.Reserve(Math.Min((int)count, cReserveAtMost));
 			for (uint32 i < count)
 			{
 				let element = new String();
@@ -293,7 +299,7 @@ static
 		if (ar.Mode == .Read)
 		{
 			ClearAndDeleteItems!(list);
-			list.Reserve((int)count);
+			list.Reserve(Math.Min((int)count, cReserveAtMost));
 			for (uint32 i < count)
 			{
 				let element = new T();
