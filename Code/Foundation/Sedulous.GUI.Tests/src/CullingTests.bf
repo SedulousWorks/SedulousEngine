@@ -426,4 +426,39 @@ class CullingTests
 		Test.Assert(same);
 		Test.Assert(found > 100);
 	}
+
+	/// A node under a hidden one returned from Invalidate before telling its ancestors, so the index
+	/// of the node above the hidden one kept the reach it had when it hid.
+	[Test]
+	public static void AReachThatMovesWhileAnAncestorIsHiddenIsRightOnceItShows()
+	{
+		let page = scope CullPage();
+		let geometry = scope List<uint64>();
+		page.Draw(true, geometry);
+		let scroller = page.Scroller;
+		let row = scroller.GetChildAt(5);
+		let indexed = scope List<Node>();
+		let walked = scope List<Node>();
+		bool AgreeAt(float y)
+		{
+			let area = Rect(0.0f, y, 400.0f, 60.0f);
+			indexed.Clear();
+			walked.Clear();
+			scroller.ChildrenReaching(area, indexed);
+			ReachingByWalk(scroller, area, walked);
+			return SameNodes(indexed, walked);
+		}
+
+		row.Visible = false; // visibility: hidden, its place kept
+		geometry.Clear();
+		page.Draw(true, geometry);
+		row.GetChildAt(0).Position = .(0.0f, 2600.0f); // under it, a card moves far down
+		geometry.Clear();
+		page.Draw(true, geometry);
+		Test.Assert(AgreeAt(row.Position.Y + 2600.0f));
+		row.Visible = true;
+		geometry.Clear();
+		page.Draw(true, geometry);
+		Test.Assert(AgreeAt(row.Position.Y + 2600.0f));
+	}
 }

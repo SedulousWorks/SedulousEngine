@@ -2487,9 +2487,26 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 		if (!IsTreeVisible || (mQuietInvalidations != 0))
 		{
 			NoteOldArea(null); // hidden: where it showed is to be drawn again
+			// No frame for what is not shown, but the ancestors' bookkeeping still hears it: their
+			// child indexes and subtree ink would otherwise answer with where this was when it hid,
+			// once the ancestor that hides it is shown again.
+			NoteReachChanged();
 			return;
 		}
 		NoteOldArea(MarkAncestorsForRedraw()); // the topmost: its root
+	}
+
+	/// Tells each ancestor that what is under it may reach elsewhere now (its subtree ink and its
+	/// child index), without marking anything for redrawing.
+	private void NoteReachChanged()
+	{
+		var through = this;
+		for (var p = mParent; p != null; p = p.mParent)
+		{
+			p.mSubtreeInkValid = false;
+			p.NoteChildChanged(through);
+			through = p;
+		}
 	}
 
 	/// Its ancestors draw again (what holds it changed), up to its root, which it returns: what
