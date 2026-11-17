@@ -178,7 +178,9 @@ class RenderFrame
 		mDevice = device;
 		mRegistry = registry;
 		mPass = new .(device, framesInFlight);
-		mGraph = new .(device);
+		// The graph's deletion ring is as deep as the frames in flight: built with its default (two),
+		// a third frame in flight still used a transient the ring had freed.
+		mGraph = new .(device, RenderGraphConfig((int32)Math.Max(framesInFlight, (uint32)1)));
 		mClusters = clusters;
 		mTonemap = tonemap;
 		mShadows = shadows;

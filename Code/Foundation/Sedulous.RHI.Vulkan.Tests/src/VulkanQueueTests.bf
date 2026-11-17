@@ -192,4 +192,13 @@ class VulkanQueueTests
 		device.DestroyBuffer(ref buffer);
 		device.DestroyCommandPool(ref pool);
 	}
+
+	/// ShaderRead | ShaderWrite (the render graph's ReadWriteStorage) was tested for its read first and
+	/// took SHADER_READ_ONLY_OPTIMAL, a layout a storage write may not use.
+	[Test]
+	public static void AStorageImageReadAndWrittenTakesTheGeneralLayout()
+	{
+		Test.Assert(VulkanBarrierHelper.GetImageLayout(.ShaderRead | .ShaderWrite, .RGBA16Float) == .VK_IMAGE_LAYOUT_GENERAL);
+		Test.Assert(VulkanBarrierHelper.GetImageLayout(.ShaderRead, .RGBA16Float) == .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
 }

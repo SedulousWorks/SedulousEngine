@@ -413,7 +413,9 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		if (state.HasFlag(.UniformBuffer))
 			result |= .D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 
-		if (state.HasFlag(.ShaderRead))
+		// Read and written (the render graph's ReadWriteStorage) is UNORDERED_ACCESS alone: a UAV reads
+		// too, and D3D12 refuses a write state mixed with read states.
+		if (state.HasFlag(.ShaderRead) && !state.HasFlag(.ShaderWrite))
 		{
 			if (TextureFormats.IsDepthFormat(format))
 			{

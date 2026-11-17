@@ -22,6 +22,8 @@ class RenderGraph
 
 	private List<RenderGraphResource> mResources = new .() ~ delete _;
 	private List<int32> mFreeResourceSlots = new .() ~ delete _;
+	/// By slot: how many resources it has held (kept as slots are reused).
+	private List<uint32> mSlotGenerations = new .() ~ delete _;
 	private List<RenderGraphPass> mPasses = new .() ~ delete _;
 	private List<int32> mExecutionOrder = new .() ~ delete _;
 	/// Per resource: the execution position it takes its final state after, or -1.
@@ -542,18 +544,25 @@ class RenderGraph
 		return .Ok(resource);
 	}
 
+	/// A slot's generation moves each time it takes a resource, so a handle to what held it before
+	/// (a pass's handle kept from an earlier frame) no longer resolves to its successor. Every
+	/// resource was generation 1, so such a handle reached whatever took the slot.
 	private RGHandle AddResource(RenderGraphResource resource)
 	{
+		int index;
 		if (!mFreeResourceSlots.IsEmpty)
 		{
-			let index = mFreeResourceSlots.PopBack();
+			index = mFreeResourceSlots.PopBack();
 			mResources[index] = resource;
-			return .((uint32)index, resource.Generation);
 		}
-
-		let index = (uint32)mResources.Count;
-		mResources.Add(resource);
-		return .(index, resource.Generation);
+		else
+		{
+			index = mResources.Count;
+			mResources.Add(resource);
+			mSlotGenerations.Add(0);
+		}
+		resource.Generation = ++mSlotGenerations[index];
+		return .((uint32)index, resource.Generation);
 	}
 
 	private PassHandle AddPassOfType(StringView name, RGPassType type,

@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- A storage image both read and written in one pass takes the layout (Vulkan) and state (DirectX 12)
+  a write needs; a non-square texture array of six or more layers is no longer made cube-compatible.
 - DirectX 12: a bindless sampler update on a bind group sharing its sampler table reaches the GPU
   (the group takes a table of its own), and a view whose descriptor heap had no room is skipped
   rather than copied from or bound.

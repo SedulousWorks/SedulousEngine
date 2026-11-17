@@ -73,4 +73,21 @@ class RGResourceTests
 		let persistent = scope RenderGraphResource("Persistent", .Texture, .Persistent);
 		persistent.ReleaseTransient(null);
 	}
+
+	/// Every resource was generation 1, so a handle kept from an earlier frame matched whatever later
+	/// took its slot: the stale handle resolved to the wrong texture.
+	[Test]
+	public static void ASlotReusedAfterResetGivesItsNewResourceANewGeneration()
+	{
+		let graph = scope RenderGraph(null);
+		graph.BeginFrame(0);
+		let first = graph.CreateTransient("First", .(TextureFormat.RGBA8Unorm));
+		graph.Reset();
+		graph.BeginFrame(1);
+		let second = graph.CreateTransient("Second", .(TextureFormat.RGBA8Unorm));
+		Test.Assert(second.Index == first.Index, "the slot was reused");
+		Test.Assert(second.Generation != first.Generation, "and the old handle does not name the new resource");
+		let found = graph.GetResource("Second");
+		Test.Assert((found.Index == second.Index) && (found.Generation == second.Generation));
+	}
 }

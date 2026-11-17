@@ -204,6 +204,10 @@ static class VulkanBarrierHelper
 		if (state.HasFlag(.DepthStencilRead))
 			return .VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
+		// Before a read: a storage image read and written (ShaderRead | ShaderWrite, the render
+		// graph's ReadWriteStorage) needs GENERAL, and took SHADER_READ_ONLY when read came first.
+		if (state.HasFlag(.ShaderWrite))
+			return .VK_IMAGE_LAYOUT_GENERAL;
 		if (state.HasFlag(.ShaderRead))
 		{
 			// A sampled depth or stencil texture takes the DEPTH_STENCIL read only layout,
@@ -213,8 +217,6 @@ static class VulkanBarrierHelper
 			return .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		}
 
-		if (state.HasFlag(.ShaderWrite))
-			return .VK_IMAGE_LAYOUT_GENERAL;
 		if (state.HasFlag(.CopySrc))
 			return .VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		if (state.HasFlag(.CopyDst))

@@ -65,7 +65,9 @@ class VulkanTexture : ITexture
 
 		// Six or more layers on a 2D texture is what a cube map is made from, and the flag
 		// has to be set at CREATION for a cube view to be possible later.
-		if ((desc.ArrayLayerCount >= 6) && (desc.Dimension == .Texture2D))
+		// Cube-compatible only where a cube can be: square, six layers or more. A non-square array of
+		// six layers (a texture atlas, a shadow array) failed to create with it.
+		if ((desc.ArrayLayerCount >= 6) && (desc.Dimension == .Texture2D) && (desc.Width == desc.Height))
 			createInfo.flags |= .VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
 		// A view may also take the format's sRGB or UNORM twin: mutable, listing exactly the two so
