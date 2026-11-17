@@ -47,6 +47,20 @@ class TrueTypeFontService : IFontService
 	private String mDefaultFamily = new String("Default") ~ delete _;
 	private CachedFont mDefaultFont;
 	private List<FamilySource> mSources = new .() ~ DeleteContainerAndItems!(_);
+	/// The sizes of a family that failed to bake: BakeSize does not try them again.
+	private List<FailedBake> mFailedBakes = new .() ~ DeleteContainerAndItems!(_);
+
+	/// A size of a family that would not bake.
+	private class FailedBake
+	{
+		public String Family = new .() ~ delete _;
+		public float Size;
+	}
+
+	/// Coverage sizes baked per family.
+	private const int cMaxBakedSizes = 24;
+	/// Distance-field views per family.
+	private const int cMaxScaledViews = 64;
 
 	/// `fileSystem` is optional and BORROWED.
 	public this(IFileSystem fileSystem = null)
@@ -162,6 +176,15 @@ class TrueTypeFontService : IFontService
 		let rounded = Clamp(Math.Round(pixelHeight), 4.0f, 256.0f);
 		if (FindExact(familyName, rounded) case .Ok(let exact))
 			return exact.Cached;
+		// A size that would not bake is not tried again on every request for it, and a family
+		// bakes so many sizes before the closest serves the rest (bakes are never freed).
+		for (let failed in mFailedBakes)
+		{
+			if ((failed.Size == rounded) && FamilyEquals(failed.Family, familyName))
+				return null;
+		}
+		if (CountEntries(familyName, false) >= cMaxBakedSizes)
+			return null;
 
 		var options = source.Options;
 		options.PixelHeight = rounded;
@@ -182,7 +205,13 @@ class TrueTypeFontService : IFontService
 			if (result == .Success)
 				return (FindExact(familyName, rounded) case .Ok(let made)) ? made.Cached : null;
 			if ((result != .AtlasPackingFailed) || (side >= 4096))
+			{
+				let failed = new FailedBake();
+				failed.Family.Set(familyName);
+				failed.Size = rounded;
+				mFailedBakes.Add(failed);
 				return null;
+			}
 			side *= 2;
 		}
 	}
@@ -219,7 +248,17 @@ class TrueTypeFontService : IFontService
 			if ((closest.Cached != null) && (closest.Cached.Atlas != null)
 				&& (closest.Cached.Atlas.Mode == .DistanceField)
 				&& (closest.PixelHeight != pixelHeight))
-				return SynthesizeScaled(closest, familyName, pixelHeight);
+			{
+				// Sizes to a quarter pixel, and so many to a family: entries are never freed (the
+				// GUI holds them without counting), so a size that animates must not leave one
+				// behind for every value it passes through.
+				let quantized = Math.Round(pixelHeight * 4.0f) * 0.25f;
+				if (FindExact(familyName, quantized) case .Ok(let near))
+					return near.Cached;
+				if (CountEntries(familyName, true) >= cMaxScaledViews)
+					return closest.Cached;
+				return SynthesizeScaled(closest, familyName, quantized);
+			}
 
 			// A coverage atlas holds glyphs at its one size: drawn at another, the text came out
 			// at the bake's size whatever was asked (every label in a game without a UI font drew
@@ -261,7 +300,22 @@ class TrueTypeFontService : IFontService
 	/// The service owns its fonts, so giving one back is nothing to do.
 	public override void ReleaseFont(CachedFont font) {}
 
+	/// The fonts it holds: each bake and each scaled view.
 	public int FontCount => mFonts.Count;
+	/// The sizes that would not bake.
+	public int FailedBakeCount => mFailedBakes.Count;
+
+	/// The family's entries: its scaled views (`views`) or its own bakes.
+	private int CountEntries(StringView familyName, bool views)
+	{
+		int count = 0;
+		for (let entry in mFonts)
+		{
+			if ((entry.SharedTexture == views) && FamilyEquals(entry.Family, familyName))
+				count++;
+		}
+		return count;
+	}
 
 	// ---- internals ----
 

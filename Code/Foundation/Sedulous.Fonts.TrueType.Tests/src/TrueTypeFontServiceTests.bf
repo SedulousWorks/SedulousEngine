@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
 using Sedulous.Image;
@@ -312,5 +313,40 @@ class TrueTypeFontServiceTests
 		Test.Assert(plain.LoadFont("Roboto", path, Options(16.0f)) == .Success);
 		let shaper = plain.GetFont("Roboto", 16.0f).Shaper;
 		Test.Assert((shaper is TrueTypeTextShaper) && !(shaper is RegisteredShaper));
+	}
+
+	/// Every size asked for baked an atlas that was never freed, and a size that failed to bake was
+	/// baked again (opening and parsing the font) on every request for it.
+	[Test]
+	public static void AFamilyBakesSoManySizesAndASizeThatWillNotBakeIsNotTriedAgain()
+	{
+		let path = scope String();
+		if (!FontPath(path))
+			return;
+
+		{
+			let service = scope TrueTypeFontService();
+			Test.Assert(service.LoadFont("Roboto", path, Options(16.0f)) == .Success);
+			let loaded = service.FontCount;
+			for (int size = 10; size < 70; size++)
+				Test.Assert(service.GetFont("Roboto", (float)size) != null); // past the cap: the closest
+			Test.Assert(service.FontCount <= loaded + 24, scope $"{service.FontCount} fonts");
+		}
+
+		// A family whose file is gone after it loaded cannot bake another size: tried once.
+		let scratch = "scratch_ttf_failed_bake.ttf";
+		{
+			let bytes = scope List<uint8>();
+			Test.Assert(ReadFile(path, bytes) case .Ok);
+			Test.Assert(WriteFile(scratch, bytes) case .Ok);
+		}
+		let gone = scope TrueTypeFontService();
+		Test.Assert(gone.LoadFont("Gone", scratch, Options(16.0f)) == .Success);
+		Test.Assert(DeleteFile(scratch));
+		let first = gone.GetFont("Gone", 33.0f);
+		let second = gone.GetFont("Gone", 33.0f);
+		Test.Assert(first != null); // the closest bake answers
+		Test.Assert(first == second);
+		Test.Assert(gone.FailedBakeCount == 1, scope $"{gone.FailedBakeCount} failed");
 	}
 }

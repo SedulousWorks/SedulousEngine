@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Fonts: text whose size animates no longer builds a new font for every size it passes through,
+  and a size that cannot be built is not rebuilt on every frame.
 - SVG: an image with a width, a height and a `viewBox` is drawn at its size (it was scaled by its
   raw coordinates); `fill-rule` is honoured and defaults to nonzero as SVG says; an out-of-range
   number no longer turns a shape into nothing.
