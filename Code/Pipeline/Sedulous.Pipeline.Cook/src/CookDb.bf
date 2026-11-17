@@ -14,7 +14,8 @@ namespace Sedulous.Pipeline.Cook;
 /// wrong.
 class CookDb
 {
-	public const uint32 cVersion = 1;
+	/// 2: a file memo records when it was hashed.
+	public const uint32 cVersion = 2;
 	public const String cDefaultName = "cook.db";
 
 	private Dictionary<Guid, CookRecord> mRecords = new .() ~ delete _;

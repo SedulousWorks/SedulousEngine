@@ -9,3 +9,10 @@ class CookWidgetProduct
 {
 	public int32 CookedValue = 0;
 }
+
+/// The widget's product at another data version: a format change no builder number mirrors.
+[Serializable(2)]
+class CookWidgetProductV2
+{
+	public int32 CookedValue = 0;
+}

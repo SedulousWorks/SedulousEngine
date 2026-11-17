@@ -49,6 +49,9 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 	/// `minReadVersion` is the exception: the oldest version a LEGACY READER still decodes,
 	/// for a layout that only grew at its end. The fields added since are [Appended(version)],
 	/// so data stored before them reads with those fields at their defaults.
+	/// The version this type's data is written with (nought: unversioned).
+	public uint32 DataVersion => mDataVersion;
+
 	public this(uint32 dataVersion = 0, bool afterRead = false, uint32 minReadVersion = 0)
 	{
 		mDataVersion = dataVersion;

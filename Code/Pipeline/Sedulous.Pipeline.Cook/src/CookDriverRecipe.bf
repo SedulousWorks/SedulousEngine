@@ -4,6 +4,7 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
+using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
 using Sedulous.VFS;
 
@@ -67,6 +68,13 @@ extension CookDriver
 
 		// The builder's own version, which is how a cook logic change forces a re-cook.
 		h = RecipeHash.Fold(h, (uint64)'V', (uint64)builder.Version);
+		// And the data version of what it writes (the product type and its bases): a product
+		// format that changes recooks even when the builder's own number is not bumped with it.
+		for (var product = builder.ProductType; product != null; product = product.BaseType)
+		{
+			if (product.GetCustomAttribute<SerializableAttribute>() case .Ok(let serializable))
+				h = RecipeHash.Fold(h, (uint64)'D', (uint64)serializable.DataVersion);
+		}
 
 		// What the build compiles against (the script surface), when the builder has one.
 		let environment = builder.EnvironmentHash;
@@ -143,8 +151,11 @@ extension CookDriver
 		{
 			for (let old in previous.Files)
 			{
+				// The same size and time are proof only for a file last modified before the second
+				// its hash was taken: one written in that second could have changed after the hash
+				// and kept both, on a file system whose times are in whole seconds.
 				if ((old.Path == path) && (old.Size == info.Size)
-					&& (old.ModifiedTicks == info.ModifiedTicks))
+					&& (old.ModifiedTicks == info.ModifiedTicks) && (old.ModifiedTicks < old.HashedAt))
 				{
 					// Untouched since the last cook, so its hash stands and the file is never
 					// read.
@@ -153,6 +164,7 @@ extension CookDriver
 					memo.Size = old.Size;
 					memo.ModifiedTicks = old.ModifiedTicks;
 					memo.ContentHash = old.ContentHash;
+					memo.HashedAt = old.HashedAt;
 					outMemos.Add(memo);
 					return memo.ContentHash;
 				}
@@ -173,6 +185,8 @@ extension CookDriver
 		let memo = new CookFileMemo();
 		memo.Path.Set(path);
 		memo.ContentHash = hash;
+		let now = DateTime.UtcNow.Ticks;
+		memo.HashedAt = now - (now % TimeSpan.TicksPerSecond);
 		if (hasStat)
 		{
 			memo.Size = info.Size;

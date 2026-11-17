@@ -131,6 +131,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Cook: a source file saved again within a second of the last cook, at the same size, is cooked
+  again rather than kept stale; a change to a cooked format recooks its assets. The first cook after
+  updating cooks everything once.
 - Resources: an asset reloaded while it was still loading keeps the reloaded version, rather than
   the load in flight putting the old one back.
 - HTTP: a server's interim answer (100 Continue, 103 Early Hints) is no longer taken as the response;

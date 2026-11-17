@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Pipeline.Cook;
 using Sedulous.VFS;
 
@@ -138,5 +139,68 @@ class CookPersistenceTests
 		let after = scope CookPlan();
 		driver.Plan(after);
 		Test.Assert(after.Dirty.IsEmpty);
+	}
+
+	/// The memo trusted a file with the same size and time, so a rewrite of the same size inside
+	/// the second the hash was taken kept the old product on a file system whose times are whole
+	/// seconds. And the recipe had the builder's version and not the data version of what it
+	/// writes, so a product format change nobody mirrored into the builder's number kept old
+	/// products.
+	[Test]
+	public static void ASameSizeRewriteInTheSecondOfTheLastCookRecooksAndAProductDataVersionRecooks()
+	{
+		let fixture = scope CookFixture("scratch_cook_racy");
+		// One whole second a minute ahead, set on both writes: this file system keeps times finer
+		// than a second, so only a pinned time makes the rewrite look like the file the memo saw.
+		let pinned = (DateTime.UtcNow.Ticks - DateTime(1970, 1, 1).Ticks) / TimeSpan.TicksPerSecond + 60;
+		fixture.WriteSourceFile("a.txt", "12345");
+		PinWriteTime(fixture, "a.txt", pinned);
+		let a = fixture.AddWidget("A", 10, "a.txt");
+		let driver = scope CookDriver(fixture.SourceDb, fixture.CookedDb, fixture.Builders,
+			fixture.SourcesFs, fixture.CacheFs);
+		{
+			let plan = scope CookPlan();
+			driver.Plan(plan);
+			driver.Execute(plan, scope CookStats());
+		}
+
+		fixture.WriteSourceFile("a.txt", "54321"); // the same size, at the same time
+		PinWriteTime(fixture, "a.txt", pinned);
+		{
+			let plan = scope CookPlan();
+			driver.Plan(plan);
+			Test.Assert(plan.Dirty.Count == 1, scope $"{plan.Dirty.Count} dirty after a same-size rewrite");
+			Test.Assert(plan.Dirty[0].Source == a);
+			driver.Execute(plan, scope CookStats());
+		}
+
+		{
+			let settled = scope CookPlan();
+			driver.Plan(settled);
+			driver.Execute(settled, scope CookStats()); // whatever the last plan left
+		}
+		CookWidgetBuilder.CurrentProductType = typeof(CookWidgetProductV2);
+		defer { CookWidgetBuilder.CurrentProductType = typeof(CookWidgetProduct); }
+		let plan = scope CookPlan();
+		driver.Plan(plan);
+		Test.Assert(plan.Dirty.Count == 1, scope $"{plan.Dirty.Count} dirty after the product's data version moved");
+	}
+
+#if !BF_PLATFORM_WINDOWS
+	[CLink]
+	private static extern int32 utimes(char8* path, int64* times);
+#endif
+
+	/// Sets a source file's access and write times to `unixSeconds`. Windows is left alone: its
+	/// times are fine enough that a rewrite always moves them.
+	private static void PinWriteTime(CookFixture fixture, StringView name, int64 unixSeconds)
+	{
+#if !BF_PLATFORM_WINDOWS
+		let sources = fixture.SubPath("Sources", .. scope String());
+		let path = PathJoin(sources, name, .. scope String());
+		// Two timevals (seconds, microseconds): access, then write.
+		int64[4] times = .(unixSeconds, 0, unixSeconds, 0);
+		Test.Assert(utimes(path, &times[0]) == 0);
+#endif
 	}
 }

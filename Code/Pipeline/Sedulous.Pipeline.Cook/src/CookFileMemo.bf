@@ -16,4 +16,8 @@ class CookFileMemo
 	public int64 Size = 0;
 	public int64 ModifiedTicks = 0;
 	public uint64 ContentHash = 0;
+	/// When the hash was taken, in UTC ticks floored to the second. A file modified in that second
+	/// or after may have changed after the hash with the same size and a time the stat rounds the
+	/// same, so its memo is not trusted.
+	public int64 HashedAt = 0;
 }

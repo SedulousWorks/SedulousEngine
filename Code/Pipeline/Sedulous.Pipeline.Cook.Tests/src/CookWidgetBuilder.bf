@@ -15,9 +15,12 @@ class CookWidgetBuilder : IAssetBuilder
 	public static uint64 CurrentEnvironment = 0;
 	/// Settable, so a case can make the build fail on demand.
 	public static bool ShouldFail = false;
+	/// Settable, so a case can change the product type (and with it the data version) it says
+	/// it writes.
+	public static Type CurrentProductType = typeof(CookWidgetProduct);
 
 	public Type AssetType => typeof(CookWidgetAsset);
-	public Type ProductType => typeof(CookWidgetProduct);
+	public Type ProductType => CurrentProductType;
 	public int32 Version => CurrentVersion;
 	public uint64 EnvironmentHash => CurrentEnvironment;
 
