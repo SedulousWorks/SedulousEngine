@@ -259,4 +259,36 @@ class FreeverbTests
 		let atHigher = MeasureTailBlocks(48000);
 		Test.Assert(Abs(atStandard - atHigher) < (atStandard * 0.25f + 0.1f));
 	}
+
+	/// The parameters are set from the game thread while the audio thread processes; a block reads
+	/// them once. A block processed after SetParams uses the new values.
+	[Test]
+	public static void ParametersSetBetweenBlocksTakeEffectOnTheNextBlock()
+	{
+		let reverb = scope FreeverbState();
+		reverb.Initialize(48000);
+		var dryOnly = AudioReverbParams();
+		dryOnly.Wet = 0.0f;
+		dryOnly.Dry = 1.0f;
+		reverb.SetParams(dryOnly);
+		float[16] input = default;
+		for (int i < 16)
+			input[i] = 0.25f * (float)(i % 4) - 0.3f;
+		float[16] output = default;
+		reverb.ProcessStereo(&input[0], &output[0], 8);
+		for (int i < 16)
+			Test.Assert(Math.Abs(output[i] - input[i]) < 1.0e-5f, "dry alone: the input as it was");
+
+		var wetOnly = AudioReverbParams();
+		wetOnly.Wet = 1.0f;
+		wetOnly.Dry = 0.0f;
+		reverb.SetParams(wetOnly);
+		Test.Assert(Math.Abs(reverb.Wet - 1.0f) < 1.0e-5f);
+		Test.Assert(Math.Abs(reverb.Dry) < 1.0e-5f);
+		reverb.ProcessStereo(&input[0], &output[0], 8);
+		bool changed = false;
+		for (int i < 16)
+			changed = changed || (Math.Abs(output[i] - input[i]) > 1.0e-3f);
+		Test.Assert(changed, "no dry path: what comes out is the tail");
+	}
 }

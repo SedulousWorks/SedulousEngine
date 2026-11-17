@@ -41,11 +41,14 @@ class FreeverbState
 	private Comb[2][cCombCount] mCombs;
 	private Allpass[2][cAllpassCount] mAllpasses;
 
-	private float mFeedback = 0.84f;
-	private float mDamp = 0.2f;
-	private float mWet = 0.4f;
+	// Set from the game thread while the audio thread processes: each is volatile, and processing
+	// reads them once per block, so a block runs on one set of values (plain fields read through
+	// a block were a data race, and a block could mix the old values with the new).
+	private volatile float mFeedback = 0.84f;
+	private volatile float mDamp = 0.2f;
+	private volatile float mWet = 0.4f;
 	/// Tracks one minus the wet unless the parameters pin it, which is the send form.
-	private float mDry = 0.6f;
+	private volatile float mDry = 0.6f;
 	private bool mInitialized = false;
 
 	public this()
@@ -111,16 +114,21 @@ class FreeverbState
 
 	public void SetParams(AudioReverbParams parameters)
 	{
+		let wet = Clamp(parameters.Wet, 0.0f, 1.0f);
 		mFeedback = 0.7f + Clamp(parameters.RoomSize, 0.0f, 1.0f) * 0.28f;
 		mDamp = Clamp(parameters.Damping, 0.0f, 1.0f) * 0.4f;
-		mWet = Clamp(parameters.Wet, 0.0f, 1.0f);
-		mDry = (parameters.Dry < 0.0f) ? (1.0f - mWet) : Clamp(parameters.Dry, 0.0f, 1.0f);
+		mWet = wet;
+		mDry = (parameters.Dry < 0.0f) ? (1.0f - wet) : Clamp(parameters.Dry, 0.0f, 1.0f);
 	}
 
 	/// Processes interleaved stereo: the output is the input at the dry level plus the tail
 	/// at the wet one. A mono caller duplicates its channel.
 	public void ProcessStereo(float* input, float* output, uint32 frameCount)
 	{
+		let dry = mDry;
+		let wet = mWet;
+		let damp = mDamp;
+		let feedback = mFeedback;
 		for (uint32 frame = 0; frame < frameCount; frame++)
 		{
 			let inLeft = input[frame * 2 + 0];
@@ -132,8 +140,8 @@ class FreeverbState
 
 			for (int i < cCombCount)
 			{
-				outLeft += CombProcess(mCombs[0][i], feed);
-				outRight += CombProcess(mCombs[1][i], feed);
+				outLeft += CombProcess(mCombs[0][i], feed, damp, feedback);
+				outRight += CombProcess(mCombs[1][i], feed, damp, feedback);
 			}
 
 			for (int i < cAllpassCount)
@@ -142,8 +150,8 @@ class FreeverbState
 				outRight = AllpassProcess(mAllpasses[1][i], outRight);
 			}
 
-			output[frame * 2 + 0] = inLeft * mDry + outLeft * mWet * 3.0f;
-			output[frame * 2 + 1] = inRight * mDry + outRight * mWet * 3.0f;
+			output[frame * 2 + 0] = inLeft * dry + outLeft * wet * 3.0f;
+			output[frame * 2 + 1] = inRight * dry + outRight * wet * 3.0f;
 		}
 	}
 
@@ -155,11 +163,11 @@ class FreeverbState
 	private static float Undenormal(float value) =>
 		((value > -1.0e-18f) && (value < 1.0e-18f)) ? 0.0f : value;
 
-	private float CombProcess(Comb comb, float input)
+	private float CombProcess(Comb comb, float input, float damp, float feedback)
 	{
 		let output = comb.Buffer[comb.Cursor];
-		comb.FilterStore = Undenormal(output * (1.0f - mDamp) + comb.FilterStore * mDamp);
-		comb.Buffer[comb.Cursor] = Undenormal(input + comb.FilterStore * mFeedback);
+		comb.FilterStore = Undenormal(output * (1.0f - damp) + comb.FilterStore * damp);
+		comb.Buffer[comb.Cursor] = Undenormal(input + comb.FilterStore * feedback);
 
 		comb.Cursor++;
 		if (comb.Cursor >= comb.Buffer.Count)
