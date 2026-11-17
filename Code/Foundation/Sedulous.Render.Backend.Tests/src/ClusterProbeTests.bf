@@ -38,8 +38,51 @@ class ClusterProbeTests
 		return (uint32)Clamp((ndcX * 0.5f + 0.5f) * (float)cSize, 0.0f, (float)(cSize - 1));
 	}
 
-	/// The grid of lights over a grey ground, with no ambient, read back raw.
-	private static CapturedImage RenderLights(BackendProbeFixture fixture, ViewCamera camera)
+	/// The lights of the scene: a grid of small ones, or (crowded) a dim sun and 40 large point lights
+	/// each reaching the whole view, more than the shared list's average per cluster.
+	private static void AddLights(ExtractedScene scene, bool crowded)
+	{
+		if (crowded)
+		{
+			var sun = GpuLight();
+			sun.Type = 0.0f;
+			sun.DirectionWS = Normalized(Float3(0.2f, -1.0f, 0.1f));
+			sun.Color = .(1, 1, 1);
+			sun.Intensity = 1.0f;
+			sun.ShadowIndex = -1.0f;
+			scene.AddLight(sun);
+			for (int32 i < 40)
+			{
+				var light = GpuLight();
+				light.Type = 1.0f;
+				light.PositionWS = .((float)(i % 8) - 3.5f, 30.0f, (float)(i / 8) - 2.0f);
+				light.Range = 60.0f; // far above, reaching all of the ground in view, faintly
+				light.Color = .(1, 1, 1);
+				light.Intensity = 0.01f;
+				light.ShadowIndex = -1.0f;
+				scene.AddLight(light);
+			}
+			return;
+		}
+		// A 9 by 5 grid: 45 lights, past the list's average per cluster.
+		for (int32 gz = -2; gz <= 2; gz++)
+		{
+			for (int32 gx = -4; gx <= 4; gx++)
+			{
+				var light = GpuLight();
+				light.Type = 1.0f; // point
+				light.PositionWS = .((float)gx * cSpacing, cHeight, (float)gz * cSpacing);
+				light.Range = cRange;
+				light.Color = .(1, 1, 1);
+				light.Intensity = 6.0f;
+				light.ShadowIndex = -1.0f;
+				scene.AddLight(light);
+			}
+		}
+	}
+
+	/// The scene's lights over a grey ground, with no ambient, read back raw.
+	private static CapturedImage RenderLights(BackendProbeFixture fixture, ViewCamera camera, bool crowded = false)
 	{
 		let device = fixture.Device;
 		let shaders = fixture.Shaders;
@@ -70,21 +113,7 @@ class ClusterProbeTests
 		ground.Mesh = plane;
 		ground.Material = grey;
 		ground.Category = RenderCategories.Opaque;
-		// A 9 by 5 grid: 45 lights, past the list's average per cluster.
-		for (int32 gz = -2; gz <= 2; gz++)
-		{
-			for (int32 gx = -4; gx <= 4; gx++)
-			{
-				var light = GpuLight();
-				light.Type = 1.0f; // point
-				light.PositionWS = .((float)gx * cSpacing, cHeight, (float)gz * cSpacing);
-				light.Range = cRange;
-				light.Color = .(1, 1, 1);
-				light.Intensity = 6.0f;
-				light.ShadowIndex = -1.0f;
-				scene.AddLight(light);
-			}
-		}
+		AddLights(scene, crowded);
 
 		var textureDesc = TextureDesc();
 		textureDesc.Format = .RGBA8Unorm;
@@ -166,5 +195,19 @@ class ClusterProbeTests
 			Test.Assert(lit > 120, scope $"{kind} light {gx}: its own light found its cluster, under it {lit}");
 			Test.Assert(between < 30, scope $"{kind} light {gx}: no light past its range did, between {between}");
 		}
+
+		// Crowded: every cluster has the sun and all 40 point lights, more than its share. A packed
+		// list cut at its region's end left the clusters past it with no lights at all, the sun
+		// included: whole tiles of the ground went black.
+		let crowded = RenderLights(fixture, camera, true);
+		defer delete crowded;
+		Test.Assert((crowded != null) && crowded.Valid, scope $"{kind}: the crowded scene rendered");
+		uint32 darkest = 765;
+		for (uint32 y = 8; y < cSize - 8; y += 4)
+		{
+			for (uint32 x = 8; x < cSize - 8; x += 4)
+				darkest = Math.Min(darkest, (uint32)crowded.Luma(x, y));
+		}
+		Test.Assert(darkest > 60, scope $"{kind} crowded: the sun reaches every pixel of the ground, darkest {darkest}");
 	}
 }
