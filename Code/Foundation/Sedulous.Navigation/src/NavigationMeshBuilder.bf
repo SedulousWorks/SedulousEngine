@@ -44,7 +44,7 @@ static class NavigationMeshBuilder
 		out TileGrid outGrid)
 	{
 		outGrid = .();
-		if (vertices.IsEmpty || (parameters.TileCells == 0))
+		if (vertices.IsEmpty || !parameters.AreUsable)
 			return false;
 
 		for (int c < 3)
@@ -257,7 +257,7 @@ static class NavigationMeshBuilder
 		outTileData.Clear();
 		if (vertices.IsEmpty || indices.IsEmpty || ((indices.Length % 3) != 0)
 			|| (gridDesc.TileWorldSize <= 0.0f) || (gridDesc.CountX <= 0)
-			|| (gridDesc.CountY <= 0))
+			|| (gridDesc.CountY <= 0) || !parameters.AreUsable)
 			return .Err(.InvalidArgument);
 
 		var grid = TileGrid();

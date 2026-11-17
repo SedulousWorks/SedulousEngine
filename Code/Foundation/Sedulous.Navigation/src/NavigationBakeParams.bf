@@ -29,6 +29,11 @@ struct NavigationBakeParams
 	/// than the zone.
 	public uint32 TileCells = 64;
 
+	/// Whether a bake can run with these: the voxel sizes are positive numbers (a zero cell size
+	/// divided by zero, and a NaN one gave a grid of nonsense) and a tile has cells.
+	public bool AreUsable => (CellSize > 0.0f) && CellSize.IsFinite && (CellHeight > 0.0f) && CellHeight.IsFinite
+		&& (TileCells > 0);
+
 	/// Whether the tiles bake across workers. They are independent and the assembly stays row
 	/// major, so THE OUTPUT IS THE SAME EITHER WAY: this trades latency, never bytes.
 	public bool ParallelBake = true;

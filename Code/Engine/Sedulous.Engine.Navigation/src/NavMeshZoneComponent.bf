@@ -23,7 +23,9 @@ struct NavMeshZoneComponent : ISerializable, IComponentResources
 	/// The zone's half extents in the entity's LOCAL space, which is the bake region.
 	public Float3 Extents = .(20.0f, 10.0f, 20.0f);
 
+	[Range(0.01f, 10.0f, 0.01f)] // a zero cell divides by zero
 	public float CellSize = 0.3f;
+	[Range(0.01f, 10.0f, 0.01f)]
 	public float CellHeight = 0.2f;
 	public float AgentRadius = 0.6f;
 	public float AgentHeight = 2.0f;

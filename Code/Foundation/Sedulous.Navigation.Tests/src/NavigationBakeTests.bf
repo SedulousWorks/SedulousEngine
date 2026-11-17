@@ -289,4 +289,26 @@ class NavigationBakeTests
 		Test.Assert(NavigationMeshBuilder.BuildTiled(verts, indices, parameters, none) case .Err);
 		Test.Assert(none.IsEmpty);
 	}
+
+	/// The tile grid divided by the cell size with nothing checking it: zero gave an unbounded tile
+	/// count, and a NaN one a grid of nonsense.
+	[Test]
+	public static void ABakeWithAZeroOrNonNumberCellSizeIsRefusedNotDividedBy()
+	{
+		let verts = scope List<Float3>();
+		let indices = scope List<uint32>();
+		NavigationFixture.AddGround(verts, indices, -10, 10, -10, 10);
+		let output = scope List<uint8>();
+		var zero = NavigationBakeParams();
+		zero.CellSize = 0.0f;
+		Test.Assert(NavigationMeshBuilder.Build(verts, indices, zero, output) case .Err(.InvalidArgument));
+		var flat = NavigationBakeParams();
+		flat.CellHeight = 0.0f;
+		Test.Assert(NavigationMeshBuilder.Build(verts, indices, flat, output) case .Err(.InvalidArgument));
+		var notANumber = NavigationBakeParams();
+		notANumber.CellSize = Math.Sqrt(-1.0f);
+		Test.Assert(!notANumber.AreUsable);
+		Test.Assert(NavigationMeshBuilder.Build(verts, indices, notANumber, output) case .Err(.InvalidArgument));
+		Test.Assert(NavigationBakeParams().AreUsable, "the defaults bake");
+	}
 }

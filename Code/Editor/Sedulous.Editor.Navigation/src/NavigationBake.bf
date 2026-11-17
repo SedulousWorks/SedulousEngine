@@ -53,7 +53,9 @@ static class NavigationBake
 	/// came out of it.
 	public static void DescribeBake(BakeResult result, String outText)
 	{
-		if (result.Baked)
+		if (result.UnusableCells)
+			outText.Append("The zone's Cell Size and Cell Height must be positive numbers, so the zone keeps its last bake.");
+		else if (result.Baked)
 			outText.Append("Navigation baked into the zone's asset; the scene is unchanged. Cook to apply.");
 		else if (result.TriangleCount == 0)
 			outText.Append("No static geometry inside the zone box, so the zone keeps its last bake. Check the zone's Extents cover your floor, that the floor has a static, non-trigger Rigid Body (or is terrain), and that the zone is placed over it. Render meshes are not read.");
@@ -90,6 +92,11 @@ static class NavigationBake
 		let zone = zones.Get(zoneEntity);
 		if (zone == null)
 			return result;
+		if (!ParamsFor(zone, parallelBake).AreUsable)
+		{
+			result.UnusableCells = true;
+			return result;
+		}
 
 		let verts = scope List<Float3>();
 		let indices = scope List<uint32>();
@@ -136,6 +143,8 @@ static class NavigationBake
 		let zone = (zones != null) ? zones.Get(zoneEntity) : null;
 		if (zone == null)
 			return result;
+		if (!ParamsFor(zone, parallelBake).AreUsable)
+			return result; // nothing rebaked; a full bake says why
 
 		// The existing blob's grid anchors the patch; no tiled blob means the full-bake fallback,
 		// also the migration path for single-tile assets.

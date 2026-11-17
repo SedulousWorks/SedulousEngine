@@ -313,4 +313,36 @@ static class NavigationBakeTests
 		let text = NavigationBake.DescribeBake(result, .. scope .());
 		Test.Assert(text.Contains("Cook") && !text.Contains("Save"), text);
 	}
+
+	/// Nothing checked a zone's cell size, and the tile grid divides by it.
+	[Test]
+	public static void AZoneWhoseCellSizeIsZeroIsNotBakedAndTheBakeSaysWhy()
+	{
+		NavigationResources.RegisterAll();
+		NavigationPipeline.RegisterAll();
+		let dir = BakeFixtures.ScratchDir("scratch_navbake_zero_db", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let mount = scope NativeFileSystem(dir);
+		SerializerFactory serializers = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let db = scope ContentDatabase(mount, serializers, "rasset");
+		let assetInstance = db.RootGroup.CreateInstance("zone", BakeFixtures.cZoneAssetType);
+		Test.Assert(assetInstance != null);
+
+		let scene = scope Scene("bake_zero");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		scene.AddSystem<RigidBodyComponentManager>();
+		BakeFixtures.AddBody(scene, "ground", .(0, -0.5f, 0), .(10, 0.5f, 10), .Static);
+		let zoneEntity = scene.CreateEntity("zone");
+		let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(zoneEntity);
+		zone.Extents = .(15, 10, 15);
+		zone.CellSize = 0.0f;
+		scene.UpdateTransforms();
+
+		let result = NavigationBake.BakeNavigationZone(scene, zoneEntity, assetInstance);
+		Test.Assert(!result.Baked);
+		Test.Assert(result.UnusableCells);
+		let said = scope String();
+		NavigationBake.DescribeBake(result, said);
+		Test.Assert(said.Contains("Cell Size"), said);
+	}
 }
