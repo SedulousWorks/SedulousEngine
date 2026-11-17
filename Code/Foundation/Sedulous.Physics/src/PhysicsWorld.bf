@@ -792,9 +792,9 @@ class PhysicsWorld
 		outHit.UserData = UserData(outHit.Body);
 
 		var lock = JPH_BodyLockRead();
-		let bodies = JPH_PhysicsSystem_GetBodyLockInterface(mSystem);
-		JPH_BodyLockInterface_LockRead(bodies, hit.bodyID, &lock);
-		defer JPH_BodyLockInterface_UnlockRead(bodies, &lock);
+		let locks = JPH_PhysicsSystem_GetBodyLockInterface(mSystem);
+		JPH_BodyLockInterface_LockRead(locks, hit.bodyID, &lock);
+		defer JPH_BodyLockInterface_UnlockRead(locks, &lock);
 
 		if (lock.body != null)
 		{

@@ -112,7 +112,7 @@ class RandomTests
 			let wide = rng.NextInt(-2000000000, 2000000000);
 			Test.Assert((wide >= -2000000000) && (wide <= 2000000000));
 			let low = rng.NextInt(int32.MinValue, int32.MinValue + 3);
-			Test.Assert((low >= int32.MinValue) && (low <= int32.MinValue + 3));
+			Test.Assert(low <= int32.MinValue + 3); // an int32 is never below its least
 			Test.Assert(rng.NextInt(5, 5) == 5);
 		}
 	}

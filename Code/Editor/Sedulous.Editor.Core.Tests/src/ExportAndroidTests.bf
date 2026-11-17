@@ -86,7 +86,9 @@ static class ExportAndroidTests
 		defer RemoveDirectoryRecursive(sdk);
 		CreateDirectory(sdk);
 		let home = scope ScopedVariable("ANDROID_HOME", sdk);
+		Test.Assert(home != null);
 		let password = scope ScopedVariable(ExportAndroid.cStorePasswordVariable, "");
+		Test.Assert(password != null);
 
 		let preset = scope ExportPreset();
 		preset.Name.Set("Android");
@@ -120,6 +122,7 @@ static class ExportAndroidTests
 		// The SDK Gradle needs.
 		{
 			let none = scope ScopedVariable("ANDROID_HOME", PathJoin(sdk, "missing", .. scope .()));
+			Test.Assert(none != null);
 			Test.Assert(!ExportAndroid.CheckExport(fx.Project, preset, null, why..Clear()) && why.Contains("ANDROID_HOME"));
 		}
 
@@ -305,6 +308,7 @@ static class ExportAndroidTests
 		defer { RemoveDirectoryRecursive(sdk); RemoveDirectoryRecursive(templates); }
 		CreateDirectory(sdk);
 		let home = scope ScopedVariable("ANDROID_HOME", sdk);
+		Test.Assert(home != null);
 
 		let bundle = PathJoin(templates, "android-test", .. scope .());
 		FakeTemplate(scope ExportTemplate(), bundle, "Release", """

@@ -307,7 +307,7 @@ class ScreenStack : UIWidget
 		let walked = scope List<Screen>()..AddRange(mScreens);
 		for (let screen in walked)
 			screen.AddRef();
-		defer { for (let screen in walked) screen.ReleaseRef(); }
+		defer { for (let held in walked) held.ReleaseRef(); }
 		for (int i = walked.Count - 1; i >= 0; i--)
 		{
 			let screen = walked[i];

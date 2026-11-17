@@ -103,7 +103,7 @@ class SDL3DialogService : IDialogService
 		{
 			Sedulous.Core.Logging.GlobalLog(.Error, "Shell: a file dialog's result could not reach the main thread: {}",
 				StringView(SDL3.SDL_GetError()));
-			pending.[Friend]mOwner.[Friend]Retire(pending);
+			pending.[Friend]mOwner.Retire(pending);
 		}
 	}
 
