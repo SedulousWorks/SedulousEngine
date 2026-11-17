@@ -129,6 +129,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Web: keys and buttons held when the page loses focus or is hidden are let go, rather than staying
+  held; a mouse button released outside the game's canvas is released in the game.
 - Input: unplugging a gamepad no longer renumbers the others, so each player keeps their pad; a
   pad plugged in takes the free number.
 - Editor: a file dialog's answer is handled on the editor's own thread, not the dialog's.

@@ -39,6 +39,8 @@ static class EmscriptenHtml5
 		void* userData);
 	public typealias FocusCallback = function bool(int32 eventType, EmscriptenFocusEvent* event,
 		void* userData);
+	public typealias VisibilityChangeCallback = function bool(int32 eventType,
+		EmscriptenVisibilityChangeEvent* event, void* userData);
 	public typealias MainLoopCallback = function void(void* userData);
 
 	// ---- the canvas ----
@@ -118,6 +120,10 @@ static class EmscriptenHtml5
 	[CLink, CallingConvention(.Cdecl)]
 	public static extern EmscriptenResult emscripten_set_blur_callback_on_thread(char8* target,
 		void* userData, bool useCapture, FocusCallback callback, int targetThread);
+
+	[CLink, CallingConvention(.Cdecl)]
+	public static extern EmscriptenResult emscripten_set_visibilitychange_callback_on_thread(
+		void* userData, bool useCapture, VisibilityChangeCallback callback, int targetThread);
 
 	[CLink, CallingConvention(.Cdecl)]
 	public static extern EmscriptenResult emscripten_set_focus_callback_on_thread(char8* target,

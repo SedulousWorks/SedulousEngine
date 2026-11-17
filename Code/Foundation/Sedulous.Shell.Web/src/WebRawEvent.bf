@@ -18,6 +18,8 @@ struct WebRawEvent
 		case MouseButton;
 		case Wheel;
 		case Touch;
+		/// Focus or visibility lost: every held key, button and finger lets go.
+		case ReleaseAll;
 	}
 
 	/// Which end of a touch this is: a start, a move, or an end or cancel.

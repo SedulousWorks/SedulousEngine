@@ -87,7 +87,9 @@ class WebInputManager : IInputManager
 			=> OnMouseMove, EmscriptenHtml5.PthreadMain);
 		EmscriptenHtml5.emscripten_set_mousedown_callback_on_thread(canvas, self, false,
 			=> OnMouseButton, EmscriptenHtml5.PthreadMain);
-		EmscriptenHtml5.emscripten_set_mouseup_callback_on_thread(canvas, self, false,
+		// The release on the window: a drag that leaves the canvas lets go out there, and only the
+		// window hears it (a button never released stays held in the game).
+		EmscriptenHtml5.emscripten_set_mouseup_callback_on_thread(window, self, false,
 			=> OnMouseButton, EmscriptenHtml5.PthreadMain);
 		EmscriptenHtml5.emscripten_set_wheel_callback_on_thread(canvas, self, false, => OnWheel,
 			EmscriptenHtml5.PthreadMain);
@@ -101,9 +103,12 @@ class WebInputManager : IInputManager
 		EmscriptenHtml5.emscripten_set_touchcancel_callback_on_thread(canvas, self, false,
 			=> OnTouch, EmscriptenHtml5.PthreadMain);
 
-		// Focus loss, so keys and buttons held when the page goes away do not stay held.
+		// Focus leaving the page, or the page hidden: the releases that follow go elsewhere, so
+		// whatever is held is let go (no key stuck down after an Alt+Tab).
 		EmscriptenHtml5.emscripten_set_blur_callback_on_thread(window, self, false, => OnBlur,
 			EmscriptenHtml5.PthreadMain);
+		EmscriptenHtml5.emscripten_set_visibilitychange_callback_on_thread(self, false,
+			=> OnVisibilityChange, EmscriptenHtml5.PthreadMain);
 
 		// Gamepads are POLLED in Update: a browser reveals a pad only after the user presses
 		// something on it, so there is nothing to register for.
@@ -197,6 +202,10 @@ class WebInputManager : IInputManager
 			mEvents.Add(move);
 
 		case .MouseButton:
+			// A release heard on the window for a button the canvas never pressed: a click on the
+			// page around it, nothing of the game's.
+			if (!raw.Down && !mMouse.IsButtonDown(raw.Button))
+				break;
 			mMouse.OnButton(raw.Button, raw.Down);
 
 			InputEvent button = .();
@@ -239,7 +248,45 @@ class WebInputManager : IInputManager
 			touch.Y = touchY;
 			mEvents.Add(touch);
 			CopyFingerToMouse(raw.TouchId, raw.Phase, touchX, touchY);
+
+		case .ReleaseAll:
+			ReleaseAll();
 		}
+	}
+
+	/// Every held key, button and finger lets go, with the events a real release brings.
+	private void ReleaseAll()
+	{
+		TouchPoint point;
+		while (mTouch.GetTouchPoint(0, out point))
+		{
+			var up = WebRawEvent();
+			up.Type = .Touch;
+			up.TouchId = point.Id;
+			up.Phase = .End;
+			up.X = (mPointerScaleX > 0.0f) ? point.PointerX / mPointerScaleX : 0.0f;
+			up.Y = (mPointerScaleY > 0.0f) ? point.PointerY / mPointerScaleY : 0.0f;
+			Apply(up);
+		}
+		for (int b < (int)MouseButton.Count)
+		{
+			if (!mMouse.IsButtonDown((MouseButton)b))
+				continue;
+			var up = WebRawEvent();
+			up.Type = .MouseButton;
+			up.Button = (MouseButton)b;
+			Apply(up);
+		}
+		for (int k < (int)KeyCode.Count)
+		{
+			if (!mKeyboard.IsKeyDown((KeyCode)k))
+				continue;
+			var up = WebRawEvent();
+			up.Type = .Key;
+			up.Key = (KeyCode)k;
+			Apply(up);
+		}
+		mKeyboard.SetModifiers(.None);
 	}
 
 	/// The first finger down is the mouse too, its left button held while it is: as SDL copies a
@@ -447,16 +494,25 @@ class WebInputManager : IInputManager
 		return false;
 	}
 
+	/// Queued as an event, so the releases come in order with the rest of the frame's input and
+	/// carry the events a real release brings (a GUI drag ends).
 	private static bool OnBlur(int32 eventType, EmscriptenFocusEvent* event, void* userData)
 	{
-		// Released at once rather than queued: the browser will not send the keyup or mouseup
-		// for anything held, so waiting for the next frame only delays a state that is already
-		// wrong.
-		let self = FromUserData(userData);
-		self.mKeyboard.ReleaseAll();
-		self.mMouse.ReleaseAll();
-		self.mTouch.Clear();
-		self.mMouseFingerDown = false;
+		var raw = WebRawEvent();
+		raw.Type = .ReleaseAll;
+		FromUserData(userData).mQueue.Add(raw);
+		return false;
+	}
+
+	private static bool OnVisibilityChange(int32 eventType, EmscriptenVisibilityChangeEvent* event,
+		void* userData)
+	{
+		if (event.Hidden)
+		{
+			var raw = WebRawEvent();
+			raw.Type = .ReleaseAll;
+			FromUserData(userData).mQueue.Add(raw);
+		}
 		return false;
 	}
 
