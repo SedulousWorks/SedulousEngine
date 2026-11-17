@@ -263,6 +263,26 @@ class CodeEditingTests
 		Test.Assert(bar.CountLabel.Text == "No results");
 	}
 
+	/// Replace All took the highlighted matches, a list that stops at a limit (100,000 by default),
+	/// and left the rest as they were without a word. Here the limit is 10 and there are 20.
+	[Test]
+	public static void ReplaceAllReplacesEveryMatchPastThoseTheBarHighlights()
+	{
+		let text = scope String();
+		for (int i < 20)
+			text.Append("x\n");
+		let bed = scope CodeBed("angelscript", text);
+		bed.Editor.HighlightedMatchLimit = 10;
+		bed.Key(.H, KeyModCtrl);
+		let bar = bed.Editor.FindBar;
+		bar.QueryField.Text = "x";
+		bar.ReplacementField.Text = "y";
+		bed.Editor.ReplaceAll();
+		let doc = bed.Editor.Document;
+		Test.Assert(doc.LineText(0) == "y");
+		Test.Assert(doc.LineText(19) == "y", "past the limit too");
+	}
+
 	[Test]
 	public static void CtrlGGoesToALineOrALineAndColumnTheBarKeepsItsPlaceAsTheCodeScrolls()
 	{

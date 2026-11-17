@@ -233,6 +233,8 @@ class CodeEditor : UIWidget
 	{
 		public CodeRange Range = .();
 		public String Text = new .() ~ delete _;
+		/// Its place among the edits as planned, which the sort keeps for edits at one place.
+		public int Order;
 
 		public this(CodeRange range, StringView text)
 		{
@@ -328,6 +330,7 @@ class CodeEditor : UIWidget
 	private uint32 mListener = 0;
 	private CodeFindBar mFindBar ~ _?.ReleaseRef();
 	private List<CodeRange> mMatches = new .() ~ delete _;
+	private int mHighlightedMatchLimit = 100000;
 	private String mMatchesQuery = new .() ~ delete _;
 	private uint64 mMatchesVersion = uint64.MaxValue;
 	// Its owner's; not owned.
@@ -1260,6 +1263,14 @@ class CodeEditor : UIWidget
 		FindNext(false);
 	}
 
+	/// The most matches the find bar highlights and counts (100,000 by default: what is worth
+	/// drawing). Replace All is not bound by it.
+	public int HighlightedMatchLimit
+	{
+		get => mHighlightedMatchLimit;
+		set => mHighlightedMatchLimit = Math.Max(value, 1);
+	}
+
 	/// Replaces every match, one undo step.
 	public void ReplaceAll()
 	{
@@ -1268,8 +1279,17 @@ class CodeEditor : UIWidget
 			return;
 		let edits = scope List<Planned>();
 		defer { ClearAndDeleteItems!(edits); }
-		for (let r in mMatches)
-			edits.Add(new Planned(r, mFindBar.Replacement));
+		// Every match in the document, found here: the highlighted list stops at a limit (what is
+		// worth drawing), and Replace All taken from it left the rest unreplaced without a word.
+		let query = scope String(mMatchesQuery);
+		var from = CodePosition(0, 0);
+		while (mDoc.Find(query, from, mFindBar.MatchCase, mFindBar.WholeWord, false, let found))
+		{
+			edits.Add(new Planned(found, mFindBar.Replacement));
+			from = found.End; // no wrap, and a match is never empty: this ends at the last one
+			if (found.End == mDoc.End())
+				break;
+		}
 		ApplyPlanned(edits);
 		UpdateCount();
 	}
@@ -3489,11 +3509,19 @@ class CodeEditor : UIWidget
 	{
 		if (mReadOnly || edits.IsEmpty)
 			return;
-		for (int i = 1; i < edits.Count; ++i)
-		{
-			for (int j = i; (j > 0) && (edits[j - 1].Range.Start < edits[j].Range.Start); --j)
-				Swap!(edits[j], edits[j - 1]);
-		}
+		// Last first, so each edit leaves the ranges before it where they are; edits at one place keep
+		// their order. An insertion sort here was quadratic in the edits, and Replace All's come in
+		// ascending order, its worst case (100,000 matches took minutes).
+		for (int i < edits.Count)
+			edits[i].Order = i;
+		edits.Sort(scope (a, b) =>
+			{
+				if (b.Range.Start < a.Range.Start)
+					return -1;
+				if (a.Range.Start < b.Range.Start)
+					return 1;
+				return a.Order <=> b.Order;
+			});
 		let before = scope List<CodeSelection>()..AddRange(mSelections);
 		let after = scope List<CodeSelection>()..AddRange(mSelections);
 		mDoc.Begin(before, kind);
@@ -4034,7 +4062,7 @@ class CodeEditor : UIWidget
 		if (query.Length == 0)
 			return;
 		var from = CodePosition(0, 0);
-		while ((mMatches.Count < 100000) && mDoc.Find(query, from, mFindBar.MatchCase, mFindBar.WholeWord, false, let found))
+		while ((mMatches.Count < mHighlightedMatchLimit) && mDoc.Find(query, from, mFindBar.MatchCase, mFindBar.WholeWord, false, let found))
 		{
 			mMatches.Add(found);
 			from = found.End;

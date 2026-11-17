@@ -135,6 +135,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- The code editor's Replace All replaces every match, not only the first 100,000, and many matches
+  no longer make it sort its edits in quadratic time.
 - A game that ends its run from a button (a quit-to-menu) no longer has that run's screens removed
   while the click is still being handled.
 - A saved dock layout whose split share is not a positive number (NaN, negative) is refused and the
