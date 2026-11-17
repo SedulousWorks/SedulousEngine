@@ -129,6 +129,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Networking: a player who joins late no longer sees scene objects that were destroyed before they
+  joined.
 - Runs: events a game posted just before it stopped no longer reach the next play. A game's scenes
   are stopped and torn down while the engine's systems are still running when the player quits,
   and the app's `MaxFixedStepsPerFrame` setting now applies to scenes (it was always 4).

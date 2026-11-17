@@ -803,4 +803,46 @@ class ReplicationTests
 		// Refused as truncated.
 		Test.Assert(!reader.Ok);
 	}
+
+	/// A joining peer's baseline started empty, so an entity it had from its own load of the
+	/// scene was never in it, and the server never told it that one was gone: it stayed on the
+	/// client.
+	[Test]
+	public static void AnAuthoredEntityDestroyedBeforeAPeerJoinsIsRemovedOnThatPeer()
+	{
+		let guidA = MakeGuid(0xA001);
+		let guidB = MakeGuid(0xB002);
+
+		let server = scope Scene("server");
+		AddManagers(server);
+		let serverA = server.CreateEntity(guidA, "A");
+		server.GetSystem<MoverManager>().Add(serverA).Health = 3;
+		server.GetSystem<NetworkComponentManager>().Add(serverA);
+		let serverB = server.CreateEntity(guidB, "B");
+		server.GetSystem<NetworkComponentManager>().Add(serverB);
+		let replication = scope StateReplication();
+		replication.AssignSceneNetworkIds(server);
+		server.DestroyEntity(serverB); // gone before anyone joins
+
+		let client = scope Scene("client");
+		AddManagers(client);
+		let clientMovers = client.GetSystem<MoverManager>();
+		let clientA = client.CreateEntity(guidA, "A");
+		clientMovers.Add(clientA);
+		client.GetSystem<NetworkComponentManager>().Add(clientA);
+		let clientB = client.CreateEntity(guidB, "B");
+		client.GetSystem<NetworkComponentManager>().Add(clientB);
+		let clientReplication = scope StateReplication();
+		clientReplication.RegisterAuthoredEntities(client);
+
+		let writer = scope BitWriter();
+		replication.CaptureDelta(server, 1, writer);
+		let reader = scope BitReader(writer.Data);
+		clientReplication.ApplyDelta(client, reader);
+		Test.Assert(reader.Ok);
+		Test.Assert(!client.IsValid(clientB), "the destroyed one goes");
+		Test.Assert(client.IsValid(clientA), "the one still there stays");
+		Test.Assert(clientMovers.Get(clientA).Health == 3, "with its state, sent in full");
+		Test.Assert(client.EntityCount == 1, scope $"{client.EntityCount} entities: no duplicate of it");
+	}
 }

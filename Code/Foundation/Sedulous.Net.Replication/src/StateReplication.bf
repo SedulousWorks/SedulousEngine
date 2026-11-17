@@ -40,6 +40,9 @@ class StateReplication : IReplicationModel
 	private class EntityBaseline
 	{
 		public List<ComponentBaseline> Components = new .() ~ DeleteContainerAndItems!(_);
+		/// The peer has it from the scene it loaded, not from anything sent: its state was never
+		/// sent, and its absence from the scene is a removal to send.
+		public bool FromScene;
 	}
 
 	private class PeerBaseline
@@ -86,6 +89,8 @@ class StateReplication : IReplicationModel
 	private uint32 mNextNetworkId = 0;
 	private Dictionary<uint32, EntityHandle> mNetIdToEntity = new .() ~ delete _;
 	private Dictionary<uint32, PeerBaseline> mPeerBaselines = new .() ~ DeleteDictionaryAndValues!(_);
+	/// The scene's networked entities as loaded: every peer has them.
+	private List<uint32> mAuthoredIds = new .() ~ delete _;
 	private SpawnHandler mSpawnHandler ~ delete _;
 	private RelevanceFn mRelevance ~ delete _;
 
@@ -161,6 +166,8 @@ class StateReplication : IReplicationModel
 					component.Id = ReplicationWire.DeterministicNetworkId(scene.GetEntityId(entity));
 
 				mNetIdToEntity[component.Id.Value] = entity;
+				if (!mAuthoredIds.Contains(component.Id.Value))
+					mAuthoredIds.Add(component.Id.Value);
 				// Keep freshly minted ids clear of the derived ones.
 				if (component.Id.Value > mNextNetworkId)
 					mNextNetworkId = component.Id.Value;
@@ -268,7 +275,15 @@ class StateReplication : IReplicationModel
 		PeerBaseline baseline;
 		if (!mPeerBaselines.TryGetValue(peerId, out baseline))
 		{
+			// A joining peer loaded the scene as authored: every authored entity is one it has, so
+			// one destroyed before it joined goes out as a removal rather than staying on it.
 			baseline = new PeerBaseline();
+			for (let id in mAuthoredIds)
+			{
+				let authored = new EntityBaseline();
+				authored.FromScene = true;
+				baseline.Entities[id] = authored;
+			}
 			mPeerBaselines[peerId] = baseline;
 		}
 
@@ -300,7 +315,10 @@ class StateReplication : IReplicationModel
 					return;
 				}
 
-				let entry = new DeltaEntry(networkId, false, previous == null, component.Prefab, component.Owner);
+				// New to the peer (a spawn), or held from its scene but never sent: its first state,
+				// as a spawn record so its owner goes too.
+				let first = (previous == null) || previous.FromScene;
+				let entry = new DeltaEntry(networkId, false, first, component.Prefab, component.Owner);
 				let nextEntity = new EntityBaseline();
 
 				let replicating = scope List<ComponentManagerBase>();
@@ -341,7 +359,7 @@ class StateReplication : IReplicationModel
 
 				// A new entity is a spawn even with nothing changed, because the peer has
 				// never heard of it.
-				if ((previous == null) || !entry.Components.IsEmpty)
+				if (first || !entry.Components.IsEmpty)
 					entries.Add(entry);
 				else
 					delete entry;
