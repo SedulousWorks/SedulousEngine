@@ -996,4 +996,30 @@ class ContentDatabaseTests
 		Test.Assert(!Sidecars.MatchSidecar("Rock", "Rock.asset", out stream, out encoding));
 		Test.Assert(!Sidecars.MatchSidecar("Rock", "RockBig.geometry.bin", out stream, out encoding));
 	}
+
+	/// A copied envelope (a file duplicated outside the editor) kept its guid; the scan kept the
+	/// first and said nothing, so references silently reached one of the two.
+	[Test]
+	public static void TwoEnvelopesWithOneGuidAreReportedBothNamed()
+	{
+		TestSerializables.RegisterAll();
+		let root = "scratch_content_duplicate";
+		let fixture = scope ContentFixture(root, false);
+		{
+			let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+			let instance = database.RootGroup.CreateInstance("original", "Sedulous.Content.Tests.TestAsset");
+			Test.Assert(instance.WriteObject(scope TestAsset()) case .Ok);
+			Test.Assert(database.DuplicateIds.IsEmpty);
+		}
+		let bytes = scope List<uint8>();
+		Test.Assert(ReadFile(PathJoin(root, "original.asset", .. scope String()), bytes) case .Ok);
+		Test.Assert(fixture.Mount.Save("copy.asset", bytes) case .Ok);
+
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		Test.Assert(database.DuplicateIds.Length == 1, scope $"{database.DuplicateIds.Length} duplicates");
+		let duplicate = database.DuplicateIds[0];
+		let both = ((duplicate.Kept == "original") && (duplicate.Ignored == "copy"))
+			|| ((duplicate.Kept == "copy") && (duplicate.Ignored == "original"));
+		Test.Assert(both, scope $"kept '{duplicate.Kept}', ignored '{duplicate.Ignored}'");
+	}
 }

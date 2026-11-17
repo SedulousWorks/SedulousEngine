@@ -131,6 +131,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Content: two asset files with one identity (a file copied outside the editor) are reported by
+  name, rather than one silently hiding the other.
 - Cook: a source file saved again within a second of the last cook, at the same size, is cooked
   again rather than kept stale; a change to a cooked format recooks its assets. The first cook after
   updating cooks everything once.

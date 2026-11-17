@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.VFS;
@@ -31,6 +32,22 @@ class ContentDatabase : IContentDatabase
 	private List<Group> mAllGroups = new .() ~ DeleteContainerAndItems!(_);
 	private List<Instance> mAllInstances = new .() ~ DeleteContainerAndItems!(_);
 	private Dictionary<Guid, Instance> mByGuid = new .() ~ delete _;
+	/// DuplicateIds.
+	private List<DuplicateId> mDuplicates = new .() ~ DeleteContainerAndItems!(_);
+
+	/// Two envelopes claiming one identity (a copied file, a bad merge): the guid, the record the
+	/// index holds and the one it passed over.
+	public class DuplicateId
+	{
+		public Guid Id;
+		/// The path the index holds.
+		public String Kept = new .() ~ delete _;
+		/// The path that claimed the guid after it, which no reference reaches.
+		public String Ignored = new .() ~ delete _;
+	}
+
+	/// Every guid two records claim, each logged as it was found; tooling can name both.
+	public Span<DuplicateId> DuplicateIds => mDuplicates;
 	private ScanStats mScanStats;
 	private uint64 mRevision;
 
@@ -392,9 +409,23 @@ class ContentDatabase : IContentDatabase
 		// A duplicate identity means two envelopes claim the same guid; the first one
 		// scanned keeps the index, since silently rebinding would make loads depend on
 		// directory order.
-		if (!mByGuid.ContainsKey(id))
+		if (!mByGuid.TryGetValue(id, let held))
 			mByGuid[id] = instance;
+		else if (held !== instance)
+			NoteDuplicate(id, held, instance);
 		return instance;
+	}
+
+	/// Records and logs two records claiming one guid (DuplicateIds).
+	private void NoteDuplicate(Guid id, Instance kept, Instance ignored)
+	{
+		let duplicate = new DuplicateId();
+		duplicate.Id = id;
+		kept.GetPath(duplicate.Kept);
+		ignored.GetPath(duplicate.Ignored);
+		GlobalLog(.Error, "Content: '{}' and '{}' have one guid: '{}' keeps it, and a reference to it never reaches '{}' (give the copy a guid of its own)",
+			duplicate.Kept, duplicate.Ignored, duplicate.Kept, duplicate.Ignored);
+		mDuplicates.Add(duplicate);
 	}
 
 	// ---- the scan ----
