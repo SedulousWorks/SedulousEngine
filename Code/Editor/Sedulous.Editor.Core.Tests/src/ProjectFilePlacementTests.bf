@@ -13,6 +13,7 @@ using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Render.Pipeline;
 using Sedulous.Script.Pipeline;
+using Sedulous.Script.Resource;
 
 namespace Sedulous.Editor.Core.Tests;
 
@@ -32,6 +33,22 @@ class CompanionedAsset : Asset
 				outFiles.Add(new String(line));
 		}
 	}
+}
+
+/// A code language for the adoption test alone ("ad" files): its importer is the script one, which
+/// imports code; it compiles nothing.
+class AdoptedLanguageCook : IScriptLanguageCook
+{
+	public void NewAssetTemplate(ScriptTier tier, StringView className, String outSource)
+	{
+		outSource.AppendF("class {}", className);
+	}
+
+	public bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems,
+		IScriptIncludeReader includes = null) => false;
+
+	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden,
+		IScriptIncludeReader includes = null) => true;
 }
 
 /// A project's files follow its asset groups: Sources/<group>/, Code/<group>/ for code.
@@ -239,5 +256,44 @@ static class ProjectFilePlacementTests
 		Test.Assert(project.PlaceInGroupFolders(scope Instance[](one, two)) == 0);
 		Test.Assert(FileNameOf(one, .. scope .()) == "One.model");
 		Test.Assert(FileExists(PathJoin(sources, "shared.png", .. scope .())));
+	}
+
+	/// A script made in an outside editor under Code/ becomes an asset where it lies: in the group
+	/// its folder names (made), its file not copied; a second report adopts nothing more; a file no
+	/// code importer takes, one outside Code/, and one removed are left alone.
+	[Test]
+	public static void NewCodeUnderCodeBecomesAnAssetWhereItLies()
+	{
+		ScriptPipeline.RegisterAll(); // the script asset, read back
+		ScriptLanguageCooks.Register("adopted", "ad", new AdoptedLanguageCook());
+		let dir = Scratch("scratch_editor_adopt_code", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "P") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let importers = scope ImporterRegistry();
+		importers.Register(new ScriptFileImporter());
+
+		let code = project.CodeRoot(.. scope .());
+		CreateDirectory(code);
+		WriteText(PathJoin(code, "Enemies/Boss.ad", .. scope .()), "class Boss {}");
+		WriteText(PathJoin(code, "Notes.txt", .. scope .()), "not code");
+		String[4] changed = .("Code/Enemies/Boss.ad", "Code/Notes.txt", "Code/Gone.ad", "Models/Crate.png");
+		Test.Assert(project.AdoptNewCode(changed, importers) == 1);
+
+		let enemies = project.SourceDb.RootGroup.GetGroup("Enemies");
+		Test.Assert(enemies != null);
+		let boss = enemies.GetInstance("Boss");
+		Test.Assert(boss != null);
+		let object = boss.ReadObject();
+		defer delete object;
+		let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as ScriptClassAsset;
+		Test.Assert(asset != null);
+		Test.Assert(asset.FileName.Value == "Code/Enemies/Boss.ad", scope String(asset.FileName.Value));
+		Test.Assert(!FileExists(PathJoin(code, "Enemies/Boss.2.ad", .. scope .())), "no copy beside it");
+
+		// Reported again: it is an asset's now.
+		Test.Assert(project.AdoptNewCode(changed, importers) == 0);
 	}
 }

@@ -14,6 +14,9 @@ namespace Sedulous.Script.Pipeline;
 /// language is the extension's, and the class the one its file is named for.
 class ScriptFileImporter : IFileImporter
 {
+	/// Scripts live in the project's Code/ folder: a new one found there is imported where it lies.
+	public bool ImportsCode => true;
+
 	private const String cAssetType = "Sedulous.Script.Pipeline.ScriptClassAsset";
 
 	public StringView Label => "Script";

@@ -314,4 +314,68 @@ extension EditorProject
 		}
 		return false;
 	}
+
+	/// Imports where it lies each file among `changed` (source paths a watch reported) that is new
+	/// code under Code/: one no asset names yet, whose importer imports code (ImportsCode). It joins
+	/// the group its folder names, made if missing (Code/Enemies/Boss.as: Enemies), so a script
+	/// made in an outside editor becomes an asset by itself. A name its group already holds is left
+	/// for the user, and reported. Returns how many it imported.
+	public int AdoptNewCode(Span<String> changed, ImporterRegistry importers)
+	{
+		int adopted = 0;
+		HashSet<String> named = null; // every asset's file, read once when a candidate needs it
+		defer { if (named != null) DeleteContainerAndItems!(named); }
+		for (let path in changed)
+		{
+			if (!SourcePath.AfterFolder(path, SourcePath.CodeFolder, let rest) || rest.IsEmpty)
+				continue;
+			let onDisk = SourceFile(path, .. scope .());
+			if (!FileExists(onDisk))
+				continue; // removed: its asset, if any, finds its file missing
+			let importer = importers.FindFor(ImportPaths.ExtensionLower(path, .. scope .()));
+			if ((importer == null) || !importer.ImportsCode)
+				continue;
+			// One an asset names already is not new (its edit is a cook's business).
+			if (named == null)
+			{
+				named = new .();
+				let pending = scope List<Group>();
+				pending.Add(SourceDb.RootGroup);
+				while (!pending.IsEmpty)
+				{
+					let group = pending.PopBack();
+					for (let instance in group.Instances)
+					{
+						if (!instance.SourceName.IsEmpty)
+							named.Add(new String(instance.SourceName));
+					}
+					pending.AddRange(group.Groups);
+				}
+			}
+			if (named.ContainsAlt(path))
+				continue;
+			// Its group: the folders between Code/ and the file, made where missing.
+			var group = SourceDb.RootGroup;
+			let folders = PathParent(rest, .. scope .());
+			for (let part in folders.Split('/'))
+			{
+				if (!part.IsEmpty)
+					group = group.CreateGroup(part);
+			}
+			let context = scope ImportContext(SourcesRoot(.. scope .()));
+			CodeRoot(context.CodeRoot);
+			ImportPaths.ImportLedgerPath(CacheRoot(.. scope .()), context.LedgerPath);
+			// Its copy is itself (the import's target in its group's folder is where it lies), so
+			// nothing is written but its asset.
+			if (importer.Import(onDisk, context, group, null, null, null) case .Err)
+			{
+				GlobalLog(.Warning, "Project: {} is not imported: '{}' has an asset of its name already", path, group.GetPath(.. scope .()));
+				continue;
+			}
+			GlobalLog(.Information, "Project: imported new code {} into '{}'", path, group.GetPath(.. scope .()));
+			named.Add(new String(path));
+			adopted++;
+		}
+		return adopted;
+	}
 }

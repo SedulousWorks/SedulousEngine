@@ -146,4 +146,8 @@ interface IFileImporter
 	/// inline, which is what a headless run and a test want.
 	Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
 		ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites);
+
+	/// Whether the files it imports are code (scripts, their project files), which live in the
+	/// project's Code/ folder: a new one found there is imported where it lies. Default: no.
+	bool ImportsCode => false;
 }

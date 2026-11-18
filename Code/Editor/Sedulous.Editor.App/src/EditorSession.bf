@@ -477,6 +477,7 @@ class EditorSession
 		let cook = mServices.Cook;
 		let builders = mServices.Builders;
 		cook.Initialize(mProject, builders);
+		cook.SetImporters(context.Importers); // new code under Code/ is imported as it appears
 		// Pages request re-cooks after saving builder-backed assets.
 		delete context.OnCookRequested;
 		context.OnCookRequested = new [=cook](rebuild) => { cook.RequestCook(rebuild); };

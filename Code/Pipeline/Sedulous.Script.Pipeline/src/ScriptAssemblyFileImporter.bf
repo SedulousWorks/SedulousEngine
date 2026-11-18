@@ -12,6 +12,9 @@ namespace Sedulous.Script.Pipeline;
 /// the sources as a ScriptAssemblyAsset of that language. No options.
 class ScriptAssemblyFileImporter : IFileImporter
 {
+	/// Scripts live in the project's Code/ folder: a new one found there is imported where it lies.
+	public bool ImportsCode => true;
+
 	public StringView Label => "Script project";
 
 	public bool Accepts(StringView @extension)

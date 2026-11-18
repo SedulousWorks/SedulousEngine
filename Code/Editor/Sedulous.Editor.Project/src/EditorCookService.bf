@@ -7,6 +7,7 @@ using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Pipeline.Core;
+using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Cook;
 
 namespace Sedulous.Editor.Project;
@@ -88,6 +89,9 @@ class EditorCookService
 	/// Borrowed; the sources mount owns it.
 	private IChangeSource mWatcher = null;
 	private List<String> mWatchChanged = new .() ~ DeleteContainerAndItems!(_);
+	/// The importers new code found under Code/ is imported with (EditorProject.AdoptNewCode, at
+	/// each watch poll); null (the default) adopts nothing. Borrowed.
+	private ImporterRegistry mImporters = null;
 	private int64 mLastWatchPoll = 0;
 	private ContentWatcher mContentWatcher = null;
 	private ContentChanges mContentChanges = new .() ~ delete _;
@@ -116,6 +120,9 @@ class EditorCookService
 
 	/// Wires to the open project. `builders` outlives the service; the executable assembles
 	/// the registry before the project opens.
+	/// The importers new code under Code/ is imported with as it appears. Borrowed: it outlives this.
+	public void SetImporters(ImporterRegistry importers) => mImporters = importers;
+
 	public void Initialize(EditorProject project, BuilderRegistry builders)
 	{
 		Shutdown();
@@ -380,6 +387,9 @@ class EditorCookService
 				ClearAndDeleteItems(mWatchChanged);
 				if (mWatcher.Poll(mWatchChanged))
 				{
+					// New code an outside editor made becomes an asset before the cook takes it.
+					if ((mImporters != null) && (mProject != null))
+						mProject.AdoptNewCode(mWatchChanged, mImporters);
 					GlobalLog(.Information, "Cook: {} source file(s) changed - recooking", mWatchChanged.Count);
 					RequestCook(false);
 				}
