@@ -26,7 +26,7 @@ namespace Sedulous.Editor.App;
 // the code back with the rest. A source that is not there is a problem in the list, the code read
 // only.
 
-abstract class CodeAssetPage : AssetObjectPage
+abstract class CodeAssetPage : AssetObjectPage, ICodePage
 {
 	/// How long the code rests after an edit before it is checked, in seconds.
 	public const float cCheckDelay = 0.6f;
@@ -310,6 +310,15 @@ abstract class CodeAssetPage : AssetObjectPage
 		if ((mCode == null) || !problem.File.IsEmpty)
 			return;
 		mCode.SetCaret(.(problem.Line, problem.AtColumn ? problem.Column : 0));
+		mCode.ScrollToCaret();
+		mCode.RequestFocus();
+	}
+
+	public void ShowLine(uint32 line, uint32 column)
+	{
+		if (mCode == null)
+			return;
+		mCode.SetCaret(.((line > 0) ? line - 1 : 0, (column > 0) ? column - 1 : 0));
 		mCode.ScrollToCaret();
 		mCode.RequestFocus();
 	}

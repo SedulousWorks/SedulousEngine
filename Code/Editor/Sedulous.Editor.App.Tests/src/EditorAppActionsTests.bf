@@ -254,6 +254,7 @@ class EditorAppActionsTests
 		project.Context = bench.Context;
 		project.Settings = bench.Record("settings");
 		project.AddNativeCode = bench.Record("add-native-code");
+		project.OpenCodeFolder = bench.Record("open-code-folder");
 		project.BuildProject = bench.Record("build");
 		project.OpenWithThisBuild = bench.Record("open-with-build");
 		EditorAppActions.RegisterProjectActions(actions, project);
@@ -262,6 +263,12 @@ class EditorAppActionsTests
 		Test.Assert(actions.Find("project.build").MenuPath == "Project/Build Project");
 		Test.Assert(!actions.IsEnabled("project.addNativeCode", null), "no project open");
 		Test.Assert(actions.Find("project.addNativeCode").MenuOrder < actions.Find("project.build").MenuOrder);
+		// Open Code Folder sits between the settings and the native code, changes nothing, and needs a
+		// project.
+		let openCode = actions.Find("project.openCodeFolder");
+		Test.Assert((openCode != null) && (openCode.MenuPath == "Project/Open Code Folder") && openCode.ReadOnly);
+		Test.Assert((openCode.MenuOrder > actions.Find("project.settings").MenuOrder) && (openCode.MenuOrder < actions.Find("project.addNativeCode").MenuOrder));
+		Test.Assert(!actions.IsEnabled("project.openCodeFolder", null), "no project open");
 		Test.Assert(actions.Find("project.openWithBuild").MenuOrder > actions.Find("project.build").MenuOrder);
 		Test.Assert(actions.Execute("project.settings", null) case .Err(.NotSupported));
 		Test.Assert(bench.Events.IsEmpty);

@@ -129,6 +129,10 @@ class EditorContext : IAssetEditSink
 	/// Opens the asset with this guid for editing: the app maps it to the instance and the
 	/// SAME page path a browser double click takes.
 	public delegate void(Guid id) OpenAsset ~ delete _;
+	/// Opens a code file (a path on disk) at a 1-based line and column (0: the start) where the
+	/// user's Code Editor preference says: an outside editor, or the built-in page. An empty file
+	/// opens the project's Code/ folder. Wired by the app; may be unset.
+	public delegate void(StringView file, uint32 line, uint32 column) OpenCode ~ delete _;
 	/// Reveals the asset with this guid in the asset browser.
 	public delegate void(Guid id) RevealAsset ~ delete _;
 	/// Fired on every favorite toggle; the app persists to the project's Editor/ state.

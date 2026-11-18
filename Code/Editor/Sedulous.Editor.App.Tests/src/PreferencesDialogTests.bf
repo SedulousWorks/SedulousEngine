@@ -15,7 +15,8 @@ namespace Sedulous.Editor.App.Tests;
 /// the dialog going while open, putting the look back as it was with the store unchanged; the
 /// Shortcuts tab's edits staged, applied on Save (a chord another action holds refused, named),
 /// forgotten on Cancel, Reset going back to the declaration's; the orthographic check, the
-/// templates' folder (empty: the default shown), the MCP host's fields (a port out of range kept,
+/// templates' folder (empty: the default shown), the code editor (a preset's commands shown, the
+/// user's own kept), the MCP host's fields (a port out of range kept,
 /// said; the host told on Save), the preview resolutions (added, removed) and the contributed
 /// categories' tabs (shared by a category, their checks applied as they change).
 static class PreferencesDialogTests
@@ -304,14 +305,14 @@ static class PreferencesDialogTests
 		Test.Assert(!bed.Last.Dark && (bed.Last.Accent == "#0f8a7e") && (bed.Last.Density == "comfortable") && bed.Last.ReduceMotion);
 
 		// Save: into the store, marked changed (the look's section, then the templates', the MCP
-		// host's and the preview sizes'), persisted, closed; nothing put back.
+		// host's, the code editor's and the preview sizes'), persisted, closed; nothing put back.
 		int changes = 0;
 		bed.Store.OnChanged.Add(new [&] (name) => { changes++; });
 		let shownAtSave = bed.Shown.Count;
 		Test.Assert(bed.Dialog.Save());
 		Test.Assert(!bed.Dialog.IsOpen);
 		Test.Assert(bed.Persisted == 1);
-		Test.Assert(changes == 4);
+		Test.Assert(changes == 5);
 		let ui = bed.Ui;
 		Test.Assert(ui.Scheme == "light");
 		Test.Assert(ui.Accent == "#0f8a7e");
@@ -573,7 +574,7 @@ static class PreferencesDialogTests
 		let window = bed.Window;
 		let tabs = Find<TabView>(window, "pref-tabs");
 		Test.Assert(tabs != null);
-		Test.Assert(tabs.PageCount == 6); // Appearance, Export, Agent access, Game preview, Shortcuts, Navigation
+		Test.Assert(tabs.PageCount == 7); // Appearance, Export, Code, Agent access, Game preview, Shortcuts, Navigation
 		let ortho = Find<Sedulous.GUI.CheckBox>(window, "pref-auto-ortho");
 		let root = Find<Sedulous.GUI.TextField>(window, "pref-templates-root");
 		let enabled = Find<Sedulous.GUI.CheckBox>(window, "pref-mcp-enabled");
@@ -841,23 +842,24 @@ static class PreferencesDialogTests
 		Test.Assert(bed.Dialog.Open(bed.Root));
 		let tabs = Find<TabView>(bed.Window, "pref-tabs");
 		Test.Assert(tabs != null);
-		Test.Assert(tabs.PageCount == 7);
+		Test.Assert(tabs.PageCount == 8);
 		Test.Assert(PageTitled(tabs, "Appearance") == 0);
 		Test.Assert(PageTitled(tabs, "Export") == 1);
-		Test.Assert(PageTitled(tabs, "Agent access") == 2);
-		Test.Assert(PageTitled(tabs, "Game preview") == 3);
-		Test.Assert(PageTitled(tabs, "Shortcuts") == 4);
-		Test.Assert(PageTitled(tabs, "Navigation") == 5);
-		Test.Assert(PageTitled(tabs, "Audio") == 6);
+		Test.Assert(PageTitled(tabs, "Code") == 2);
+		Test.Assert(PageTitled(tabs, "Agent access") == 3);
+		Test.Assert(PageTitled(tabs, "Game preview") == 4);
+		Test.Assert(PageTitled(tabs, "Shortcuts") == 5);
+		Test.Assert(PageTitled(tabs, "Navigation") == 6);
+		Test.Assert(PageTitled(tabs, "Audio") == 7);
 
 		// Both Navigation fields on its tab, in their order; Audio's on its own.
 		let navigation = scope List<Sedulous.GUI.CheckBox>();
-		Checks(tabs.GetPage(5), navigation);
+		Checks(tabs.GetPage(6), navigation);
 		Test.Assert(navigation.Count == 2);
 		Test.Assert(navigation[0].Text == "Snap agents to the mesh");
 		Test.Assert(navigation[1].Text == "Show the bake bounds");
 		let audio = scope List<Sedulous.GUI.CheckBox>();
-		Checks(tabs.GetPage(6), audio);
+		Checks(tabs.GetPage(7), audio);
 		Test.Assert((audio.Count == 1) && (audio[0].Text == "Mute in the background"));
 
 		// As the fields have them.
@@ -875,8 +877,57 @@ static class PreferencesDialogTests
 		// Changed elsewhere: opened again, shown as the field has it; the tabs made once.
 		bed.Muted = false;
 		Test.Assert(bed.Dialog.Open(bed.Root));
-		Test.Assert(tabs.PageCount == 7);
+		Test.Assert(tabs.PageCount == 8);
 		Test.Assert(!audio[0].Checked);
 		Test.Assert(navigation[1].Checked);
+	}
+
+	[Test]
+	public static void CodeShowsAPresetsCommandsToReadKeepsCommandsOwnAndSaveStoresTheChoice()
+	{
+		let bed = scope Bed();
+		let stored = bed.Store.Section<EditorCodeEditorSettings>();
+		stored.FileCommand.Set("zed {file}:{line}");
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let window = bed.Window;
+		let editors = Find<Node>(window, "pref-code-editors");
+		let file = Find<Sedulous.GUI.TextField>(window, "pref-code-file");
+		let folder = Find<Sedulous.GUI.TextField>(window, "pref-code-folder");
+		Test.Assert((editors != null) && (file != null) && (folder != null));
+		let builtIn = ButtonText(editors, "Built-in");
+		let vscode = ButtonText(editors, "VS Code");
+		let command = ButtonText(editors, "Command");
+		Test.Assert((builtIn != null) && (vscode != null) && (command != null));
+		Test.Assert(builtIn.Checked); // the default
+		Test.Assert(!file.Enabled);
+
+		// A preset's commands show, not to be edited.
+		Test.Assert(vscode.HandleActivate());
+		Test.Assert(vscode.Checked);
+		Test.Assert(!builtIn.Checked);
+		Test.Assert(file.Text.StartsWith("code "));
+		Test.Assert(folder.Text == "code {folder}");
+		Test.Assert(!file.Enabled);
+
+		// Command shows the user's own; what is typed survives a look at a preset.
+		Test.Assert(command.HandleActivate());
+		Test.Assert(file.Enabled);
+		Test.Assert(file.Text == "zed {file}:{line}");
+		file.Text = " subl {file}:{line}:{column} ";
+		Test.Assert(vscode.HandleActivate());
+		Test.Assert(command.HandleActivate());
+		Test.Assert(file.Text == " subl {file}:{line}:{column} ");
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(stored.Editor == "command");
+		Test.Assert(stored.FileCommand == "subl {file}:{line}:{column}"); // trimmed
+		Test.Assert(stored.FolderCommand.IsEmpty);
+
+		// Choosing a preset keeps the user's command for later.
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(command.Checked);
+		Test.Assert(vscode.HandleActivate());
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(stored.Editor == "vscode");
+		Test.Assert(stored.FileCommand == "subl {file}:{line}:{column}");
 	}
 }

@@ -91,6 +91,8 @@ class EditorApplication : IApplication
 	private EditorDock mDock = new .() ~ delete _;
 	/// Made with the application: every frame hands them its hooks, a window or not.
 	private EditorPages mPages ~ delete _;
+	/// Where code opens (the Code Editor preference); made with the pages.
+	private EditorCodeOpener mCodeOpener ~ delete _;
 	/// Rename, duplicate, delete, cook: the assets browser's and an agent's. Made with the
 	/// application; after the pages its closes reach, so it goes first.
 	private AssetOperations mAssetOps ~ delete _;
@@ -193,6 +195,21 @@ class EditorApplication : IApplication
 		// A thumbnail ready is told to the views showing thumbnails (the assets browser).
 		mThumbnailService.OnThumbnailReady = new (id) => { mContext.NotifyThumbnailReady(id); };
 		mPages = new EditorPages(PagesServices());
+		// Code the user opens goes where the Code Editor preference says; a code asset opened from
+		// the browser or a slot takes that way too (page_open opens the pages directly).
+		{
+			let code = new EditorCodeOpenerServices();
+			code.Context = mContext;
+			code.OpenPage = new (instance) => mPages.Open(instance);
+			code.ShowFolder = new (folder) =>
+				{
+					if (let dialogs = ShellDialogs())
+						dialogs.OpenPath(folder);
+				};
+			mCodeOpener = new EditorCodeOpener(code);
+			mContext.OpenCode = new (file, line, column) => { mCodeOpener.Open(file, line, column); };
+			mContext.AddOpenAssetInterceptor(new (instance) => mCodeOpener.OpenAsset(instance));
+		}
 		mAssetOps = new AssetOperations(AssetOpsServices());
 		{
 			let imports = new AssetImportServices();
@@ -257,7 +274,12 @@ class EditorApplication : IApplication
 		services.Context = mContext;
 		services.Cook = mCookService;
 		services.Builders = mBuilders;
-		services.OnOpenPage = new (instance) => { mPages.Open(instance); };
+		// New code opens where the Code Editor preference says, like code opened from the browser.
+		services.OnOpenPage = new (instance) =>
+			{
+				if ((mCodeOpener == null) || !mCodeOpener.OpenAsset(instance))
+					mPages.Open(instance);
+			};
 		// The assets view shows the new row once it is on the GUI.
 		return services;
 	}
@@ -744,6 +766,7 @@ class EditorApplication : IApplication
 			RefServices(); // the type icons
 			assets.Icons = mTypeIcons;
 			assets.Open = new (instance) => { mPages.OpenForUser(instance.Id); };
+			assets.OpenBuiltIn = new (instance) => { mCodeOpener.OpenAsset(instance, true); };
 			assets.Picture = new (id) => mThumbnailService.Get(id);
 			assets.Operations = mAssetOps;
 			assets.Create = new (creator, group, name) => { mCreation.CreateAndOpen(creator, group, name); };
@@ -1434,6 +1457,7 @@ class EditorApplication : IApplication
 		project.Context = mContext; // Report Resource Memory reads the session's resources through it
 		project.Settings = new () => { OpenProjectSettings(); };
 		project.ExportPresets = new () => { OpenExport(); };
+		project.OpenCodeFolder = new () => { mCodeOpener.Open(default, 0, 0); };
 		project.AddNativeCode = new () => { AddNativeCode(); };
 		project.BuildProject = new () => { BuildProject(); };
 		project.OpenWithThisBuild = new () => { OpenWithThisBuild(); };

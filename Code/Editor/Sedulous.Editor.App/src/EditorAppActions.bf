@@ -46,6 +46,8 @@ class ProjectActions
 	public delegate void() Settings ~ delete _;
 	/// Opens the export presets panel. Owned.
 	public delegate void() ExportPresets ~ delete _;
+	/// Opens the project's Code folder where the Code Editor preference says. Owned.
+	public delegate void() OpenCodeFolder ~ delete _;
 	/// Asks which parts of the game's package to scaffold, then scaffolds them. Owned.
 	public delegate void() AddNativeCode ~ delete _;
 	/// Builds the project's own editor and player, its packages linked in, on the build lane.
@@ -221,6 +223,13 @@ static class EditorAppActions
 		defer delete run;
 		let context = run.Context;
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.settings", "Project Settings...", "Open the project settings", "Project/Project Settings...", 100)), ref run.Settings);
+		{
+			let d = NeedsProject(context, new EditorActionDeclaration("project.openCodeFolder", "Open Code Folder",
+				"Open the project's Code folder in the outside code editor chosen in Preferences, else in the system's file manager",
+				"Project/Open Code Folder", 150));
+			d.ReadOnly = true;
+			Add(actions, d, ref run.OpenCodeFolder);
+		}
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.addNativeCode", "Add Native Code...", "Scaffold the game's native code, a plugin package under Plugins/", "Project/Add Native Code...", 200)), ref run.AddNativeCode);
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.build", "Build Project", "Build the project's own editor and player, its packages linked in. It starts the build and returns; the build takes minutes and logs 'Build Project: built' when it finishes. Open With This Build then runs it", "Project/Build Project", 201)), ref run.BuildProject);
 		Add(actions, NeedsProject(context, new EditorActionDeclaration("project.openWithBuild", "Open With This Build", "Open the project in its own build's editor, closing this one", "Project/Open With This Build", 202)), ref run.OpenWithThisBuild);

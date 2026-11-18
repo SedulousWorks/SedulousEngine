@@ -45,6 +45,9 @@ class AssetsViewServices
 	public EditorIcons Icons;
 	/// An asset opened (its page). Owned.
 	public delegate void(Instance instance) Open ~ delete _;
+	/// Opens a code asset in the built-in editor, whichever editor the user prefers; unset: no Open
+	/// in Built-in Editor item. Owned.
+	public delegate void(Instance instance) OpenBuiltIn ~ delete _;
 	/// Rename, duplicate, delete, cook; null: no menus and no edits in place. Borrowed.
 	public AssetOperations Operations;
 	/// An asset's picture (the thumbnails'), borrowed, null while there is none; unset: glyphs
@@ -1200,6 +1203,14 @@ class AssetsView
 		let ops = mServices.Operations;
 		let menu = NewMenu();
 		menu.AddItem("Open", new [=this, =id] () => { OpenAsset(id); });
+		if ((mServices.OpenBuiltIn != null) && EditorCodeOpener.IsCode(mRows[row].Instance))
+		{
+			menu.AddItem("Open in Built-in Editor", new [=this, =id] () =>
+				{
+					if (let instance = FindAsset(id))
+						mServices.OpenBuiltIn(instance);
+				});
+		}
 		menu.AddSeparator();
 		menu.AddItem("Rename", new [=this, =rowId] () => { BeginRename(rowId); }).Shortcut = "F2";
 		menu.AddItem("Duplicate", new [=ops, =id] () => { ops.Duplicate(id); });

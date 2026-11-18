@@ -13,8 +13,9 @@ namespace Sedulous.Editor.App;
 // (Data/Editor/Preferences.xml), a tab per category. Appearance holds the look's inputs: the
 // scheme, the accent (one of the editor's or any #rrggbb), the density, less motion and the UI
 // scale, and whether axis views are orthographic; each change of the look shows at once. Export
-// holds the templates' folder, Agent access the MCP host (on, its port, its token), Game preview
-// the sizes the Game tab offers. Shortcuts lists every action with its chord: a click captures the
+// holds the templates' folder, Code the editor code opens in (built-in, a preset such as VS Code,
+// or a command), Agent access the MCP host (on, its port, its token), Game preview the sizes the
+// Game tab offers. Shortcuts lists every action with its chord: a click captures the
 // next keys, Reset goes back to the declaration's. Then a tab per category other parts of the
 // editor contribute, its checks applied as they change. Save writes everything into the store (a
 // chord another action holds refused, a port out of range kept as it was, each said in a warning)
@@ -77,6 +78,15 @@ class EditorPreferencesDialog
 	private List<PreviewRow> mPreviews = new .() ~ DeleteContainerAndItems!(_);
 	/// A check per contributed field, made once (the contributions come before the dialog).
 	private List<Contributed> mContributed = new .() ~ delete _;
+	/// The Code tab's segments' group, a reference of ours (each segment holds its own).
+	private ButtonGroup mCodeEditorGroup = null ~ _?.ReleaseRef();
+	/// A segment per code editor (Built-in, each preset, Command), each a reference of ours.
+	private List<CodeEditorSegment> mCodeEditors = new .() ~ DeleteContainerAndItems!(_);
+	/// The Code tab's choice.
+	private String mCodeEditor = new .(EditorCodeEditorSettings.BuiltIn) ~ delete _;
+	/// The user's own commands, kept while a preset is shown.
+	private String mCodeFileCommand = new .() ~ delete _;
+	private String mCodeFolderCommand = new .() ~ delete _;
 	private bool mSaved = false;
 
 	/// The dialog over `services`, its body `body` (the markup's controls by id). TAKES OWNERSHIP
@@ -239,6 +249,15 @@ class EditorPreferencesDialog
 				browse.SetOnClick(new [=id, =this] () => { BrowseFolder(id); } ~ delete id);
 			}
 		}
+		// The Code tab: Built-in, each preset, then Command, whose fields are the user's.
+		if (let editors = mBody.FindElement("pref-code-editors"))
+		{
+			mCodeEditorGroup = new ButtonGroup();
+			AddCodeEditor(editors, EditorCodeEditorSettings.BuiltIn, "Built-in");
+			for (let preset in CodeEditorCommands.Presets)
+				AddCodeEditor(editors, preset.Id, preset.Label);
+			AddCodeEditor(editors, EditorCodeEditorSettings.Command, "Command");
+		}
 		AddContributions();
 		if (let save = Find<Sedulous.GUI.Button>("pref-save"))
 			save.SetOnClick(new () => { Save(); });
@@ -250,6 +269,48 @@ class EditorPreferencesDialog
 				if (!mSaved && (mServices.ShowLook != null))
 					mServices.ShowLook(mOriginal);
 			});
+	}
+
+	private void AddCodeEditor(Node editors, StringView id, StringView label)
+	{
+		let segment = new Sedulous.GUI.Button();
+		segment.AddClass("segment");
+		segment.Text = label;
+		segment.IsToggle = true;
+		segment.Group = mCodeEditorGroup;
+		let entry = new CodeEditorSegment(id, segment);
+		segment.SetOnToggled(new [=entry, =this] (on) => { if (on) ChooseCodeEditor(entry.Id); });
+		editors.AddChild(segment);
+		mCodeEditors.Add(entry);
+	}
+
+	/// Shows the Code tab for `id`: a preset's commands for reading, the user's own to edit under
+	/// Command, nothing under Built-in.
+	private void ChooseCodeEditor(StringView id)
+	{
+		let file = Find<Sedulous.GUI.TextField>("pref-code-file");
+		let folder = Find<Sedulous.GUI.TextField>("pref-code-folder");
+		// Leaving Command keeps what was typed there, for coming back to it.
+		if ((mCodeEditor == EditorCodeEditorSettings.Command) && (id != EditorCodeEditorSettings.Command) && (file != null) && (folder != null))
+		{
+			mCodeFileCommand.Set(file.Text);
+			mCodeFolderCommand.Set(folder.Text);
+		}
+		mCodeEditor.Set(id);
+		for (let segment in mCodeEditors)
+			segment.Button.Checked = (segment.Id == id);
+		if ((file == null) || (folder == null))
+			return;
+		let own = (id == EditorCodeEditorSettings.Command);
+		let shown = scope EditorCodeEditorSettings();
+		shown.Editor.Set(id);
+		let fileCommand = scope String();
+		let folderCommand = scope String();
+		CodeEditorCommands.Of(shown, fileCommand, folderCommand);
+		file.Text = own ? mCodeFileCommand : fileCommand;
+		folder.Text = own ? mCodeFolderCommand : folderCommand;
+		file.Enabled = own;
+		folder.Enabled = own;
 	}
 
 	/// Browse beside a folder field: the system's folder dialog, from the folder the field names
@@ -310,6 +371,11 @@ class EditorPreferencesDialog
 		}
 		if (let token = Find<Sedulous.GUI.TextField>("pref-mcp-token"))
 			token.Text = (mcp != null) ? mcp.Token : "";
+		let code = (user != null) ? user.Find<EditorCodeEditorSettings>() : null;
+		mCodeEditor.Set(EditorCodeEditorSettings.BuiltIn);
+		mCodeFileCommand.Set((code != null) ? code.FileCommand : "");
+		mCodeFolderCommand.Set((code != null) ? code.FolderCommand : "");
+		ChooseCodeEditor((code != null) ? code.Editor : EditorCodeEditorSettings.BuiltIn);
 		ShowPreviews();
 		for (let check in mContributed)
 			check.Box.Checked = (check.Field.Get != null) && check.Field.Get();
@@ -351,6 +417,20 @@ class EditorPreferencesDialog
 			user.MarkChanged<EditorMcpSettings>();
 			if (mServices.McpChanged != null)
 				mServices.McpChanged();
+		}
+		if (!mCodeEditors.IsEmpty)
+		{
+			let code = user.Section<EditorCodeEditorSettings>();
+			code.Editor.Set(mCodeEditor);
+			// Only Command's fields are the user's; a preset's are shown, not kept.
+			if (mCodeEditor == EditorCodeEditorSettings.Command)
+			{
+				if (let file = Find<Sedulous.GUI.TextField>("pref-code-file"))
+					code.FileCommand..Set(file.Text).Trim();
+				if (let folder = Find<Sedulous.GUI.TextField>("pref-code-folder"))
+					code.FolderCommand..Set(folder.Text).Trim();
+			}
+			user.MarkChanged<EditorCodeEditorSettings>();
 		}
 		if (let previews = GamePreviewSettings.From(user))
 		{
@@ -577,4 +657,17 @@ class EditorPreferencesDialog
 
 	/// A contributed field and its check, the tree's.
 	private struct Contributed : this(EditorSettingsBoolField Field, Sedulous.GUI.CheckBox Box);
+
+	/// A code editor's segment: the stored Editor value, and the button, a reference of ours.
+	private class CodeEditorSegment
+	{
+		public String Id ~ delete _;
+		public Sedulous.GUI.Button Button ~ _.ReleaseRef();
+
+		public this(StringView id, Sedulous.GUI.Button button)
+		{
+			Id = new .(id);
+			Button = button;
+		}
+	}
 }

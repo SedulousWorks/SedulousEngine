@@ -53,6 +53,24 @@
                 </Panel>
             </Panel>
         </TabPage>
+        <TabPage title="Code">
+            <Panel class="dialog-body form">
+                <Label class="form-label" text="Code editor"/>
+                <Panel class="form-field">
+                    <Panel id="pref-code-editors" class="segmented"/>
+                    <Label class="form-help" text="Where code opens from the Assets panel, a log line and Project > Open Code Folder. A script's menu always offers the built-in editor."/>
+                </Panel>
+                <Label class="form-label" text="Open a file"/>
+                <Panel class="form-field">
+                    <TextField id="pref-code-file"/>
+                    <Label class="form-help" text="A program and its arguments, with {file}, {line}, {column} and {folder} (the project's Code folder). Quote an argument that holds spaces."/>
+                </Panel>
+                <Label class="form-label" text="Open the folder"/>
+                <Panel class="form-field">
+                    <TextField id="pref-code-folder" placeholder="the system's file manager"/>
+                </Panel>
+            </Panel>
+        </TabPage>
         <TabPage title="Agent access">
             <Panel class="dialog-body form">
                 <Label class="form-label" text="MCP"/>
