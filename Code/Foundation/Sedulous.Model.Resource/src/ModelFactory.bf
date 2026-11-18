@@ -102,7 +102,12 @@ class ModelFactory : IResourceFactory
 			if ((albedo.Get == null) || (albedo.Get.View == null))
 				continue;
 
-			material.Get.SetDefaultTexture("AlbedoMap", albedo.Get.View);
+			// The material holds the texture whose view it draws with: the model's build bound it, so
+			// without the hold the texture would go with the model while the material, used
+			// elsewhere, still draws with its view.
+			let owner = new ResourceHold(albedo.Handle);
+			material.Get.SetDefaultTexture("AlbedoMap", albedo.Get.View, owner);
+			owner.Release();
 		}
 	}
 }

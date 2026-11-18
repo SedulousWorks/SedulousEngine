@@ -165,6 +165,43 @@ class MaterialFactoryTests
 		Test.Assert(dependencies.Contains(textureId), "the edge a texture reload travels");
 	}
 
+	/// A material holds the texture whose view it draws with, and so does a copy of it: the
+	/// texture is not released while either draws with it, and is once neither does.
+	[Test]
+	public static void AMaterialAndItsCopyHoldTheTextureTheyDrawWith()
+	{
+		let fixture = scope MaterialFixture("scratch_material_holds_texture");
+		let textureId = fixture.CookTexture("albedo");
+		let source = CustomSource("textured");
+		defer delete source;
+		source.TextureSlots.Add(new String("AlbedoMap"));
+		source.TextureIds.Add(textureId);
+		let id = fixture.CookMaterial("textured", source);
+		fixture.Manager.SetUnusedFrames(2);
+
+		var material = fixture.Manager.Bind<Material>(id);
+		material.Retain();
+		let texture = fixture.Manager.FindHandle(textureId);
+		Test.Assert(texture.Control.WeakCount > 1, "the material holds it");
+		let copy = material.Get.Clone();
+
+		for (int i < 5)
+			fixture.Manager.CollectGarbage();
+		Test.Assert(texture.Product != null, "held while the material draws with it");
+
+		// The material goes; its copy still draws with the view.
+		material.Forget();
+		for (int i < 20)
+			fixture.Manager.CollectGarbage();
+		Test.Assert(fixture.Manager.FindHandle(id).Product == null, "the material was released");
+		Test.Assert(texture.Product != null, "the copy holds the texture");
+
+		delete copy;
+		for (int i < 20)
+			fixture.Manager.CollectGarbage();
+		Test.Assert(texture.Product == null, "and once neither draws with it, it goes");
+	}
+
 	/// A slot that cannot be filled leaves the material usable: the system substitutes a
 	/// neutral texture, so a material whose textures are not cooked yet still draws.
 	[Test]

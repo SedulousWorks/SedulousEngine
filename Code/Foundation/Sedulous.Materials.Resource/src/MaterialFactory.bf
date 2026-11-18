@@ -167,7 +167,10 @@ class MaterialFactory : IResourceFactory
 				continue;
 			}
 
-			material.SetDefaultTexture(slot, texture.Get.View);
+			// The material holds the texture whose view it draws with.
+			let owner = new ResourceHold(texture.Handle);
+			material.SetDefaultTexture(slot, texture.Get.View, owner);
+			owner.Release();
 		}
 	}
 }

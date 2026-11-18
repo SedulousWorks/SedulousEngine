@@ -28,6 +28,9 @@ class Material
 	private List<MaterialEffectGroup> mEffectGroups = new .() ~ DeleteContainerAndItems!(_);
 
 	private Dictionary<int, ITextureView> mDefaultTextures = new .() ~ delete _;
+	/// What keeps each default texture's owner loaded (SetDefaultTexture's `owner`), a reference
+	/// of ours each.
+	private Dictionary<int, SharedObject> mDefaultTextureOwners = new .() ~ { for (let owner in _.Values) owner.Release(); delete _; };
 	private Dictionary<int, ISampler> mDefaultSamplers = new .() ~ delete _;
 
 	/// Unique per OBJECT.
@@ -136,11 +139,22 @@ class Material
 	/// A colour IS a Float4; the name exists so a call site reads as what it means.
 	public void SetDefaultColor(StringView name, Float4 color) => SetDefaultFloat4(name, color);
 
-	public void SetDefaultTexture(StringView name, ITextureView texture)
+	/// The texture a property draws with by default. The view belongs to something else (a
+	/// texture resource): `owner`, when given, keeps that loaded while this material draws with
+	/// it, a reference of this material's own taken, and let go when the property is set again or
+	/// the material goes. Without one, the caller keeps the view alive.
+	public void SetDefaultTexture(StringView name, ITextureView texture, SharedObject owner = null)
 	{
 		let index = GetPropertyIndex(name);
-		if ((index >= 0) && mProperties[index].IsTexture)
-			mDefaultTextures[index] = texture;
+		if ((index < 0) || !mProperties[index].IsTexture)
+			return;
+		mDefaultTextures[index] = texture;
+		if (owner != null)
+			owner.AddRef();
+		if (mDefaultTextureOwners.GetAndRemove(index) case .Ok(let previous))
+			previous.value.Release();
+		if (owner != null)
+			mDefaultTextureOwners[index] = owner;
 	}
 
 	public void SetDefaultSampler(StringView name, ISampler sampler)
@@ -353,6 +367,12 @@ class Material
 			copy.SetEffectGroup(group.Name, group.Flag, group.GateIndex, group.UniformSize, group.Properties, group.Defaults);
 		for (let (index, texture) in mDefaultTextures)
 			copy.mDefaultTextures[index] = texture;
+		// The copy draws with the same views, so it holds their owners too.
+		for (let (index, owner) in mDefaultTextureOwners)
+		{
+			owner.AddRef();
+			copy.mDefaultTextureOwners[index] = owner;
+		}
 		for (let (index, sampler) in mDefaultSamplers)
 			copy.mDefaultSamplers[index] = sampler;
 		return copy;
