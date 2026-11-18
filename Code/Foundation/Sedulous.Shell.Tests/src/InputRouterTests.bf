@@ -539,4 +539,44 @@ class InputRouterTests
 		Test.Assert(!mouse.Relative);
 		Test.Assert(leftRouter.PointerLockedBy == null);
 	}
+
+	/// A game that locked the pointer through its surface's own mouse (mouse look) keeps reading
+	/// its movement and its buttons wherever the hidden pointer drifts, past the surface's edge
+	/// too; freed, the surface no longer has the mouse out there.
+	[Test]
+	public static void ASurfaceWhoseGameLockedThePointerKeepsItsMovementWhereverTheHiddenPointerDrifts()
+	{
+		let raw = scope FakeInputManager();
+		raw.Hover = 1;
+		// A game's tab on the left half of an 800 wide window, its content at one to one.
+		let game = scope InputSurface(raw, 1, ContentFit(.(0, 0, 400, 400), .(400, 400), .Stretch));
+		let router = scope InputRouter(raw);
+		router.AddSurface(game);
+		let mouse = raw.MouseDevice;
+		void Frame(float x, float dx)
+		{
+			mouse.PosX = x;
+			mouse.PosY = 200;
+			mouse.MoveX = dx;
+			router.Update();
+			mouse.NextFrame();
+		}
+
+		// The game locks the pointer through its own mouse; the hidden pointer drifts past the
+		// tab's right edge, and the game still reads its movement.
+		Frame(200, 0);
+		game.Mouse.SetRelativeMode(true);
+		Test.Assert(mouse.Relative);
+		Test.Assert(game.HoldsRelativeMode);
+		Frame(650, 30);
+		Test.Assert(game.MouseActive);
+		Test.Assert(Near(game.Mouse.DeltaX, 30.0f), scope $"{game.Mouse.DeltaX}");
+
+		// Freed: past the edge, the tab no longer has the mouse.
+		game.Mouse.SetRelativeMode(false);
+		Test.Assert(!game.HoldsRelativeMode);
+		Frame(650, 30);
+		Test.Assert(!game.MouseActive);
+		Test.Assert(Near(game.Mouse.DeltaX, 0.0f));
+	}
 }

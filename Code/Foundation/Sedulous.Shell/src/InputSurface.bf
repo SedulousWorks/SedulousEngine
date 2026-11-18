@@ -28,6 +28,8 @@ class InputSurface
 	private Float2 mContentMouse;
 	private Float2 mContentDelta;
 	private bool mWantsLock;
+	/// HoldsRelativeMode.
+	private bool mHoldsRelative;
 
 	private SurfaceMouse mMouse ~ delete _;
 	private SurfaceKeyboard mKeyboard ~ delete _;
@@ -98,6 +100,12 @@ class InputSurface
 	/// takes it back when the press ends, the ask is withdrawn or the surface goes.
 	public void SetPointerLock(bool lock) => mWantsLock = lock;
 	public bool WantsPointerLock => mWantsLock;
+
+	/// Whether this surface's own mouse turned relative mode on (a game's mouse look, through
+	/// Mouse.SetRelativeMode). While it holds it the router gives this surface the mouse wherever
+	/// the hidden pointer drifts, so its movement never stops at the surface's edge.
+	public bool HoldsRelativeMode => mHoldsRelative;
+	public void SetHoldsRelativeMode(bool holds) => mHoldsRelative = holds;
 
 	public Float2 ContentMouse => mContentMouse;
 	public Float2 ContentDelta => mContentDelta;

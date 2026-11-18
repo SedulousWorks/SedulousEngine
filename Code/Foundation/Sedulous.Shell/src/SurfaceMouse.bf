@@ -39,7 +39,11 @@ class SurfaceMouse : IMouse
 	// Cursor and capture control are NOT gated: they act on the real device, and a
 	// surface asking for a resize cursor means it.
 	public bool RelativeMode => mSurface.Raw.Mouse.RelativeMode;
-	public void SetRelativeMode(bool enabled) => mSurface.Raw.Mouse.SetRelativeMode(enabled);
+	public void SetRelativeMode(bool enabled)
+	{
+		mSurface.SetHoldsRelativeMode(enabled);
+		mSurface.Raw.Mouse.SetRelativeMode(enabled);
+	}
 	public bool CursorVisible => mSurface.Raw.Mouse.CursorVisible;
 	public void SetCursorVisible(bool visible) => mSurface.Raw.Mouse.SetCursorVisible(visible);
 	public void SetCursor(CursorType cursor) => mSurface.Raw.Mouse.SetCursor(cursor);

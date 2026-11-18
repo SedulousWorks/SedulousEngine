@@ -95,6 +95,7 @@ class InputRouter
 		let hoverWindow = mRaw.HoverWindow;
 
 		ResolveHover(position, hoverWindow);
+		HoldForRelativeMode(rawMouse);
 
 		let anyDown = rawMouse.IsButtonDown(.Left) || rawMouse.IsButtonDown(.Right)
 			|| rawMouse.IsButtonDown(.Middle);
@@ -158,6 +159,20 @@ class InputRouter
 			if (surface.Window != hoverWindow)
 				continue;
 			if (surface.Fit.DstRect().Contains(position))
+				mHovered = surface;
+		}
+	}
+
+	/// A surface whose own mouse holds relative mode (a game's mouse look) keeps the mouse: the
+	/// hidden pointer still drifts in the window, and past the surface's edge its movement would
+	/// stop reaching the game.
+	private void HoldForRelativeMode(IMouse rawMouse)
+	{
+		if (!rawMouse.RelativeMode)
+			return;
+		for (let surface in mSurfaces)
+		{
+			if (surface.HoldsRelativeMode)
 				mHovered = surface;
 		}
 	}

@@ -145,6 +145,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: a game's mouse look in the Game tab keeps turning however far the mouse moves; it stopped
+  once the hidden pointer drifted past the tab's edge.
 - The code editor's Replace All replaces every match, not only the first 100,000, and many matches
   no longer make it sort its edits in quadratic time.
 - A game that ends its run from a button (a quit-to-menu) no longer has that run's screens removed
