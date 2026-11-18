@@ -7,7 +7,8 @@ using Sedulous.Editor.Project;
 namespace Sedulous.Editor.Core.Tests;
 
 /// The log capture: full text, the category off the prefix, incremental polling by
-/// sequence, and an honest dropped count when the ring overflows.
+/// sequence, an honest dropped count when the ring overflows, the references a line carries, and
+/// the recognizers that find more in its text.
 static class EditorLogBufferTests
 {
 	[Test]
@@ -118,5 +119,101 @@ static class EditorLogBufferTests
 			Test.Assert(entries[i].Sequence == (uint64)(i + 1), "sequences are dense and ordered");
 			Test.Assert(entries[i].Category.StartsWith("T") && entries[i].Message.EndsWith("a tear"), "whole");
 		}
+	}
+
+	[Test]
+	public static void AnEntryKeepsTheReferencesItsLogCallAttached()
+	{
+		let buffer = scope EditorLogBuffer(8);
+		let source = LogReference.ForSource("/p/Code/A.as", 3);
+		defer delete source;
+		LogReference[1] carried = .(source);
+		buffer.LogReferenced(.Warning, carried, "Script: a problem");
+		buffer.Log(.Warning, "Script: no reference");
+
+		let entries = scope List<EditorLogEntry>();
+		defer { ClearAndDeleteItems(entries); }
+		buffer.CollectSince(0, entries);
+		Test.Assert(entries.Count == 2);
+		Test.Assert(entries[0].References.Count == 1);
+		Test.Assert(entries[0].References[0].Field(0) == "/p/Code/A.as");
+		Test.Assert(entries[0].References[0] != source, "a copy");
+		Test.Assert(entries[1].References.IsEmpty);
+	}
+
+	[Test]
+	public static void PathsInTheProjectBecomeSourceReferencesWithTheirLineAndColumn()
+	{
+		let recognizers = scope LogReferenceRecognizers();
+		recognizers.Add(LogReferenceRecognizers.SourcePath("/home/me/Game/"));
+
+		// A compiler's file(line,col), with the part taking in the numbers.
+		let build = "/home/me/Game/Code/Player.as(12,5): error: no 'speed'";
+		let found = scope List<LogReference>();
+		defer { ClearAndDeleteItems!(found); }
+		recognizers.Recognize(build, found);
+		Test.Assert(found.Count == 1);
+		Test.Assert(found[0].Kind == LogReference.Source);
+		Test.Assert(found[0].Field(0) == "/home/me/Game/Code/Player.as");
+		Test.Assert(found[0].Field(1) == "12");
+		Test.Assert(found[0].Field(2) == "5");
+		Test.Assert(StringView(build, found[0].Start, found[0].Length) == "/home/me/Game/Code/Player.as(12,5)");
+
+		// file:line:col, a path in the Code folder read under the project, a Windows path, and a
+		// path that ends a sentence.
+		ClearAndDeleteItems!(found);
+		recognizers.Recognize("see Code/Enemies/Boss.as:7 and \\home\\me\\Game\\Sources\\a.png. Also /home/me/Game/x.as:3:9.", found);
+		Test.Assert(found.Count == 3);
+		Test.Assert(found[0].Field(0) == "/home/me/Game/Code/Enemies/Boss.as");
+		Test.Assert(found[0].Field(1) == "7");
+		Test.Assert(found[0].Field(2).IsEmpty);
+		Test.Assert(found[1].Field(0) == "/home/me/Game/Sources/a.png");
+		Test.Assert(found[1].Field(1).IsEmpty);
+		Test.Assert(found[2].Field(0) == "/home/me/Game/x.as");
+		Test.Assert(found[2].Field(2) == "9");
+
+		// A path outside the project, and a word that only contains "Code/", are not.
+		ClearAndDeleteItems!(found);
+		recognizers.Recognize("/home/other/Game/Code/A.as:1 and MyCode/x.as", found);
+		Test.Assert(found.IsEmpty);
+	}
+
+	[Test]
+	public static void TheIdsOfKnownAssetsBecomeAssetReferencesOverlapsKeepTheFirst()
+	{
+		let known = Guid.Parse("0e9b3a52-1c1f-4c2e-9d3b-5a7f1e2d3c4b").Value;
+		let recognizers = scope LogReferenceRecognizers();
+		recognizers.Add(LogReferenceRecognizers.AssetId(new [=known] (id) => id == known));
+		recognizers.Add(LogReferenceRecognizers.SourcePath("/p"));
+
+		let message = "{0e9b3a52-1c1f-4c2e-9d3b-5a7f1e2d3c4b} reads /p/Code/a.as; 11111111-2222-3333-4444-555555555555 is unknown";
+		let found = scope List<LogReference>();
+		defer { ClearAndDeleteItems!(found); }
+		recognizers.Recognize(message, found);
+		Test.Assert(found.Count == 2);
+		Test.Assert(found[0].Kind == LogReference.Asset);
+		Test.Assert(found[0].Start == 0);
+		Test.Assert(found[0].Length == 38); // the braces too
+		Test.Assert(found[1].Kind == LogReference.Source);
+
+		// A line's references: the attached first, then the recognized.
+		let attached = LogReference.ForSource("/p/Code/b.as");
+		defer delete attached;
+		LogReference[1] carried = .(attached);
+		let all = scope List<LogReference>();
+		defer { ClearAndDeleteItems!(all); }
+		recognizers.Of(message, carried, all);
+		Test.Assert(all.Count == 3);
+		Test.Assert(all[0].Field(0) == "/p/Code/b.as");
+		Test.Assert(all[1].Kind == LogReference.Asset);
+
+		// A path that a longer one already covers is dropped: the first, else the longer, is kept.
+		let overlapping = scope LogReferenceRecognizers();
+		overlapping.Add(LogReferenceRecognizers.SourcePath("/p"));
+		overlapping.Add(LogReferenceRecognizers.SourcePath("/p/Code"));
+		let one = scope List<LogReference>();
+		defer { ClearAndDeleteItems!(one); }
+		overlapping.Recognize("at /p/Code/a.as:4", one);
+		Test.Assert((one.Count == 1) && (one[0].Field(0) == "/p/Code/a.as") && (one[0].Field(1) == "4"));
 	}
 }

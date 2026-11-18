@@ -11,7 +11,8 @@ namespace Sedulous.Editor.Project;
 /// is retained and nothing has to swap the logger.
 ///
 /// Entries keep full fidelity heap strings, where RingLogger truncates to a record's fixed
-/// capacity, useless for a build error or a file path, and carry a monotonic sequence so a
+/// capacity, useless for a build error or a file path, and the references the log call attached,
+/// and carry a monotonic sequence so a
 /// main thread consumer, the console panel or the MCP log_read, polls incrementally with
 /// CollectSince. When the ring is full the oldest entry drops but sequences keep advancing,
 /// so a consumer can tell, and report, that it missed some.
@@ -49,9 +50,19 @@ class EditorLogBuffer : ILogger
 		Write(logLevel, message);
 	}
 
-	/// Retains one finished line. What Log does after formatting; also the way a host
-	/// drops a marker of its own into the stream.
-	public void Write(LogLevel level, StringView message)
+	/// As Log, keeping copies of the references the line carries.
+	public void LogReferenced(LogLevel logLevel, Span<LogReference> references, StringView format, params Object[] args)
+	{
+		if ((logLevel < MinimumLogLevel) || (logLevel >= .None))
+			return;
+		let message = scope String();
+		message.AppendF(format, params args);
+		Write(logLevel, message, references);
+	}
+
+	/// Retains one finished line, with copies of the references it carries. What Log does after
+	/// formatting; also the way a host drops a marker of its own into the stream.
+	public void Write(LogLevel level, StringView message, Span<LogReference> references = default)
 	{
 		using (mLock.Enter())
 		{
@@ -72,6 +83,10 @@ class EditorLogBuffer : ILogger
 			SplitCategory(message, entry.Category, entry.Message);
 			entry.Sequence = mNextSequence++;
 			entry.Time = mClock.Elapsed;
+			ClearAndDeleteItems!(entry.References);
+			// An attached reference stands for the whole line, so the category split leaves it be.
+			for (let reference in references)
+				entry.References.Add(reference.Clone());
 		}
 	}
 

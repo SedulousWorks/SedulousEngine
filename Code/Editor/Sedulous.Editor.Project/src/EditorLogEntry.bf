@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core.Logging;
 
 namespace Sedulous.Editor.Project;
@@ -16,6 +17,9 @@ class EditorLogEntry
 	public uint64 Sequence = 0;
 	/// When it was written, since the buffer was made (the editor's start).
 	public TimeSpan Time = default;
+	/// What the log call attached; recognizers add more when the line is read. Its offsets are in
+	/// Message, after the category.
+	public List<LogReference> References = new .() ~ DeleteContainerAndItems!(_);
 
 	public void CopyTo(EditorLogEntry other)
 	{
@@ -24,5 +28,8 @@ class EditorLogEntry
 		other.Message.Set(Message);
 		other.Sequence = Sequence;
 		other.Time = Time;
+		ClearAndDeleteItems!(other.References);
+		for (let reference in References)
+			other.References.Add(reference.Clone());
 	}
 }
