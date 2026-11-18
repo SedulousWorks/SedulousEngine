@@ -101,4 +101,55 @@ static class LogToolsTests
 		// It names the file the hosts look for, and both places they look.
 		Test.Assert(guidance.Contains("KnownIssues.md") && guidance.Contains("Documentation/Shipping"), guidance);
 	}
+
+	/// log_read gives each line's references: those its log call attached, and the project's files
+	/// and assets found in its text.
+	[Test]
+	public static void LogReadGivesEachLinesReferences()
+	{
+		let dir = "scratch_mcp_log_references";
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Refs") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let session = scope ProjectSession();
+		session.Project = project;
+
+		let buffer = new EditorLogBuffer();
+		let composite = new CompositeLogger();
+		composite.Add(buffer, true);
+		InitGlobalLogger(composite, true);
+		defer ShutdownGlobalLogger();
+		let server = scope McpServer();
+		LogTools.Register(server, buffer, "", session);
+
+		let root = PathJoin(Directory.GetCurrentDirectory(.. scope .()), dir, .. scope .());
+		let file = PathJoin(root, "Code/Player.as", .. scope .());
+		GlobalLog(.Warning, "Script: {}:12:3: unknown global 'speed'", file);
+		let asset = LogReference.ForAsset(Guid.Parse("0e9b3a52-1c1f-4c2e-9d3b-5a7f1e2d3c4b").Value);
+		defer delete asset;
+		GlobalLogAt(.Warning, asset, "Cook: Crate did not cook");
+		GlobalLog(.Information, "Scene: nothing to follow");
+
+		let read = CallOk(server, "log_read", Obj());
+		defer delete read;
+		let entries = read.Get("entries");
+		Test.Assert(entries.Count == 3);
+		let source = entries.At(0).Get("references");
+		Test.Assert(source.Count == 1);
+		Test.Assert(source.At(0).Get("kind").AsString() == "source");
+		Test.Assert(source.At(0).Get("fields").At(0).AsString() == file);
+		Test.Assert(source.At(0).Get("fields").At(1).AsString() == "12");
+		Test.Assert(source.At(0).Get("fields").At(2).AsString() == "3");
+		Test.Assert(source.At(0).Get("start").AsNumber() == 0.0);
+		Test.Assert(source.At(0).Get("length").AsNumber() == (double)(file.Length + 5));
+		let attached = entries.At(1).Get("references");
+		Test.Assert(attached.Count == 1);
+		Test.Assert(attached.At(0).Get("kind").AsString() == "asset");
+		Test.Assert(attached.At(0).Get("length").AsNumber() == 0.0);
+		Test.Assert(!entries.At(2).Has("references"));
+
+	}
 }

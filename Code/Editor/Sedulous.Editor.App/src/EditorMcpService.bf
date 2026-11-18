@@ -161,6 +161,7 @@ class EditorMcpService
 		mSession.Project = project;
 		mSession.Plugins = mServices.Context.Plugins; // the project's plugins, enabled with it
 		mSession.ExportHooks = mServices.Context.ExportHooks; // and their export hooks, for project_export
+		mSession.LogRecognizers = mServices.Context.LogRecognizers; // log_read's references, the Console's
 
 		// The operations run on the application's services, so an agent's cook, import or export
 		// takes the same background paths the menus do and the editor stays live. The hooks are
@@ -344,6 +345,7 @@ class EditorMcpService
 		mSession.Project = null;
 		mSession.Plugins = null;
 		mSession.ExportHooks = null;
+		mSession.LogRecognizers = null;
 	}
 
 	/// Each frame, on the main thread: the calls that arrived are answered here, so a tool may

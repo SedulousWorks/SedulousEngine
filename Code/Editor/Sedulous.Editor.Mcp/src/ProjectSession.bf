@@ -32,6 +32,9 @@ class ProjectSession
 	/// The plugin parts this host links, what plugin_list offers the project; null is the parts that
 	/// registered in this binary (PluginRegistry). BORROWED.
 	public System.Collections.List<Sedulous.Runtime.PluginPart> PluginParts = null;
+	/// What finds references in a log line's text, for log_read: the editor's, with what its plugins
+	/// and languages add. Null: log_read finds the project's files and assets itself. BORROWED.
+	public LogReferenceRecognizers LogRecognizers = null;
 
 	public bool IsOpen => Project != null;
 }

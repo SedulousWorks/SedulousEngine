@@ -605,7 +605,9 @@ call and the export refuse it.
   uses it still does, and the default scene's path follows; a name a file cannot take, or one
   taken in the group, is refused.
 - `log_read` is incremental: always pass the previous `lastSequence`; a non zero `dropped`
-  means the ring overflowed and old lines are gone.
+  means the ring overflowed and old lines are gone. An entry that names a project file or asset
+  carries `references` (`source`: file, line, column; `asset`: guid): read the file at that line
+  rather than searching for it.
 - `asset_cook` and `project_export` are long running calls (a full cook may run inside
   them); do not assume a hang before minutes have passed.
 - `profiler_capture` keeps the call open for the capture plus a few frames for the GPU's

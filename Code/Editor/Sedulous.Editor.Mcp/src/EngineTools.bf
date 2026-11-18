@@ -46,7 +46,7 @@ static class EngineTools
 		AssetDataTools.Register(server, session);
 		AssetUsesTool.Register(server, session, builders);
 		ProjectHealthTool.Register(server, session, builders);
-		LogTools.Register(server, logBuffer, paths.KnownIssues);
+		LogTools.Register(server, logBuffer, paths.KnownIssues, session);
 		SceneTools.Register(server, session);
 		if (!paths.ShippingDocsDir.IsEmpty)
 			ShippingDocResources.Register(server, paths.ShippingDocsDir);

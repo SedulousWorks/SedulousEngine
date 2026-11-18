@@ -23,6 +23,9 @@ static class LogTools
 		/// Resolved absolute path of KnownIssues.md, empty when not found: the tool then
 		/// errs with guidance rather than being absent, so an agent learns why.
 		public String KnownIssuesPath = new .() ~ delete _;
+		/// The project whose files and assets a line's references name; null: only those the log
+		/// calls attached. BORROWED.
+		public ProjectSession Session;
 	}
 
 	private static StringView[5] cLevels = .("trace", "debug", "info", "warning", "error");
@@ -54,10 +57,13 @@ static class LogTools
 		}
 	}
 
-	public static void Register(McpServer server, EditorLogBuffer buffer, StringView knownIssuesPath)
+	/// `session` gives log_read the project whose files and assets a line's references name (null:
+	/// only those the log calls attached).
+	public static void Register(McpServer server, EditorLogBuffer buffer, StringView knownIssuesPath, ProjectSession session = null)
 	{
 		let context = new Context();
 		context.Buffer = buffer;
+		context.Session = session;
 		context.KnownIssuesPath.Set(knownIssuesPath);
 
 		let readSchema = scope SchemaBuilder();
@@ -67,7 +73,7 @@ static class LogTools
 		readSchema.Str("category", "only entries with exactly this category (e.g. Cook, Scene)");
 		server.RegisterTool("log_read",
 			"""
-			Read the host's captured engine log (cook warnings, scene-load errors, subsystem output, agent markers). Poll incrementally: pass the lastSequence from the previous call as sinceSequence to get only what is new. Returns the newest `limit` matching entries; `dropped` > 0 means the ring overflowed and old entries were lost.
+			Read the host's captured engine log (cook warnings, scene-load errors, subsystem output, agent markers). Poll incrementally: pass the lastSequence from the previous call as sinceSequence to get only what is new. Returns the newest `limit` matching entries; `dropped` > 0 means the ring overflowed and old entries were lost. An entry that names a file of the project (with its line and column), an asset, or another place has `references`: each a kind (source: file, line, column; asset: guid), its fields, and the part of the message it stands for (start and length in characters; length 0: the whole line).
 			""",
 			readSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Read(context, arguments, outResult),
@@ -112,6 +118,25 @@ static class LogTools
 				continue;
 			matching.Add(entry);
 		}
+		// The recognizers: the host's, else the project's files and assets.
+		let session = context.Session;
+		var recognizers = (session != null) ? session.LogRecognizers : null;
+		let own = scope LogReferenceRecognizers();
+		if ((recognizers == null) && (session != null) && (session.Project != null))
+		{
+			let project = session.Project;
+			let directory = scope String();
+			if (PathIsAbsolute(project.Directory))
+				directory.Set(project.Directory);
+			else
+				PathJoin(GetCurrentDirectory(.. scope .()), project.Directory, directory);
+			own.Add(LogReferenceRecognizers.SourcePath(directory));
+			own.Add(LogReferenceRecognizers.AssetId(new [=project] (id) => project.SourceDb.GetInstance(id) != null));
+			recognizers = own;
+		}
+		let references = scope List<LogReference>();
+		defer { ClearAndDeleteItems!(references); }
+
 		let start = matching.Count > limit ? matching.Count - limit : 0;
 		let entries = JsonValue.MakeArray();
 		for (int i = start; i < matching.Count; i++)
@@ -122,6 +147,31 @@ static class LogTools
 			json.Set("level", JsonValue.MakeString(LevelName(entry.Level)));
 			json.Set("category", JsonValue.MakeString(entry.Category));
 			json.Set("message", JsonValue.MakeString(entry.Message));
+			ClearAndDeleteItems!(references);
+			if (recognizers != null)
+				recognizers.Of(entry.Message, entry.References, references);
+			else
+			{
+				for (let reference in entry.References)
+					references.Add(reference.Clone());
+			}
+			if (!references.IsEmpty)
+			{
+				let list = JsonValue.MakeArray();
+				for (let reference in references)
+				{
+					let item = JsonValue.MakeObject();
+					item.Set("kind", JsonValue.MakeString(reference.Kind));
+					let fields = JsonValue.MakeArray();
+					for (let field in reference.Fields)
+						fields.Add(JsonValue.MakeString(field));
+					item.Set("fields", fields);
+					item.Set("start", JsonValue.MakeNumber((double)reference.Start));
+					item.Set("length", JsonValue.MakeNumber((double)reference.Length));
+					list.Add(item);
+				}
+				json.Set("references", list);
+			}
 			entries.Add(json);
 		}
 		outResult.Set("entries", entries);
