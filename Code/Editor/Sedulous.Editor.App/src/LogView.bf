@@ -15,7 +15,10 @@ namespace Sedulous.Editor.App;
 /// are back at the bottom. Rows select as any list's do (click, Ctrl, Shift, Ctrl+A); Ctrl+C or
 /// the menu's Copy puts the selected lines on the clipboard, oldest first, one per line. The
 /// entries are capped (the oldest trimmed); a selection is by entry, so it survives a trim. Fed
-/// once a frame from the editor's log buffer (EditorApplication.DrainLog).
+/// once a frame from the editor's log buffer (EditorApplication.DrainLog). A line's references (a
+/// file at a line, an asset) that something can follow show as underlined links: a click on one
+/// follows it, and a double click on the line follows its first reference, opening what a click
+/// only selects.
 class LogView
 {
 	/// Its frame under the data root.
@@ -33,6 +36,10 @@ class LogView
 		public TimeSpan Time;
 		/// Its own while lines come and go around it: the list's id for its row.
 		public ItemId Id;
+		/// Those that can be followed, their parts in Text.
+		public List<LogReference> References = new .() ~ DeleteContainerAndItems!(_);
+		/// Text with its references as links; empty when none has a part.
+		public String Markup = new .() ~ delete _;
 	}
 
 	/// The shown lines as the list's model: a row's id its entry's, so a selection follows it.
@@ -103,6 +110,10 @@ class LogView
 	private String mSearch = new .() ~ delete _;
 	private ItemId mNextId = 1;
 	private delegate void(int lines) mOnCopied = null ~ delete _;
+	private delegate bool(LogReference reference) mCanFollow = null ~ delete _;
+	private delegate void(LogReference reference, bool open) mFollow = null ~ delete _;
+	/// Each row's text label (the list keeps them while the view lives) and the entry it shows now.
+	private List<(Sedulous.GUI.Label Label, ItemId Entry)> mBound = new .() ~ delete _;
 	private LineModel mModel ~ delete _;
 
 	/// Over its frame `content` (the markup's: its parts by id). TAKES OWNERSHIP of a reference
@@ -121,6 +132,12 @@ class LogView
 			rows.Bind = new (row, index) => { BindRow(row, index); };
 			mList.SetRowFactory(rows);
 			mList.Model = mModel;
+			// A double click (or Enter) on a line follows its first reference.
+			mList.SetOnActivated(new (index) =>
+				{
+					if (index.Row >= 0)
+						FollowFirst(index.Row);
+				});
 			// Ctrl+C before the list's own keys; the menu's Copy, Select All and Clear.
 			mKeyListener = mList.AddEventListener(.KeyDown, new (e) =>
 				{
@@ -173,6 +190,7 @@ class LogView
 		{
 			mList.RemoveEventListener(mKeyListener);
 			mList.RemoveEventListener(mMenuListener);
+			mList.SetOnActivated(null);
 			mList.Model = null;
 			mList.SetRowFactory(null);
 		}
@@ -189,9 +207,20 @@ class LogView
 		mOnCopied = copied;
 	}
 
+	/// What follows a reference (the context's handlers): whether one can, and following it
+	/// (`open`: a double click). Unset: references show as text. TAKES OWNERSHIP of both.
+	public void SetFollow(delegate bool(LogReference reference) canFollow, delegate void(LogReference reference, bool open) follow)
+	{
+		delete mCanFollow;
+		delete mFollow;
+		mCanFollow = canFollow;
+		mFollow = follow;
+	}
+
 	/// One line, at the end; the oldest go past the cap. `time` is when it was written, since
-	/// the editor started.
-	public void AddEntry(LogLevel level, StringView category, StringView message, TimeSpan time = default)
+	/// the editor started. `references` are the line's (borrowed), their parts in `message`.
+	public void AddEntry(LogLevel level, StringView category, StringView message, TimeSpan time = default,
+		Span<LogReference> references = default)
 	{
 		let follow = IsAtBottom();
 		let entry = new Entry();
@@ -202,6 +231,17 @@ class LogView
 			entry.Text.AppendF("[{}] {}", category, message);
 		entry.Time = time;
 		entry.Id = mNextId++;
+		let shift = entry.Text.Length - message.Length; // the category before the message
+		for (let reference in references)
+		{
+			if ((mCanFollow == null) || !mCanFollow(reference))
+				continue;
+			let shown = reference.Clone();
+			if (shown.Length > 0)
+				shown.Start += shift;
+			entry.References.Add(shown);
+		}
+		LinkMarkup(entry.Text, entry.References, entry.Markup);
 		mCounts[(int)LogBucket.Of(level)]++;
 		mEntries.Add(entry);
 		bool reset = false;
@@ -233,6 +273,27 @@ class LogView
 		Refilter();
 		ShowChrome();
 	}
+
+	/// A shown line's rich text with its references as links; empty when it shows plain.
+	public StringView ShownMarkup(int row) => ((row >= 0) && (row < mShown.Count)) ? (StringView)mEntries[mShown[row]].Markup : default;
+
+	/// A shown line's references that can be followed, their parts in its text.
+	public Span<LogReference> ShownReferences(int row) => ((row >= 0) && (row < mShown.Count)) ? mEntries[mShown[row]].References : default;
+
+	/// Follows a shown line's reference `index` (its link's click, or with `open` a double click).
+	public bool FollowReference(int row, int index, bool open)
+	{
+		if ((row < 0) || (row >= mShown.Count) || (mFollow == null))
+			return false;
+		let entry = mEntries[mShown[row]];
+		if ((index < 0) || (index >= entry.References.Count))
+			return false;
+		mFollow(entry.References[index], open);
+		return true;
+	}
+
+	/// Follows a shown line's first reference, opening it (the line's double click).
+	public bool FollowFirst(int row) => FollowReference(row, 0, true);
 
 	public int EntryCount => mEntries.Count;
 	public int ShownCount => mShown.Count;
@@ -374,9 +435,62 @@ class LogView
 		time.ReleaseRef(); // the row's reference keeps it
 		let text = new Sedulous.GUI.Label();
 		text.AddClass("log-text");
+		// A click on a reference's link follows it; the row is found by the entry it shows.
+		text.AddEventListener(.Link, new [=this, =text] (e) =>
+			{
+				let link = (LinkEvent)e;
+				e.Handled = true;
+				if (!(int32.Parse(link.Link) case .Ok(let index)))
+					return;
+				for (let bound in mBound)
+				{
+					if (bound.Label != text)
+						continue;
+					for (int shownRow < mShown.Count)
+					{
+						if (mEntries[mShown[shownRow]].Id == bound.Entry)
+							FollowReference(shownRow, index, false);
+					}
+				}
+			});
 		row.AddChild(text);
 		text.ReleaseRef();
 		return row;
+	}
+
+	/// `text` as rich markup into `outMarkup`, each reference's part a link named by its index;
+	/// nothing when none has a part.
+	private static void LinkMarkup(StringView text, List<LogReference> references, String outMarkup)
+	{
+		bool any = false;
+		for (let reference in references)
+			any |= (reference.Length > 0) && ((reference.Start + reference.Length) <= text.Length);
+		if (!any)
+			return;
+		int at = 0;
+		for (int i < references.Count)
+		{
+			let reference = references[i];
+			if ((reference.Length == 0) || (reference.Start < at) || ((reference.Start + reference.Length) > text.Length))
+				continue;
+			AppendPlain(StringView(text, at, reference.Start - at), outMarkup);
+			outMarkup.AppendF("[u][link={}]", i);
+			AppendPlain(StringView(text, reference.Start, reference.Length), outMarkup);
+			outMarkup.Append("[/link][/u]");
+			at = reference.Start + reference.Length;
+		}
+		AppendPlain(StringView(text, at), outMarkup);
+	}
+
+	/// Text as markup: a '[' doubled, so it reads as itself.
+	private static void AppendPlain(StringView piece, String outMarkup)
+	{
+		for (let c in piece)
+		{
+			if (c == '[')
+				outMarkup.Append('[');
+			outMarkup.Append(c);
+		}
 	}
 
 	private void BindRow(Node node, ModelIndex index)
@@ -388,7 +502,21 @@ class LogView
 		if (let time = row.GetChildAt(0) as Sedulous.GUI.Label)
 			time.Text = TimeText(entry.Time, .. scope .());
 		if (let text = row.GetChildAt(1) as Sedulous.GUI.Label)
-			text.Text = entry.Text;
+		{
+			text.Rich = !entry.Markup.IsEmpty;
+			text.Text = entry.Markup.IsEmpty ? entry.Text : entry.Markup;
+			bool known = false;
+			for (var bound in ref mBound)
+			{
+				if (bound.Label == text)
+				{
+					bound.Entry = entry.Id;
+					known = true;
+				}
+			}
+			if (!known)
+				mBound.Add((text, entry.Id));
+		}
 		// Its level's colour, the sheet's: info lines in the text colour.
 		row.RemoveClass("debug");
 		row.RemoveClass("warning");

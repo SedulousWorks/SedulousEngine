@@ -19,6 +19,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   and whenever the API changed. With VS Code chosen, `.vscode/extensions.json` recommends angel-lsp
   and `.vscode/settings.json` holds what the languages need; once you edit either, it is yours and
   is not written over.
+- Editor: a Console line that names a file of the project (with its line and column, as a
+  compiler writes them) or one of its assets shows it as a link. A click opens the file where code
+  opens or selects the asset; a double click on the line follows its first link, opening the
+  asset's page.
 - A script or script project file saved into `Code/` from another editor becomes an asset by itself,
   in the group its folder names.
 - Projects keep their code in a `Code/` folder beside `Sources/`: scripts and script project files

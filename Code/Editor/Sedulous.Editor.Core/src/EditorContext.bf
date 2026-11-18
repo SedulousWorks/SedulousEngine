@@ -135,6 +135,44 @@ class EditorContext : IAssetEditSink
 	public delegate void(StringView file, uint32 line, uint32 column) OpenCode ~ delete _;
 	/// Reveals the asset with this guid in the asset browser.
 	public delegate void(Guid id) RevealAsset ~ delete _;
+
+	// === Log references: what a log line points at, followed from the console ===
+
+	/// Follows a reference of one kind: `open` is a double click, which opens what a click only
+	/// selects (an asset's page). The reference is borrowed for the call.
+	public typealias LogReferenceHandler = delegate void(LogReference reference, bool open);
+
+	private LogReferenceRecognizers mLogRecognizers = new .() ~ delete _;
+	private Dictionary<String, LogReferenceHandler> mLogHandlers = new .() ~ { for (let entry in _) { delete entry.key; delete entry.value; } delete _; };
+
+	/// The recognizers that find references in a log line's text: the application adds the
+	/// engine's for the open project; a plugin or a language adds its own.
+	public LogReferenceRecognizers LogRecognizers => mLogRecognizers;
+
+	/// Sets the handler for `kind`, TAKING OWNERSHIP of it and replacing any before it; null
+	/// removes it.
+	public void SetLogReferenceHandler(StringView kind, LogReferenceHandler handler)
+	{
+		if (mLogHandlers.GetAndRemoveAlt(kind) case .Ok(let removed))
+		{
+			delete removed.key;
+			delete removed.value;
+		}
+		if (handler != null)
+			mLogHandlers[new String(kind)] = handler;
+	}
+
+	/// Whether a handler follows `reference`'s kind (one without shows as text).
+	public bool CanFollow(LogReference reference) => mLogHandlers.ContainsKeyAlt<StringView>(reference.Kind);
+
+	/// Follows `reference` by its kind's handler; false when its kind has none.
+	public bool FollowLogReference(LogReference reference, bool open)
+	{
+		if (!mLogHandlers.TryGetValueAlt<StringView>(reference.Kind, let handler))
+			return false;
+		handler(reference, open);
+		return true;
+	}
 	/// Fired on every favorite toggle; the app persists to the project's Editor/ state.
 	public delegate void() OnFavoritesChanged ~ delete _;
 	/// The app's persist hook for the project editor settings.

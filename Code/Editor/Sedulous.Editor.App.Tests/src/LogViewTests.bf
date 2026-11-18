@@ -16,7 +16,8 @@ namespace Sedulous.Editor.App.Tests;
 /// Debug chip hiding only its own lines, the search typed into its field and its x, a selection
 /// kept through a filter for the lines still shown, rows picked out of order and ranges grown
 /// with Shift, a copy announced with its count, each row's time and level colour, the newest
-/// line followed until the user scrolls up, and the list's menu.
+/// line followed until the user scrolls up, and the list's menu; and a line's references, shown as
+/// links when something follows their kind.
 class LogViewTests
 {
 	/// The Console in a GUI of its own, 800 by 400, with a clipboard the test reads.
@@ -530,5 +531,43 @@ class LogViewTests
 			Test.Assert(list.ScrollOffset.Y < last, scope $"notch {notch}: up, not pulled back down by the new line");
 			last = list.ScrollOffset.Y;
 		}
+	}
+
+	[Test]
+	public static void ALinesReferencesThatCanBeFollowedShowAsLinksAClickFollowsADoubleClickOpens()
+	{
+		let bed = scope ConsoleBed();
+		let followed = scope List<(String Kind, bool Open)>();
+		defer { for (let entry in followed) delete entry.Kind; }
+		bed.View.SetFollow(new (reference) => reference.Kind == LogReference.Source,
+			new [=followed] (reference, open) => { followed.Add((new String(reference.Kind), open)); });
+
+		let message = "bad [x] at /p/a.as:3";
+		let source = LogReference.ForSource("/p/a.as", 3);
+		defer delete source;
+		source.Start = 11;
+		source.Length = 9;
+		let node = scope LogReference(LogReference.Node); // nothing follows it here
+		node.Start = 0;
+		node.Length = 3;
+		LogReference[2] references = .(source, node);
+		bed.View.AddEntry(.Error, "Script", message, default, references);
+		bed.View.AddEntry(.Information, "Script", "plain");
+
+		Test.Assert(bed.View.ShownReferences(0).Length == 1);
+		let shown = bed.View.ShownReferences(0)[0];
+		Test.Assert(shown != source, "a copy");
+		Test.Assert(StringView(bed.View.ShownText(0), shown.Start, shown.Length) == "/p/a.as:3"); // past "[Script] "
+		Test.Assert(bed.View.ShownMarkup(0) == "[[Script] bad [[x] at [u][link=0]/p/a.as:3[/link][/u]", scope String(bed.View.ShownMarkup(0)));
+		Test.Assert(bed.View.ShownMarkup(1).IsEmpty);
+		Test.Assert(bed.View.ShownReferences(1).IsEmpty);
+
+		Test.Assert(bed.View.FollowReference(0, 0, false));
+		Test.Assert(bed.View.FollowFirst(0));
+		Test.Assert(!bed.View.FollowFirst(1)); // nothing to follow
+		Test.Assert(followed.Count == 2);
+		Test.Assert(followed[0].Kind == LogReference.Source);
+		Test.Assert(!followed[0].Open);
+		Test.Assert(followed[1].Open);
 	}
 }

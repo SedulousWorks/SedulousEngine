@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core.Logging;
 using System.IO;
 using System.Threading;
 using Sedulous.Core;
@@ -550,5 +551,31 @@ static class EditorContextTests
 		Test.Assert(elsewhere.Told == 0);
 		// An asset no page edits: nothing told, nothing wrong.
 		Test.Assert(context.NotifyAssetExternallyModified(Guid.Generate(ref rng)) == 0);
+	}
+
+	/// A log reference is followed by its kind's handler: one set replaces the one before, null
+	/// removes it, and a kind with none is not followed.
+	[Test]
+	public static void ALogReferenceIsFollowedByItsKindsHandler()
+	{
+		let context = scope EditorContext();
+		let source = LogReference.ForSource("/p/a.as", 2);
+		defer delete source;
+		let asset = scope LogReference(LogReference.Asset);
+		Test.Assert(!context.CanFollow(source));
+		Test.Assert(!context.FollowLogReference(source, false));
+
+		int first = 0;
+		int second = 0;
+		bool opened = false;
+		context.SetLogReferenceHandler(LogReference.Source, new [&first] (reference, open) => { first++; });
+		context.SetLogReferenceHandler(LogReference.Source, new [&second, &opened] (reference, open) => { second++; opened = open; });
+		Test.Assert(context.CanFollow(source) && !context.CanFollow(asset));
+		Test.Assert(context.FollowLogReference(source, true));
+		Test.Assert((first == 0) && (second == 1) && opened, "the second replaced the first");
+		Test.Assert(!context.FollowLogReference(asset, false));
+
+		context.SetLogReferenceHandler(LogReference.Source, null);
+		Test.Assert(!context.CanFollow(source));
 	}
 }

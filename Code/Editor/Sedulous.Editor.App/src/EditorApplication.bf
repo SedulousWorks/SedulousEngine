@@ -93,6 +93,8 @@ class EditorApplication : IApplication
 	private EditorPages mPages ~ delete _;
 	/// Where code opens (the Code Editor preference); made with the pages.
 	private EditorCodeOpener mCodeOpener ~ delete _;
+	/// The open project's recognizers, in the context's.
+	private List<uint64> mLogRecognizers = new .() ~ delete _;
 	/// Rename, duplicate, delete, cook: the assets browser's and an agent's. Made with the
 	/// application; after the pages its closes reach, so it goes first.
 	private AssetOperations mAssetOps ~ delete _;
@@ -211,6 +213,27 @@ class EditorApplication : IApplication
 			mCodeOpener = new EditorCodeOpener(code);
 			mContext.OpenCode = new (file, line, column) => { mCodeOpener.Open(file, line, column); };
 			mContext.AddOpenAssetInterceptor(new (instance) => mCodeOpener.OpenAsset(instance));
+			// A log line's file opens where code opens; its asset is selected in the Assets panel,
+			// and opened on a double click.
+			mContext.SetLogReferenceHandler(LogReference.Source, new (reference, open) =>
+				{
+					uint32 line = 0;
+					uint32 column = 0;
+					if (uint32.Parse(reference.Field(1)) case .Ok(let parsedLine))
+						line = parsedLine;
+					if (uint32.Parse(reference.Field(2)) case .Ok(let parsedColumn))
+						column = parsedColumn;
+					mCodeOpener.Open(reference.Field(0), line, column);
+				});
+			mContext.SetLogReferenceHandler(LogReference.Asset, new (reference, open) =>
+				{
+					if (!(Guid.Parse(reference.Field(0)) case .Ok(let id)))
+						return;
+					if (open && (mContext.OpenAsset != null))
+						mContext.OpenAsset(id);
+					else if (mContext.RevealAsset != null)
+						mContext.RevealAsset(id);
+				});
 		}
 		mAssetOps = new AssetOperations(AssetOpsServices());
 		{
@@ -367,6 +390,15 @@ class EditorApplication : IApplication
 				// The Code folder's declarations follow the engine (and the plugins loaded), after the
 				// check runtimes they come from, on the same lane.
 				KeepCodeTooling(true);
+				// Log lines name the project's files and assets: they become links.
+				let directory = scope String();
+				if (PathIsAbsolute(project.Directory))
+					directory.Set(project.Directory);
+				else
+					PathJoin(GetCurrentDirectory(.. scope .()), project.Directory, directory);
+				mLogRecognizers.Add(mContext.LogRecognizers.Add(LogReferenceRecognizers.SourcePath(directory)));
+				mLogRecognizers.Add(mContext.LogRecognizers.Add(LogReferenceRecognizers.AssetId(new (id) =>
+					(mContext.Project != null) && (mContext.Project.SourceDb.GetInstance(id) != null))));
 				// The project's layout, else the default (the one before was another project's).
 				let store = mSession.Store;
 				mDock.TakeLayout(store);
@@ -413,6 +445,9 @@ class EditorApplication : IApplication
 			};
 		services.OnClosing = new () =>
 			{
+				for (let recognizer in mLogRecognizers)
+					mContext.LogRecognizers.Remove(recognizer);
+				mLogRecognizers.Clear();
 				mDock.SetProjectContent(null); // the welcome again
 				DeleteAndNullify!(mHome);
 				mPages.CloseAll(); // their resources while the project's services live
@@ -796,6 +831,8 @@ class EditorApplication : IApplication
 				return content;
 			};
 		mConsole = new LogView(mWindow.LoadMarkup(LogView.cMarkupPath));
+		mConsole.SetFollow(new (reference) => mContext.CanFollow(reference),
+			new (reference, open) => { mContext.FollowLogReference(reference, open); });
 		mConsole.SetOnCopied(new (lines) => { mContext.Notify(.Success, (lines == 1) ? "Copied 1 log line" : scope:: $"Copied {lines} log lines"); });
 		contents.Console = new () =>
 			{
@@ -895,8 +932,14 @@ class EditorApplication : IApplication
 		let entries = scope List<EditorLogEntry>();
 		defer { ClearAndDeleteItems!(entries); }
 		mLogSequence = mConfig.LogBuffer.CollectSince(mLogSequence, entries);
+		let references = scope List<LogReference>();
+		defer { ClearAndDeleteItems!(references); }
 		for (let entry in entries)
-			mConsole.AddEntry(entry.Level, entry.Category, entry.Message, entry.Time);
+		{
+			ClearAndDeleteItems!(references);
+			mContext.LogRecognizers.Of(entry.Message, entry.References, references);
+			mConsole.AddEntry(entry.Level, entry.Category, entry.Message, entry.Time, references);
+		}
 	}
 
 	/// The frame's menu bar and keys from the action registry, File > New <creator> leading the
