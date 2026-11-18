@@ -32,6 +32,8 @@ class EditorCodeOpenerServices
 	public delegate bool(StringView program, Span<StringView> arguments) Launch ~ delete _;
 	/// Shows a folder in the system's file manager. Owned.
 	public delegate void(StringView folder) ShowFolder ~ delete _;
+	/// Called before an outside editor starts, so the Code folder holds what it reads. Owned.
+	public delegate void() BeforeLaunch ~ delete _;
 }
 
 class EditorCodeOpener
@@ -105,6 +107,8 @@ class EditorCodeOpener
 		CodeEditorCommands.Expand(command, at, parts);
 		if (parts.IsEmpty)
 			return false;
+		if (mServices.BeforeLaunch != null)
+			mServices.BeforeLaunch();
 		let arguments = scope List<StringView>();
 		for (int i = 1; i < parts.Count; i++)
 			arguments.Add(parts[i]);

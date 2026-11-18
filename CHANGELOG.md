@@ -14,6 +14,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   Assets panel follows it; its menu's Open in Built-in Editor always opens the editor's own page.
   Project > Open Code Folder opens the project's `Code/` folder there, or in the file manager. The
   built-in editor opens `Code/`'s other files, such as a `.csproj`, as plain text.
+- Editor: a project's `Code/` folder keeps what an outside editor needs to complete and check
+  scripts against the engine's API: `as.predefined` for AngelScript, written when the project opens
+  and whenever the API changed. With VS Code chosen, `.vscode/extensions.json` recommends angel-lsp
+  and `.vscode/settings.json` holds what the languages need; once you edit either, it is yours and
+  is not written over.
 - A script or script project file saved into `Code/` from another editor becomes an asset by itself,
   in the group its folder names.
 - Projects keep their code in a `Code/` folder beside `Sources/`: scripts and script project files

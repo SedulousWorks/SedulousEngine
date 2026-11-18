@@ -202,6 +202,7 @@ class EditorApplication : IApplication
 			code.Context = mContext;
 			code.OpenPage = new (instance) => mPages.Open(instance);
 			code.OpenFile = new (file) => mPages.OpenFile(file);
+			code.BeforeLaunch = new () => { KeepCodeTooling(false); };
 			code.ShowFolder = new (folder) =>
 				{
 					if (let dialogs = ShellDialogs())
@@ -363,6 +364,9 @@ class EditorApplication : IApplication
 						ScriptLanguageCooks.PrepareChecks();
 						return .Ok;
 					}, null, mContext.LightLane);
+				// The Code folder's declarations follow the engine (and the plugins loaded), after the
+				// check runtimes they come from, on the same lane.
+				KeepCodeTooling(true);
 				// The project's layout, else the default (the one before was another project's).
 				let store = mSession.Store;
 				mDock.TakeLayout(store);
@@ -922,6 +926,35 @@ class EditorApplication : IApplication
 		mPalette.Open(root);
 	}
 
+	/// Writes the Code folder's files an outside editor reads (CodeTooling.Keep), on the light lane;
+	/// with `onlyWithCode`, only when the project has a Code folder already (a project with no code
+	/// yet gets no Code folder for it).
+	private void KeepCodeTooling(bool onlyWithCode)
+	{
+		let project = mSession.Project;
+		if (project == null)
+			return;
+		let code = project.CodeRoot(.. new .());
+		if (onlyWithCode && !DirectoryExists(code))
+		{
+			delete code;
+			return;
+		}
+		let preference = mEditorSettings.Find<EditorCodeEditorSettings>();
+		let vscode = (preference != null) && (preference.Editor == "vscode");
+		let ledger = PathJoin(project.CacheRoot(.. scope .()), CodeTooling.LedgerFile, .. new .());
+		mContext.Tasks.Submit("Code folder tooling", new [=code, =ledger, =vscode] (task) =>
+			{
+				let files = scope List<CodeToolingFile>();
+				defer { ClearAndDeleteItems!(files); }
+				CodeTooling.Files(vscode, files);
+				let written = CodeTooling.Keep(code, ledger, files);
+				if (written > 0)
+					GlobalLog(.Information, "Editor: wrote {} tooling file(s) into {}", written, code);
+				return .Ok;
+			} ~ { delete code; delete ledger; }, null, mContext.LightLane);
+	}
+
 	/// Preferences over the main window (made the first time), the look shown live in the window.
 	/// Nothing with no interface.
 	private void OpenPreferences()
@@ -937,6 +970,7 @@ class EditorApplication : IApplication
 			services.Warn = new (text) => { mContext.Notify(.Warning, text); };
 			services.Contributions = mContext.EditorSettingsContributions;
 			services.ExportChanged = new () => { mInheritedTools.Apply(mEditorSettings.Section<EditorExportSettings>()); };
+			services.CodeEditorChanged = new () => { KeepCodeTooling(true); };
 			services.McpChanged = new () =>
 				{
 					// The host follows the saved section, over the open project or the manager:

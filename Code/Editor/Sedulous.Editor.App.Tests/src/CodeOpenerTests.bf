@@ -48,6 +48,8 @@ static class CodeOpenerTests
 		/// Each start: the program, then its arguments.
 		public List<List<String>> Launched = new .() ~ { for (let call in _) DeleteContainerAndItems!(call); delete _; };
 		public bool LaunchStarts = true;
+		/// How many times the Code folder was asked to be ready for an outside editor.
+		public int BeforeLaunches = 0;
 		public List<String> ShownFolders = new .() ~ DeleteContainerAndItems!(_);
 		public List<String> Warnings = new .() ~ DeleteContainerAndItems!(_);
 
@@ -84,6 +86,7 @@ static class CodeOpenerTests
 					return LaunchStarts;
 				};
 			services.ShowFolder = new (folder) => { ShownFolders.Add(new String(folder)); };
+			services.BeforeLaunch = new () => { BeforeLaunches++; };
 			Opener = new EditorCodeOpener(services);
 		}
 
@@ -139,6 +142,7 @@ static class CodeOpenerTests
 		Test.Assert(call[2] == "--goto");
 		Test.Assert(call[3] == scope $"{file}:7:1");
 		Test.Assert(bed.Opened.IsEmpty);
+		Test.Assert(bed.BeforeLaunches == 1, "the Code folder made ready before the editor starts");
 
 		Test.Assert(bed.Opener.OpenAsset(bed.Script));
 		Test.Assert(bed.Launched.Count == 2);
@@ -148,6 +152,7 @@ static class CodeOpenerTests
 		Test.Assert(bed.Opener.OpenAsset(bed.Script, true));
 		Test.Assert(bed.Launched.Count == 2);
 		Test.Assert(bed.Opened.Count == 1);
+		Test.Assert(bed.BeforeLaunches == 2, "none for the built-in editor");
 	}
 
 	[Test]

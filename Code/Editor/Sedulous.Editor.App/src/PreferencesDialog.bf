@@ -42,6 +42,9 @@ class EditorPreferencesServices
 	/// The MCP section was saved: the host follows it over the open project; unset: nothing
 	/// follows. Owned.
 	public delegate void() McpChanged ~ delete _;
+	/// The code editor section was saved: the Code folder's files follow it; unset: nothing
+	/// follows. Owned.
+	public delegate void() CodeEditorChanged ~ delete _;
 	/// Asks for a folder with the system's dialog, starting at `from`. TAKES OWNERSHIP of `chosen`,
 	/// called with the folder, or not at all when the user cancels; unset: no Browse. Owned.
 	public delegate void(StringView from, delegate void(StringView folder) chosen) PickFolder ~ delete _;
@@ -431,6 +434,8 @@ class EditorPreferencesDialog
 					code.FolderCommand..Set(folder.Text).Trim();
 			}
 			user.MarkChanged<EditorCodeEditorSettings>();
+			if (mServices.CodeEditorChanged != null)
+				mServices.CodeEditorChanged();
 		}
 		if (let previews = GamePreviewSettings.From(user))
 		{
