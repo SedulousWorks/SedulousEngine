@@ -134,6 +134,270 @@ static class Process
 		return process.Start(startInfo) case .Ok;
 	}
 
+	/// Starts `program` with `arguments` (each one whole) and leaves it running: it outlives this
+	/// process, in a session of its own with none of this process's handles. A `program` that
+	/// names no folder is searched on PATH; on Windows a .cmd or .bat found there runs through
+	/// cmd.exe, since that is how most editors put themselves on PATH. True once it started, false
+	/// when it could not be found or started. It does not wait for the program, so a thread that
+	/// must stay responsive (the UI's, opening an outside editor) may call it. Start, by contrast,
+	/// takes an explicit path and leaves its child tied to this process.
+	public static bool LaunchDetached(StringView program, Span<StringView> arguments)
+	{
+		if (program.IsEmpty)
+			return false;
+#if BF_PLATFORM_WINDOWS
+		return LaunchDetachedWindows(program, arguments);
+#elif BF_PLATFORM_LINUX || BF_PLATFORM_ANDROID
+		return LaunchDetachedPosix(program, arguments);
+#else
+		return false;
+#endif
+	}
+
+#if BF_PLATFORM_WINDOWS
+	private static bool LaunchDetachedWindows(StringView program, Span<StringView> arguments)
+	{
+		// CreateProcess's own search adds only .exe, and most editors put a .cmd on PATH (VS
+		// Code's `code`, beside a `code` shell script for WSL that Windows cannot run), so the
+		// program is found first, as an .exe, a .cmd or a .bat. A name with an extension is
+		// searched as it is.
+		let name = program.ToScopedNativeWChar!();
+		char16[cMaxPath] found = ?;
+		uint32 foundLength = 0;
+		for (let suffix in StringView[?](".exe", ".cmd", ".bat"))
+		{
+			let wideSuffix = suffix.ToScopedNativeWChar!();
+			foundLength = SearchPathW(null, name, wideSuffix, cMaxPath, &found[0], null);
+			if ((foundLength != 0) && (foundLength < cMaxPath))
+				break;
+		}
+		if ((foundLength == 0) || (foundLength >= cMaxPath))
+			return false;
+		let foundPath = scope String();
+		foundPath.Append(&found[0]);
+		let script = foundPath.EndsWith(".cmd", .OrdinalIgnoreCase) || foundPath.EndsWith(".bat", .OrdinalIgnoreCase);
+
+		let line = scope String();
+		if (script)
+		{
+			// cmd /s /c "<line>" takes everything between the outer quotes as the command, as is.
+			char16[cMaxPath] system = ?;
+			let systemLength = GetSystemDirectoryW(&system[0], cMaxPath);
+			if ((systemLength == 0) || (systemLength + 9 > cMaxPath))
+				return false;
+			let shell = scope String();
+			shell.Append(&system[0]);
+			shell.Append("\\cmd.exe");
+			AppendWindowsArgument(line, shell);
+			line.Append(" /d /s /c \"");
+		}
+		AppendWindowsArgument(line, foundPath);
+		for (let argument in arguments)
+		{
+			line.Append(' ');
+			AppendWindowsArgument(line, argument);
+		}
+		if (script)
+			line.Append('"');
+
+		// No inherited handles, a process group of its own, and no console window for the cmd.exe
+		// that runs a script. CreateProcess returns once the child starts; nothing waits on it.
+		let command = line.ToScopedNativeWChar!();
+		StartupInfo startup = default;
+		startup.Size = sizeof(StartupInfo);
+		ProcessInformation process = default;
+		let flags = cCreateNewProcessGroup | (script ? cCreateNoWindow : 0);
+		if (CreateProcessW(null, command, null, null, 0, flags, null, null, &startup, &process) == 0)
+			return false;
+		CloseHandle(process.Thread);
+		CloseHandle(process.Process);
+		return true;
+	}
+
+	/// One argument of a CreateProcess command line, which the callee parses again: quoted only
+	/// when it needs it (empty, or holding whitespace or quotes). Quoting every one breaks callees
+	/// that parse their own command line, notably cmd.exe, which does not take a quoted "/c".
+	private static void AppendWindowsArgument(String outLine, StringView argument)
+	{
+		bool needsQuotes = argument.IsEmpty;
+		for (let c in argument)
+		{
+			if ((c == ' ') || (c == '\t') || (c == '"'))
+			{
+				needsQuotes = true;
+				break;
+			}
+		}
+		if (!needsQuotes)
+		{
+			outLine.Append(argument);
+			return;
+		}
+		outLine.Append('"');
+		int i = 0;
+		while (i < argument.Length)
+		{
+			let c = argument[i];
+			if (c == '\\')
+			{
+				// A backslash run is literal unless it precedes the closing quote, where each one
+				// is doubled so it is not read as escaping that quote.
+				int slashes = 0;
+				while ((i + slashes < argument.Length) && (argument[i + slashes] == '\\'))
+					slashes++;
+				let beforeClose = (i + slashes == argument.Length);
+				outLine.Append('\\', slashes * (beforeClose ? 2 : 1));
+				i += slashes;
+				continue;
+			}
+			if (c == '"')
+				outLine.Append('\\');
+			outLine.Append(c);
+			i++;
+		}
+		outLine.Append('"');
+	}
+
+	private const int32 cMaxPath = 260;
+	private const uint32 cCreateNewProcessGroup = 0x00000200;
+	private const uint32 cCreateNoWindow = 0x08000000;
+
+	[CRepr]
+	private struct StartupInfo
+	{
+		public uint32 Size;
+		public char16* Reserved;
+		public char16* Desktop;
+		public char16* Title;
+		public uint32 X, Y, XSize, YSize, XCountChars, YCountChars, FillAttribute, Flags;
+		public uint16 ShowWindow;
+		public uint16 Reserved2Size;
+		public uint8* Reserved2;
+		public void* StdInput;
+		public void* StdOutput;
+		public void* StdError;
+	}
+
+	[CRepr]
+	private struct ProcessInformation
+	{
+		public void* Process;
+		public void* Thread;
+		public uint32 ProcessId;
+		public uint32 ThreadId;
+	}
+
+	[Import("kernel32.lib"), CLink, CallingConvention(.Stdcall)]
+	private static extern uint32 SearchPathW(char16* path, char16* fileName, char16* defaultExtension, uint32 bufferLength, char16* buffer, char16** filePart);
+	[Import("kernel32.lib"), CLink, CallingConvention(.Stdcall)]
+	private static extern uint32 GetSystemDirectoryW(char16* buffer, uint32 size);
+	[Import("kernel32.lib"), CLink, CallingConvention(.Stdcall)]
+	private static extern int32 CreateProcessW(char16* applicationName, char16* commandLine, void* processAttributes, void* threadAttributes, int32 inheritHandles, uint32 creationFlags, void* environment, char16* currentDirectory, StartupInfo* startupInfo, ProcessInformation* processInformation);
+	[Import("kernel32.lib"), CLink, CallingConvention(.Stdcall)]
+	private static extern int32 CloseHandle(void* handle);
+#elif BF_PLATFORM_LINUX || BF_PLATFORM_ANDROID
+	private static bool LaunchDetachedPosix(StringView program, Span<StringView> arguments)
+	{
+		// Everything the children use is built before the fork, so neither allocates.
+		let programZ = scope String(program);
+		let store = scope List<String>();
+		defer { ClearAndDeleteItems!(store); }
+		let argv = scope char8*[arguments.Length + 2];
+		argv[0] = programZ.CStr();
+		for (int i < arguments.Length)
+		{
+			let argument = new String(arguments[i]);
+			store.Add(argument);
+			argv[i + 1] = argument.CStr();
+		}
+		argv[arguments.Length + 1] = null;
+
+		// The grandchild writes errno here when exec fails; a successful exec closes it (close on
+		// exec), so the parent reads end of file.
+		int32[2] execError = .(-1, -1);
+		if (pipe2(&execError[0], cCloseOnExec) != 0)
+			return false;
+		// Double fork: the grandchild reparents to init, which reaps it, and the child is reaped here.
+		let child = fork();
+		if (child < 0)
+		{
+			close(execError[0]);
+			close(execError[1]);
+			return false;
+		}
+		if (child == 0)
+		{
+			let grandchild = fork();
+			if (grandchild == 0)
+			{
+				setsid();
+				let devnull = open("/dev/null", cReadWrite);
+				if (devnull >= 0)
+				{
+					dup2(devnull, 0);
+					dup2(devnull, 1);
+					dup2(devnull, 2);
+				}
+				execvp(programZ.CStr(), &argv[0]);
+				int32 error = *__errno_location();
+				write(execError[1], &error, sizeof(int32));
+				_exit(127);
+			}
+			if (grandchild < 0)
+			{
+				int32 error = *__errno_location();
+				write(execError[1], &error, sizeof(int32));
+			}
+			_exit(0);
+		}
+		close(execError[1]);
+		int32 status = 0;
+		waitpid(child, &status, 0);
+		int32 childError = 0;
+		int got = 0;
+		repeat
+		{
+			got = read(execError[0], &childError, sizeof(int32));
+		}
+		while ((got < 0) && (*__errno_location() == cInterrupted));
+		close(execError[0]);
+		return got == 0;
+	}
+
+	private const int32 cCloseOnExec = 0x80000;
+	private const int32 cReadWrite = 2;
+	private const int32 cInterrupted = 4;
+
+	[CLink]
+	private static extern int32 fork();
+	[CLink]
+	private static extern int32 setsid();
+	[CLink]
+	private static extern int32 pipe2(int32* fds, int32 flags);
+	[CLink]
+	private static extern int32 open(char8* path, int32 flags);
+	[CLink]
+	private static extern int32 dup2(int32 from, int32 to);
+	[CLink]
+	private static extern int32 close(int32 fd);
+	[CLink]
+	private static extern int read(int32 fd, void* buffer, uint count);
+	[CLink]
+	private static extern int write(int32 fd, void* buffer, uint count);
+	[CLink]
+	private static extern int32 execvp(char8* file, char8** argv);
+	[CLink]
+	private static extern int32 waitpid(int32 pid, int32* status, int32 options);
+	[CLink]
+	private static extern void _exit(int32 status);
+#if BF_PLATFORM_ANDROID
+	[LinkName("__errno")]
+#else
+	[CLink]
+#endif
+	private static extern int32* __errno_location();
+#endif
+
 	/// Reads ONE pipe to its end.
 	///
 	/// Its own caller runs a second copy of this on another thread for the other pipe; see
