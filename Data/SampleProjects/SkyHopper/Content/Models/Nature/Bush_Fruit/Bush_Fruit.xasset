@@ -1,16 +1,17 @@
 <root>
 	<string name="guid">450bfae9-3955-2d40-9ad8-d3d8d103a575</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Nature/Bush_Fruit/Bush_Fruit.gltf</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Bush_Fruit.gltf</string>
+			<string name="fileName">Models/Nature/Bush_Fruit/Bush_Fruit.gltf</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
-				<u32 name="version">2</u32>
+				<u32 name="version">3</u32>
 			</array>
 			<object>
 				<array name="meshGuid" count="1">
@@ -84,6 +85,7 @@
 					<f32 name="y">2.2629294</f32>
 					<f32 name="z">1.7643771</f32>
 				</object>
+				<i32 name="skeletonParentNode">-2</i32>
 			</object>
 			<array name="entries" count="0"/>
 		</object>

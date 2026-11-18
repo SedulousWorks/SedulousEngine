@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">f41b5031-33c0-d142-8f7b-24950e820278</string>
 	<string name="typeName">Sedulous.GUI.Pipeline.GuiDocumentAsset</string>
+	<string name="source">UI/Fade.xml</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">13358085703002792026</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Fade.xml</string>
+			<string name="fileName">UI/Fade.xml</string>
 		</object>
 	</object>
 </root>

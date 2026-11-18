@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">402ad8e0-47a6-0448-9795-a5064f00b272</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Props/GatePoleModel/GatePoleModel.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">GatePoleModel.glb</string>
+			<string name="fileName">Models/Props/GatePoleModel/GatePoleModel.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

@@ -1,16 +1,17 @@
 <root>
 	<string name="guid">22b6eb11-d879-3f4c-a776-d1c40a707ce4</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Platforms/Cube_Crate/Cube_Crate.gltf</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Cube_Crate.gltf</string>
+			<string name="fileName">Models/Platforms/Cube_Crate/Cube_Crate.gltf</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
-				<u32 name="version">2</u32>
+				<u32 name="version">3</u32>
 			</array>
 			<object>
 				<array name="meshGuid" count="1">
@@ -86,6 +87,7 @@
 					<f32 name="y">1.0104055</f32>
 					<f32 name="z">1.0104055</f32>
 				</object>
+				<i32 name="skeletonParentNode">-2</i32>
 			</object>
 			<array name="entries" count="0"/>
 		</object>

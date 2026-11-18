@@ -160,15 +160,15 @@ class Gallery
 		self.SetLocalRotation(FromYawPitchRoll(DegreesToRadians(m_yaw), DegreesToRadians(m_pitch), 0.0f));
 	}
 
-	private bool onLesson1(GuiEvent@ e) { showLesson(1, "Unlit Colour", "The smallest shader: a properties block and Surface().", "Sources/01_UnlitColour.hlsl"); return true; }
-	private bool onLesson2(GuiEvent@ e) { showLesson(2, "Textured", "A texture and its sampler, the uv, the vertex colour; lit by the scene.", "Sources/02_Textured.hlsl"); return true; }
-	private bool onLesson3(GuiEvent@ e) { showLesson(3, "Lava", "Time() makes it move; emission makes it glow.", "Sources/03_Lava.hlsl"); return true; }
-	private bool onLesson4(GuiEvent@ e) { showLesson(4, "Hologram", "viewDir makes a fresnel rim, screenPos scanlines; alpha on a blended material.", "Sources/04_Hologram.hlsl"); return true; }
-	private bool onLesson5(GuiEvent@ e) { showLesson(5, "Triplanar Rock", "Mapped by world position, no uv; a normal map turned into tangent space.", "Sources/05_TriplanarRock.hlsl"); return true; }
-	private bool onLesson6(GuiEvent@ e) { showLesson(6, "Dissolve", "alpha on a masked material cuts holes, in the shadow too; a burning edge.", "Sources/06_Dissolve.hlsl"); return true; }
-	private bool onLesson7(GuiEvent@ e) { showLesson(7, "Waves", "Vertex() moves the vertices into waves; the shadow and the light follow.", "Sources/07_Waves.hlsl"); return true; }
-	private bool onLesson8(GuiEvent@ e) { showLesson(8, "Wind", "Vertex() by localPosition: the hoist stays on the pole, the fly end flaps.", "Sources/08_Wind.hlsl"); return true; }
-	private bool onLesson9(GuiEvent@ e) { showLesson(9, "Built-in PBR", "The engine's own material written as a surface: the reference to start from.", "Sources/09_BuiltInPbr.hlsl"); return true; }
-	private bool onLesson10(GuiEvent@ e) { showLesson(10, "Toon", "Both stages written out: the light in bands, a shadow colour, a rim.", "Sources/10_Toon.hlsl"); return true; }
-	private bool onLesson11(GuiEvent@ e) { showLesson(11, "Custom Lighting", "Walking the lights itself (LightsAt, LightAt, ShadowOf): half-Lambert and Blinn-Phong.", "Sources/11_CustomLighting.hlsl"); return true; }
+	private bool onLesson1(GuiEvent@ e) { showLesson(1, "Unlit Colour", "The smallest shader: a properties block and Surface().", "Sources/Shaders/01_UnlitColour.hlsl"); return true; }
+	private bool onLesson2(GuiEvent@ e) { showLesson(2, "Textured", "A texture and its sampler, the uv, the vertex colour; lit by the scene.", "Sources/Shaders/02_Textured.hlsl"); return true; }
+	private bool onLesson3(GuiEvent@ e) { showLesson(3, "Lava", "Time() makes it move; emission makes it glow.", "Sources/Shaders/03_Lava.hlsl"); return true; }
+	private bool onLesson4(GuiEvent@ e) { showLesson(4, "Hologram", "viewDir makes a fresnel rim, screenPos scanlines; alpha on a blended material.", "Sources/Shaders/04_Hologram.hlsl"); return true; }
+	private bool onLesson5(GuiEvent@ e) { showLesson(5, "Triplanar Rock", "Mapped by world position, no uv; a normal map turned into tangent space.", "Sources/Shaders/05_TriplanarRock.hlsl"); return true; }
+	private bool onLesson6(GuiEvent@ e) { showLesson(6, "Dissolve", "alpha on a masked material cuts holes, in the shadow too; a burning edge.", "Sources/Shaders/06_Dissolve.hlsl"); return true; }
+	private bool onLesson7(GuiEvent@ e) { showLesson(7, "Waves", "Vertex() moves the vertices into waves; the shadow and the light follow.", "Sources/Shaders/07_Waves.hlsl"); return true; }
+	private bool onLesson8(GuiEvent@ e) { showLesson(8, "Wind", "Vertex() by localPosition: the hoist stays on the pole, the fly end flaps.", "Sources/Shaders/08_Wind.hlsl"); return true; }
+	private bool onLesson9(GuiEvent@ e) { showLesson(9, "Built-in PBR", "The engine's own material written as a surface: the reference to start from.", "Sources/Shaders/09_BuiltInPbr.hlsl"); return true; }
+	private bool onLesson10(GuiEvent@ e) { showLesson(10, "Toon", "Both stages written out: the light in bands, a shadow colour, a rim.", "Sources/Shaders/10_Toon.hlsl"); return true; }
+	private bool onLesson11(GuiEvent@ e) { showLesson(11, "Custom Lighting", "Walking the lights itself (LightsAt, LightAt, ShadowOf): half-Lambert and Blinn-Phong.", "Sources/Shaders/11_CustomLighting.hlsl"); return true; }
 }

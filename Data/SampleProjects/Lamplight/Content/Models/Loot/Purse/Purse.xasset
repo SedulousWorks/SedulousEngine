@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">f652224a-865f-6c4a-8b16-e0e3afc2591f</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Loot/Purse/Purse.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Purse.glb</string>
+			<string name="fileName">Models/Loot/Purse/Purse.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

@@ -42,7 +42,7 @@ Raptor's PaperKid tools, ported to this engine's asset envelopes, schema keys an
   `render.py PaperKidGame` after their first import.
 - `scripts/*.as` + `render.py`: the game's scripts with `{{AssetName}}` placeholders (a prefab
   sharing a script's name is `{{Prefab:Name}}`); `render.py <Name>...` fills in the asset ids,
-  writes `Sources/<Name>.as` and compile-checks it. `--check` compiles without writing; `--draft`
+  writes the project's `Code/<group>/<Name>.as` and compile-checks it. `--check` compiles without writing; `--draft`
   writes with a nil id for an asset not made yet. An animation clip is `{{Clip:Name}}`. A name
   several assets answer to (each model's Walk clip) is refused: such an asset is a behaviour
   property, set where the prefab or scene is built.

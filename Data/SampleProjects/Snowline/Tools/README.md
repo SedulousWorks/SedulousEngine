@@ -35,7 +35,7 @@ imported copies live in the project's `Sources/`.
    course line, the rider, the gates, the gems, the kickers, a gap, the medal ghosts, the player's
    ghost, an avalanche and the camera, each placed by the course's rules (`RULES`).
 8. **The scripts' asset ids**: `render.py Snowline Board ...` (every name in `scripts/`) fills each
-   script's `{{Asset}}` placeholders with the ids now made, writes `Sources/<Name>.as` and
+   script's `{{Asset}}` placeholders with the ids now made, writes the project's `Code/<group>/<Name>.as` and
    compile-checks it (`script_validate`); `render.py --check` reports without writing.
 9. **The title's pictures**: `thumbnails.py [course ...]`, a screenshot of each course's scene.
 

@@ -1,16 +1,17 @@
 <root>
 	<string name="guid">058f58e4-a224-e04a-9da7-9eeceaa93f40</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Pickups/Heart/Heart.gltf</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Heart.gltf</string>
+			<string name="fileName">Models/Pickups/Heart/Heart.gltf</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
-				<u32 name="version">2</u32>
+				<u32 name="version">3</u32>
 			</array>
 			<object>
 				<array name="meshGuid" count="1">
@@ -81,6 +82,7 @@
 					<f32 name="y">0.6723677</f32>
 					<f32 name="z">0.37710294</f32>
 				</object>
+				<i32 name="skeletonParentNode">-2</i32>
 			</object>
 			<array name="entries" count="0"/>
 		</object>

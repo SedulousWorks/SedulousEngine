@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">011e7954-cd22-6548-a5c7-af626569a4a1</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Palace/Fountain/Fountain.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Fountain.glb</string>
+			<string name="fileName">Models/Palace/Fountain/Fountain.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">ce46f336-f3b8-3546-94ee-61cad7be1878</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Manor/TorchStand/TorchStand.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">TorchStand.glb</string>
+			<string name="fileName">Models/Manor/TorchStand/TorchStand.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

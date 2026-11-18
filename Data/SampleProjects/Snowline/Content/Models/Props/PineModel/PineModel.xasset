@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">ce056c54-acb9-9f43-8dd5-e5be64667d28</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Props/PineModel/PineModel.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">PineModel.glb</string>
+			<string name="fileName">Models/Props/PineModel/PineModel.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

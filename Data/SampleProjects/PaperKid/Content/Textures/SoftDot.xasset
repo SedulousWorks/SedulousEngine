@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">596084a9-53e6-ab45-ab39-5f35c998743f</string>
 	<string name="typeName">Sedulous.Texture.Pipeline.TextureAsset</string>
+	<string name="source">Textures/SoftDot.png</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">11880789479782282721</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">SoftDot.png</string>
+			<string name="fileName">Textures/SoftDot.png</string>
 			<i32 name="colorSpace">0</i32>
 			<u32 name="embeddedWidth">0</u32>
 			<u32 name="embeddedHeight">0</u32>

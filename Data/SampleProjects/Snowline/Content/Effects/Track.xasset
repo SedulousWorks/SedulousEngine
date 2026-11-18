@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">1d6f27d1-2f9d-b146-a6f9-ad7258bb5832</string>
 	<string name="typeName">Sedulous.Texture.Pipeline.TextureAsset</string>
+	<string name="source">Effects/Track.png</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">11880789479782282721</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Track.png</string>
+			<string name="fileName">Effects/Track.png</string>
 			<i32 name="colorSpace">0</i32>
 			<u32 name="embeddedWidth">0</u32>
 			<u32 name="embeddedHeight">0</u32>

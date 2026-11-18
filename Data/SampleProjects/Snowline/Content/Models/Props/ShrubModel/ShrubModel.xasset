@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">d4d5889e-ca40-2247-95be-ac753c7b2e24</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Props/ShrubModel/ShrubModel.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">ShrubModel.glb</string>
+			<string name="fileName">Models/Props/ShrubModel/ShrubModel.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

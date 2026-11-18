@@ -79,7 +79,7 @@ def script():
     template = open(os.path.join(HERE, "scripts", "Gallery.as.in")).read()
     wire = "\n".join('\t\tGui.Root().Find("lesson-%d").On("click", EventHandler(this.onLesson%d));' % (l["n"], l["n"])
                      for l in LESSONS)
-    handlers = "\n".join('\tprivate bool onLesson%d(GuiEvent@ e) { showLesson(%d, "%s", "%s", "Sources/%s"); return true; }'
+    handlers = "\n".join('\tprivate bool onLesson%d(GuiEvent@ e) { showLesson(%d, "%s", "%s", "Sources/Shaders/%s"); return true; }'
                          % (l["n"], l["n"], as_text(l["title"]), as_text(l["summary"]), shader_file(l))
                          for l in LESSONS)
     return template.replace("{{WIRE}}", wire).replace("{{HANDLERS}}", handlers)

@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">6881114d-56ef-444a-8c3e-9d6446ecafd2</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Town/DogModel/DogModel.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">DogModel.glb</string>
+			<string name="fileName">Models/Town/DogModel/DogModel.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

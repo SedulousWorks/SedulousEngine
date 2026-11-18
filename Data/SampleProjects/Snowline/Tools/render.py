@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """render.py [--check | --draft] <Name> | ui/<Name>...: scripts/<Name>.as, or a screen ui/<Name>.xml (the
-engine GUI's), with {{Asset}} placeholders -> Snowline's Sources/<Name>.as (.xml) with the asset ids; a script is then compile-checked
+engine GUI's), with {{Asset}} placeholders -> Snowline's copy of <Name>.as (under Code/) or <Name>.xml (under Sources/), each in its group's folder, with the asset ids; a script is then compile-checked
 (script_validate over the editor's MCP). A placeholder whose asset does not exist yet is a nil id under
 --check (nothing written) and --draft (written: a fresh project's first pass, so the prefabs and scenes
 find the scripts' properties before the scripts can name them). --stage <dir> writes there instead of
@@ -15,6 +15,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from snowgen import mcp, assets, NIL
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCES = os.path.join(os.path.dirname(HERE), "Sources")
+CODE = os.path.join(os.path.dirname(HERE), "Code")
+def project_file(root, file_name):
+    """The project's copy of `file_name` under `root`, in its group's folder; `root` itself for one
+    not imported yet."""
+    found = [os.path.join(d, file_name) for d, _, files in os.walk(root) if file_name in files]
+    return found[0] if found else os.path.join(root, file_name)
 check = "--check" in sys.argv
 draft = "--draft" in sys.argv
 # --stage <dir>: written there instead of Sources/ (a screen, which asset_import then copies in).
@@ -52,7 +58,7 @@ for name in names:
     text = open(os.path.join(HERE, "ui" if ui else "scripts", file_name)).read()
     text = re.sub(r"\{\{([^{}]+)\}\}", resolve, text) # "{{{GUI:Hud}}}" keeps its outer braces
     if not check:
-        open(os.path.join(stage or SOURCES, file_name), "w").write(text)
+        open(os.path.join(stage, file_name) if stage else project_file(SOURCES if ui else CODE, file_name), "w").write(text)
     if ui:
         print(name, "written" if not check else "resolved")
         continue

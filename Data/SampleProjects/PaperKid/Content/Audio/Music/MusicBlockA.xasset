@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">859ea749-874f-414e-8bba-2ae82b7bfbfd</string>
 	<string name="typeName">Sedulous.Audio.Pipeline.AudioClipAsset</string>
+	<string name="source">Audio/Music/MusicBlockA.ogg</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">11668951013542369821</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">MusicBlockA.ogg</string>
+			<string name="fileName">Audio/Music/MusicBlockA.ogg</string>
 			<bool name="stream">true</bool>
 			<bool name="keepCompressed">false</bool>
 			<bool name="forceMono">false</bool>

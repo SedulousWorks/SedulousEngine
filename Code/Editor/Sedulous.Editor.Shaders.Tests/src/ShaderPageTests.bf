@@ -83,7 +83,7 @@ class ShaderPageTests
 			Project = EditorProject.Open(Dir);
 			Test.Assert(Project != null);
 			Context.SetProject(Project);
-			Test.Assert(ReadData("SampleProjects/ShaderGallery/Sources/01_UnlitColour.hlsl", Source));
+			Test.Assert(ReadData("SampleProjects/ShaderGallery/Sources/Shaders/01_UnlitColour.hlsl", Source));
 			// Line feeds alone, as the page's code document holds a file's text: a Windows checkout
 			// gives the sample CRLF endings.
 			Source.Replace("\r", "");

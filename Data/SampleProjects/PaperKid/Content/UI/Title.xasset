@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">79ff1415-3645-3e4c-80e6-6478638c4a4c</string>
 	<string name="typeName">Sedulous.GUI.Pipeline.GuiDocumentAsset</string>
+	<string name="source">UI/Title.xml</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">13358085703002792026</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Title.xml</string>
+			<string name="fileName">UI/Title.xml</string>
 		</object>
 	</object>
 </root>

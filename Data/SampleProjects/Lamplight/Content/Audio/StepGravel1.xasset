@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">bfc76a6a-1cac-1e4a-bf16-34dbdd014b6b</string>
 	<string name="typeName">Sedulous.Audio.Pipeline.AudioClipAsset</string>
+	<string name="source">Audio/StepGravel1.wav</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">11668951013542369821</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">StepGravel1.wav</string>
+			<string name="fileName">Audio/StepGravel1.wav</string>
 			<bool name="stream">false</bool>
 			<bool name="keepCompressed">false</bool>
 			<bool name="forceMono">false</bool>

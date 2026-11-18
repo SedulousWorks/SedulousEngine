@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sky Hopper's app icon: Branding/AppIcon.png, 512 pixels square, what the Android preset's
 androidIcon names. A dusk sky (#FFB25B into #7A4FB5), a cloud, and the HUD's star
-(Sources/IconStar.svg's gold) on it. Drawn as an SVG here and rendered by librsvg into cairo
+(Sources/UI/Icons/IconStar.svg's gold) on it. Drawn as an SVG here and rendered by librsvg into cairo
 through ctypes, as Code/Tools/icon-sheet.py does.
 
     python3 Tools/appicon.py          (from the project folder)

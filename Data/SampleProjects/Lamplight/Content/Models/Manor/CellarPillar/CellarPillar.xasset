@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">9604374f-c045-354c-bc6c-b6b5c3faa284</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Manor/CellarPillar/CellarPillar.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">CellarPillar.glb</string>
+			<string name="fileName">Models/Manor/CellarPillar/CellarPillar.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

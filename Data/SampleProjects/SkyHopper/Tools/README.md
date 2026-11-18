@@ -18,7 +18,7 @@ Raptor's Sky Hopper tools, ported to this engine's asset envelopes, schema keys 
   Settings, LevelClear, GameOver, Victory and Fade (`.xml`), styled by `SkyHopperSheet.css`, the
   project's GUI sheet; the icons are the project's vector images (UI/Icons), shown by `<Image
   src="{guid}">`. It checks each with `gui_validate`, imports them into UI, makes the sheet the
-  project's GUI sheet and cooks. A re-import keeps their ids, which `Sources/PlatformerGame.as`
+  project's GUI sheet and cooks. A re-import keeps their ids, which `Code/Scripts/PlatformerGame.as`
   pushes the screens by.
 - `ik.py`: the hero's inverse kinematics in every level: foot IK (the rig's detached feet met by
   the shins, the pelvis Body) and an aim of the head (Neck, Head) on the Player, which drive the

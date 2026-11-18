@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">9bf1b63b-edcc-b94e-a291-16699b9bf489</string>
 	<string name="typeName">Sedulous.Texture.Pipeline.TextureAsset</string>
+	<string name="source">Terrain/Textures/Snow.png</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">11880789479782282721</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Snow.png</string>
+			<string name="fileName">Terrain/Textures/Snow.png</string>
 			<i32 name="colorSpace">0</i32>
 			<u32 name="embeddedWidth">0</u32>
 			<u32 name="embeddedHeight">0</u32>

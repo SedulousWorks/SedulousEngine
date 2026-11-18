@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">36f7ac9f-84f2-9741-8db7-9f7e9b2a26d6</string>
 	<string name="typeName">Sedulous.Texture.Pipeline.TextureAsset</string>
+	<string name="source">UI/Glyphs/PadSouth.png</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">11880789479782282721</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">PadSouth.png</string>
+			<string name="fileName">UI/Glyphs/PadSouth.png</string>
 			<i32 name="colorSpace">0</i32>
 			<u32 name="embeddedWidth">0</u32>
 			<u32 name="embeddedHeight">0</u32>

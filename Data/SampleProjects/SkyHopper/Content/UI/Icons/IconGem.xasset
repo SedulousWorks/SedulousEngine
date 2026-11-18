@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">8865d430-daf0-244d-8aec-9be7763901dc</string>
 	<string name="typeName">Sedulous.VG.Pipeline.VectorImageAsset</string>
+	<string name="source">UI/Icons/IconGem.svg</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">15088167683287781454</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">IconGem.svg</string>
+			<string name="fileName">UI/Icons/IconGem.svg</string>
 		</object>
 	</object>
 </root>

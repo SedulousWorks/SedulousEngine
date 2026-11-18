@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """setup.py: what a fresh project needs before the other tools, through the editor's MCP. Raptor's
 project has these from its seeded content and its settings; a new project here has neither.
-- Fonts/Roboto-Regular: the UI font, from Sources/Roboto-Regular.ttf, cooked as a distance field
+- Fonts/Roboto-Regular: the UI font, from Sources/Fonts/Roboto-Regular.ttf, cooked as a distance field
   (mode 1) so large type stays sharp, and made the project's default UI font.
 - Meshes/Sphere: the primitive the pebble (prefabs.py) is drawn with.
 Each is made once and found by name after, so a re-run changes nothing it made before.
@@ -20,7 +20,7 @@ def have(name, asset_type):
 
 font = have("Roboto-Regular", "FontAsset")
 if font is None:
-    source = os.path.join(os.path.dirname(HERE), "Sources", "Roboto-Regular.ttf")
+    source = os.path.join(os.path.dirname(HERE), "Sources", "Fonts", "Roboto-Regular.ttf")
     font = mcp("asset_import", {"source": source, "group": "Fonts"})["guid"]
 root = ET.fromstring(mcp("asset_data_read", {"guid": font})["xml"])
 root.find("object[@name='payload']").find("object").find("*[@name='mode']").text = "1"  # distance field

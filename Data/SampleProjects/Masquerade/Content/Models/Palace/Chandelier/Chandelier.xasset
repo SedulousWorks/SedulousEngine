@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">f48c9ec9-3fec-de4a-9308-4e01d0214bd1</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Palace/Chandelier/Chandelier.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Chandelier.glb</string>
+			<string name="fileName">Models/Palace/Chandelier/Chandelier.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

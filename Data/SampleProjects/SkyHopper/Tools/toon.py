@@ -37,7 +37,7 @@ def main():
     check = call("shader_validate", {"source": source, "name": "Toon.hlsl"})
     if not check.get("valid", check.get("ok", True)) or check.get("errors"):
         sys.exit("Toon.hlsl: %s" % json.dumps(check.get("errors", check), indent=1))
-    shutil.copyfile(os.path.join(HERE, "shaders", "Toon.hlsl"), os.path.join(PROJECT, "Sources", "Toon.hlsl"))
+    shutil.copyfile(os.path.join(HERE, "shaders", "Toon.hlsl"), os.path.join(PROJECT, "Sources", "Shaders", "Toon.hlsl"))  # its group's folder
     call("asset_cook", {})
     for m in materials:
         call("material_set_shader", {"material": m["guid"], "shader": guid})

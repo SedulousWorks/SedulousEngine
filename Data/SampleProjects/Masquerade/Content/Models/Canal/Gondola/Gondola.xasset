@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">4f88648c-6081-6b4c-a471-7d6739d600fa</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Canal/Gondola/Gondola.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Gondola.glb</string>
+			<string name="fileName">Models/Canal/Gondola/Gondola.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

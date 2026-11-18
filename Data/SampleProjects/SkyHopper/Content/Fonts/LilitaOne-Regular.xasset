@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">038822bb-8eab-b648-a0cd-d78421a6353d</string>
 	<string name="typeName">Sedulous.Fonts.Pipeline.FontAsset</string>
+	<string name="source">Fonts/LilitaOne-Regular.ttf</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">3940269696319071816</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">LilitaOne-Regular.ttf</string>
+			<string name="fileName">Fonts/LilitaOne-Regular.ttf</string>
 			<string name="family">Lilita One</string>
 			<i32 name="mode">1</i32>
 			<array name="sizes" count="10">
@@ -27,6 +28,7 @@
 			<i32 name="lastCodepoint">255</i32>
 			<u32 name="atlasWidth">1024</u32>
 			<u32 name="atlasHeight">1024</u32>
+			<f32 name="distanceFieldRange">4</f32>
 		</object>
 	</object>
 </root>

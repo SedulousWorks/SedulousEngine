@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">ddbe4be1-c8ef-a841-8b5a-d82fbe976fe7</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Canal/FacadeRose/FacadeRose.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">FacadeRose.glb</string>
+			<string name="fileName">Models/Canal/FacadeRose/FacadeRose.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

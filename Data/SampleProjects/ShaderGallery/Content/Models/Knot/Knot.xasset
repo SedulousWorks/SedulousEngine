@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">ab673109-781b-3a40-bde8-efe17f6bae0a</string>
 	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<string name="source">Models/Knot/Knot.glb</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">7383561851963481740</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">Knot.glb</string>
+			<string name="fileName">Models/Knot/Knot.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
 				<u32 name="version">3</u32>

@@ -1,13 +1,14 @@
 <root>
 	<string name="guid">ef5a1023-4fb0-9a4d-a186-8e7bde8c2f7b</string>
 	<string name="typeName">Sedulous.Heightfield.Pipeline.HeightfieldAsset</string>
+	<string name="source">Terrain/Meadow/MeadowHeight.png</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">643058166247676377</u64>
 		<u32 name="version">0</u32>
 	</array>
 	<object name="payload">
 		<object>
-			<string name="fileName">MeadowHeight.png</string>
+			<string name="fileName">Terrain/Meadow/MeadowHeight.png</string>
 			<i32 name="size">513</i32>
 			<object name="worldSize">
 				<f32 name="x">513</f32>
