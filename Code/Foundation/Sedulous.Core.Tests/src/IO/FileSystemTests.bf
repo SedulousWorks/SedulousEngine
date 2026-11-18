@@ -431,4 +431,32 @@ class FileSystemTests
 		Test.Assert(FileExists("scratch_rml_outside/keep.bin"));
 		Test.Assert(RemoveDirectoryRecursive("scratch_rml_outside"));
 	}
+
+	/// How a host finds an install whose command on PATH is a link into it (a snap's tools): the
+	/// link followed to what it names, absolute; nothing for a path that is not there.
+	[Test]
+	public static void PathResolveLinksFollowsASymbolicLinkToWhatItNames()
+	{
+		RemoveDirectoryRecursive("scratch_resolve_links");
+		Test.Assert(CreateDirectory("scratch_resolve_links"));
+		Test.Assert(CreateDirectory("scratch_resolve_links/real"));
+		uint8[1] payload = .(7);
+		Test.Assert(WriteFile("scratch_resolve_links/real/tool", payload) case .Ok);
+		let target = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_resolve_links/real/tool", .. scope .());
+		if (!CreateSymbolicLink(target, "scratch_resolve_links/link", false))
+		{
+			// This platform refuses symbolic links here (Windows without developer mode).
+			RemoveDirectoryRecursive("scratch_resolve_links");
+			return;
+		}
+		let resolved = scope String();
+		Test.Assert(PathResolveLinks("scratch_resolve_links/link", resolved));
+		resolved.Replace('\\', '/');
+		Test.Assert(resolved.EndsWith("scratch_resolve_links/real/tool"), resolved);
+		Test.Assert(PathIsAbsolute(resolved), resolved);
+		let missing = scope String();
+		Test.Assert(!PathResolveLinks("scratch_resolve_links/nothing", missing));
+		Test.Assert(missing.IsEmpty);
+		Test.Assert(RemoveDirectoryRecursive("scratch_resolve_links"));
+	}
 }

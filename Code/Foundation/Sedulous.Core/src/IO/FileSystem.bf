@@ -157,6 +157,8 @@ static
 	private const uint32 cRenamePosixSemantics = 0x2;
 	/// FILE_INFO_BY_HANDLE_CLASS's FileRenameInfoEx.
 	private const int32 cFileRenameInfoEx = 22;
+	private const uint32 cFileFlagBackupSemantics = 0x02000000;
+	private const uint32 cFileNameNormalized = 0x0;
 
 	/// FILE_RENAME_INFO, its name running on past the record.
 	[CRepr]
@@ -174,6 +176,8 @@ static
 	private static extern int32 SetFileInformationByHandle(void* file, int32 infoClass, void* info, uint32 size);
 	[CLink, CallingConvention(.Stdcall)]
 	private static extern int32 CloseHandle(void* handle);
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern uint32 GetFinalPathNameByHandleW(void* file, char16* path, uint32 count, uint32 flags);
 
 	[CLink, CallingConvention(.Stdcall)]
 	private static extern int32 MoveFileExW(char16* existingName, char16* newName, uint32 flags);
@@ -337,6 +341,38 @@ static
 #endif
 	}
 
+	/// `path` with every symbolic link followed, absolute, into `outPath`; false (and nothing
+	/// added) when it does not exist. How the folder of a command found on PATH is learned when
+	/// PATH holds a link to it (a snap's tools).
+	public static bool PathResolveLinks(StringView path, String outPath)
+	{
+#if BF_PLATFORM_WINDOWS
+		// Opened for no access (backup semantics, so a folder opens too): enough to ask the final
+		// path of what the links lead to.
+		let handle = CreateFileW(path.ToScopedNativeWChar!(), 0, cShareReadWriteDelete, null, cOpenExisting, cFileFlagBackupSemantics, null);
+		if (handle == (void*)-1)
+			return false;
+		char16[4096] buffer = ?;
+		let length = GetFinalPathNameByHandleW(handle, &buffer[0], (uint32)buffer.Count, cFileNameNormalized);
+		CloseHandle(handle);
+		if ((length == 0) || (length >= (uint32)buffer.Count))
+			return false;
+		buffer[length] = 0;
+		// "\\?\C:\..." for a drive path: the prefix goes ("\\?\UNC\..." stays as it is).
+		var start = 0;
+		if ((length > 5) && (buffer[0] == '\\') && (buffer[1] == '\\') && (buffer[2] == '?') && (buffer[3] == '\\') && (buffer[5] == ':'))
+			start = 4;
+		UTF16.Decode(&buffer[start], outPath);
+		return true;
+#else
+		char8[4096] buffer = ?; // PATH_MAX on Linux
+		if (realpath(path.ToScopeCStr!(), &buffer[0]) == null)
+			return false;
+		outPath.Append(&buffer[0]);
+		return true;
+#endif
+	}
+
 #if BF_PLATFORM_WINDOWS
 	private const uint32 cInvalidFileAttributes = 0xFFFFFFFF;
 	private const uint32 cFileAttributeReparsePoint = 0x400;
@@ -352,5 +388,7 @@ static
 	private static extern int readlink(char8* path, char8* buffer, uint size);
 	[CLink]
 	private static extern int32 symlink(char8* target, char8* link);
+	[CLink]
+	private static extern char8* realpath(char8* path, char8* resolved);
 #endif
 }
