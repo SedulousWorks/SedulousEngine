@@ -132,6 +132,25 @@ abstract class SceneSystem : IScriptWeaklyHeld
 	/// system with resource bearing settings overrides it too.
 	public virtual void ResolveResources(ResourceManager manager) {}
 
+	/// Adds the resource ids this system's data references to `outIds`: its settings block's
+	/// Ref<T> fields (the block's own values and those in effect) and the profile it takes them
+	/// from. What a resource manager asks before it releases anything, so a scene's resources stay
+	/// loaded while the scene is. A component manager adds its components' too; a system holding
+	/// a resource another way overrides it.
+	public virtual void CollectResourceIds(HashSet<Guid> outIds)
+	{
+		let type = SettingsType;
+		if (type == null)
+			return;
+		ReferenceIds.Collect(type, SettingsInstance, outIds);
+		let effective = EffectiveSettingsInstance;
+		if (effective != SettingsInstance)
+			ReferenceIds.Collect(type, effective, outIds);
+		let profile = SettingsProfile;
+		if (profile != Guid.Empty)
+			outIds.Add(profile);
+	}
+
 	/// Binds the references ONE entity's component of this system holds, for a subtree
 	/// that arrived after the scene was resolved. A system with no per entity data does
 	/// nothing.

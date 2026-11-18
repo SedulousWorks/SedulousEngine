@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using Sedulous.Core;
+using Sedulous.Resource;
 
 namespace Sedulous.Scene;
 
@@ -153,6 +154,16 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 
 	public override Span<EntityHandle> OwnerHandles => Owners;
 	public override Type ComponentType => typeof(T);
+
+	/// The settings block's ids, and every component's: each one's Ref<T> fields, read by
+	/// reflection, so whatever re-pointed one since it was bound is seen.
+	public override void CollectResourceIds(HashSet<Guid> outIds)
+	{
+		base.CollectResourceIds(outIds);
+		let type = typeof(T);
+		for (int i = 0; i < mDense.Count; i++)
+			ReferenceIds.Collect(type, &mDense[i], outIds);
+	}
 
 	/// Runs the initialisation hook for everything added since the last call, skipping
 	/// anything already removed again.

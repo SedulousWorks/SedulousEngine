@@ -89,13 +89,23 @@ class Scene : IScriptWeaklyHeld
 	private uint64 mFramesSinceFixedStep = 0;
 	private float mFixedAlpha = 0.0f;
 
+	/// Every scene alive in the process, whichever manager owns it: what the resource holder asks
+	/// before a resource manager releases anything. Under sLiveLock: nothing stops a scene being
+	/// made or destroyed off the main thread, though the engine's are not.
+	private static List<Scene> sLive = new .() ~ delete _;
+	private static Monitor sLiveLock = new .() ~ delete _;
+
 	public this(StringView name = default)
 	{
 		mName.Set(name);
+		using (sLiveLock.Enter())
+			sLive.Add(this);
 	}
 
 	public ~this()
 	{
+		using (sLiveLock.Enter())
+			sLive.Remove(this);
 		// What scripts hold reads as gone from here, before any of the scene is torn down.
 		mScriptSlot.Free();
 		// Its queued destroys go with it. Only then is the run asked: a scene may outlive the run
@@ -105,6 +115,25 @@ class Scene : IScriptWeaklyHeld
 	}
 
 	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
+
+	/// Adds the resource ids this scene's systems reference (their components, their settings) to
+	/// `outIds`.
+	public void CollectResourceIds(HashSet<Guid> outIds)
+	{
+		for (let system in mSortedSystems)
+			system.CollectResourceIds(outIds);
+	}
+
+	/// Adds the resource ids every live scene references to `outIds`: a resource manager's holder,
+	/// so what a loaded scene uses is not released. Main thread: a scene's systems are walked.
+	public static void CollectLiveResourceIds(HashSet<Guid> outIds)
+	{
+		let scenes = scope List<Scene>();
+		using (sLiveLock.Enter())
+			scenes.AddRange(sLive);
+		for (let scene in scenes)
+			scene.CollectResourceIds(outIds);
+	}
 
 	[Scriptable]
 	public StringView Name => mName;
