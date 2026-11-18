@@ -31,3 +31,6 @@ Code/Engine/*/dist-profile/
 Dependencies/*/build-wasm/
 Dependencies/*/build-android/
 __pycache__/
+
+# A project's caches (its cook database, import ledger, thumbnails, export builds), wherever it is.
+.cache/
