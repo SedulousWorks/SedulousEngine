@@ -701,6 +701,11 @@ class GameInstance : RunBase, IRunInput
 		// Any rumble the game started ends with it: no pad is left buzzing after its run.
 		if (mInputSource != null)
 			ActionRuntime.StopAllRumble(mInputSource);
+		// So does a pointer it locked: none is left held after its run, and the next run starts
+		// unlocked.
+		if ((mInputSource != null) && mInputRuntime.PointerLockApplied)
+			ActionRuntime.ReleasePointerLock(mInputSource);
+		mInputRuntime.ResetPointerLock();
 		// What the game saved and did not write yet is kept: the run writes it as it ends.
 		mSave.Flush();
 		if (mGame != null)

@@ -41,6 +41,8 @@ static class EmscriptenHtml5
 		void* userData);
 	public typealias VisibilityChangeCallback = function bool(int32 eventType,
 		EmscriptenVisibilityChangeEvent* event, void* userData);
+	public typealias PointerlockChangeCallback = function bool(int32 eventType,
+		EmscriptenPointerlockChangeEvent* event, void* userData);
 	public typealias MainLoopCallback = function void(void* userData);
 
 	// ---- the canvas ----
@@ -128,6 +130,24 @@ static class EmscriptenHtml5
 	[CLink, CallingConvention(.Cdecl)]
 	public static extern EmscriptenResult emscripten_set_focus_callback_on_thread(char8* target,
 		void* userData, bool useCapture, FocusCallback callback, int targetThread);
+
+	// ---- pointer lock ----
+	//
+	// A page may lock the pointer only from a user action (a press): asked outside one, the
+	// browser refuses it. The change callback says whether a lock holds now, which the
+	// browser's Escape ends.
+
+	[CLink, CallingConvention(.Cdecl)]
+	public static extern EmscriptenResult emscripten_set_pointerlockchange_callback_on_thread(
+		char8* target, void* userData, bool useCapture, PointerlockChangeCallback callback,
+		int targetThread);
+
+	[CLink, CallingConvention(.Cdecl)]
+	public static extern EmscriptenResult emscripten_request_pointerlock(char8* target,
+		bool deferUntilInEventHandler);
+
+	[CLink, CallingConvention(.Cdecl)]
+	public static extern EmscriptenResult emscripten_exit_pointerlock();
 
 	// ---- gamepads ----
 	//

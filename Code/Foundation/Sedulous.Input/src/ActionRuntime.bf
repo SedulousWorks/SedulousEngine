@@ -95,6 +95,18 @@ class ActionRuntime
 	/// StopRumble: every pad, at the next Update.
 	private bool mStopRumble = false;
 
+	/// SetPointerLock.
+	private bool mPointerLockAsked = false;
+	/// What the last Update told the mouse.
+	private bool mPointerLockApplied = false;
+	/// Asked and granted, as of the last Update.
+	private bool mPointerLockLocked = false;
+	/// BORROWED, and only compared: the last Update's mouse, so a host that swaps its devices
+	/// hands the lock on to the new one.
+	private IMouse mPointerLockMouse = null;
+	/// A lock was applied since the last ResetPointerLock.
+	private bool mPointerLockUsed = false;
+
 	/// Installs a COPY of the map and rebuilds every piece of state. Every set starts
 	/// enabled.
 	///
@@ -340,6 +352,7 @@ class ActionRuntime
 
 		mLatchHeldOnce = false;
 		ApplyRumble(devices);
+		ApplyPointerLock(devices);
 	}
 
 	// ---- rumble ----
@@ -403,6 +416,66 @@ class ActionRuntime
 				pad.SetRumble(request.Low, request.High, request.DurationMs);
 		}
 		mRumble.Clear();
+	}
+
+	// ---- pointer lock ----
+	// Asked like a rumble and applied by the next Update through that frame's mouse, so each run
+	// locks only its own host's pointer. The lock holds until freed.
+
+	/// Locks the pointer (hidden, held in place, only its movement read: mouse look), or frees
+	/// it. A host that grants a lock only on a user action (a browser: on a click) holds it asked
+	/// until then.
+	public void SetPointerLock(bool locked) => mPointerLockAsked = locked;
+
+	/// Whether the pointer is locked as of the last Update: asked, and granted by the host. A lock
+	/// the host ended (a browser's Escape) reads false while it is still asked.
+	public bool PointerLocked => mPointerLockLocked;
+
+	/// Whether the last Update told the mouse to lock (granted or still waiting for it).
+	public bool PointerLockApplied => mPointerLockApplied;
+
+	/// Forgets a lock without touching a device (a run's end, after ReleasePointerLock).
+	public void ResetPointerLock()
+	{
+		mPointerLockAsked = false;
+		mPointerLockApplied = false;
+		mPointerLockLocked = false;
+		mPointerLockMouse = null;
+		mPointerLockUsed = false;
+	}
+
+	/// Frees the pointer of `devices` and shows it (a run's end, when its runtime locked it: no
+	/// pointer is left held after it, nor a lock still waiting for a click).
+	public static void ReleasePointerLock(IInputSourceProvider devices)
+	{
+		if (let mouse = devices.Mouse)
+		{
+			mouse.SetRelativeMode(false);
+			mouse.SetCursorVisible(true);
+		}
+	}
+
+	private void ApplyPointerLock(IInputSourceProvider devices)
+	{
+		let mouse = devices.Mouse;
+		if (mouse == null)
+		{
+			mPointerLockLocked = false;
+			return;
+		}
+		// Another mouse (the host swapped its devices: a scripted run's in or out) has not been
+		// told: once this runtime has locked, it gets the lock as asked, rather than a lock reading
+		// as ended by the host or a freed one staying held.
+		let newMouse = (Object)mouse !== (Object)mPointerLockMouse;
+		mPointerLockMouse = mouse;
+		mPointerLockUsed = mPointerLockUsed || mPointerLockAsked;
+		if ((newMouse && mPointerLockUsed) || (mPointerLockAsked != mPointerLockApplied))
+		{
+			mouse.SetRelativeMode(mPointerLockAsked);
+			mouse.SetCursorVisible(!mPointerLockAsked);
+			mPointerLockApplied = mPointerLockAsked;
+		}
+		mPointerLockLocked = mPointerLockApplied && mouse.RelativeMode;
 	}
 
 	/// Every action's name, value and held state on one line, "Move=(0.00,1.00) Jump=down":

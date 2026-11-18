@@ -75,6 +75,15 @@ and the rest) are what a document's `{{name}}` bindings read. The old UI's `Ui` 
 all. It reaches only the calling run's pad (a Game tab's, the player's), and the run's end
 stops it.
 
+`Input.LockPointer(true)` locks the pointer for mouse look: hidden and held in place, so only its
+movement is read (bind a MouseDelta to a look action); `Input.LockPointer(false)` frees it, and
+`Input.PointerLocked()` says whether it is locked now. Like rumble, the ask waits for the run's
+next input update and reaches that run's own mouse: the window in the player, the editor's window
+from a Game tab, where the tab keeps the mouse however far the hidden pointer drifts. A browser
+grants a lock only on a click, so on the web the lock takes effect at the next click on the
+canvas; its Escape ends it, `PointerLocked()` then reads false (a game shows its pause) and the
+next click locks it again until the game frees it. The run's end frees a pointer its game locked.
+
 An input map's sets switch from a script: `Input.PushSet("Menu")` makes that set modal, so only
 its actions read while a menu is up and gameplay hears nothing, and `Input.PopSet()` takes it off
 again. What is held across either needs a fresh press, so a held Jump neither confirms the menu

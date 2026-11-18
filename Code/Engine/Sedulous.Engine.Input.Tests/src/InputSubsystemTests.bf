@@ -282,4 +282,20 @@ class InputSubsystemTests
 		context.Shutdown();
 		Test.Assert((earlyInput.InputKinds == null) && (lateInput.InputKinds == null), "let go as it shuts down");
 	}
+
+	/// `Input.LockPointer` asks the run's own runtime, which reads it back only once an update has
+	/// applied it; the idle one, over no runtime, is a no-op reading unlocked, never a fault.
+	[Test]
+	public static void LockPointerAsksTheRunsRuntimeAndTheIdleOneIsANoOp()
+	{
+		let runtime = scope ActionRuntime();
+		let facade = scope InputFacade(runtime);
+		facade.LockPointer(true);
+		Test.Assert(!facade.PointerLocked(), "asked, not yet applied");
+		Test.Assert(!runtime.PointerLockApplied);
+
+		let idle = scope InputFacade(null);
+		idle.LockPointer(true);
+		Test.Assert(!idle.PointerLocked());
+	}
 }

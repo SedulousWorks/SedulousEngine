@@ -87,6 +87,11 @@ class WebInputManager : IInputManager
 			=> OnMouseMove, EmscriptenHtml5.PthreadMain);
 		EmscriptenHtml5.emscripten_set_mousedown_callback_on_thread(canvas, self, false,
 			=> OnMouseButton, EmscriptenHtml5.PthreadMain);
+		// Pointer lock (a game's mouse look): asked for the canvas, and the document says when the
+		// lock holds or ends.
+		mMouse.SetCanvas(canvas);
+		EmscriptenHtml5.emscripten_set_pointerlockchange_callback_on_thread(EmscriptenHtml5.TargetDocument,
+			self, false, => OnPointerLockChange, EmscriptenHtml5.PthreadMain);
 		// The release on the window: a drag that leaves the canvas lets go out there, and only the
 		// window hears it (a button never released stays held in the game).
 		EmscriptenHtml5.emscripten_set_mouseup_callback_on_thread(window, self, false,
@@ -438,6 +443,15 @@ class WebInputManager : IInputManager
 		raw.Down = eventType == EmscriptenEventType.MouseDown;
 		raw.Modifiers = MouseModifiers(event);
 		self.mQueue.Add(raw);
+		if (raw.Down)
+			self.mMouse.RequestLockOnPress(); // inside the press: the browser grants it here
+		return false;
+	}
+
+	private static bool OnPointerLockChange(int32 eventType, EmscriptenPointerlockChangeEvent* event,
+		void* userData)
+	{
+		FromUserData(userData).mMouse.OnLockChanged(event.IsActive); // only the canvas asks for one
 		return false;
 	}
 

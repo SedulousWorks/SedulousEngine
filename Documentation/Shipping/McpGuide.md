@@ -138,7 +138,9 @@ moves, buttons and the wheel (`{"at": 0, "mouseMove": [650, 253]}`, `{"at": 0.2,
 when it reports one) and gamepads (`{"at": 0, "gamepad": 0, "axis":
 "LeftX", "value": 1}`), and goes through the project's input map as a player's would. While it
 runs, that tab ignores the real mouse and keys, the other instances keep theirs, and whatever
-it holds is let go at the end. `probes` read entities (by guid, name or slash path) at field
+it holds is let go at the end. In a game that locked the pointer (mouse look), the lock carries
+into each run and back out, and a mouse move turns the view by the move between two positions:
+move to a point, then by the turn you want from there. `probes` read entities (by guid, name or slash path) at field
 paths (`worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>`
 as `entity_inspect` names them, or `<BehaviorClass>.<field>` for a behaviour running on the
 entity, private fields too, then `.x`/`.y`/`.z` or a key or an index) and game script

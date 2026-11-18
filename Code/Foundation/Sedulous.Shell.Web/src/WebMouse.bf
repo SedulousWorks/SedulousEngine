@@ -22,7 +22,12 @@ class WebMouse : IMouse
 	private float mDeltaY;
 	private float mScrollX;
 	private float mScrollY;
-	private bool mRelative;
+	/// BORROWED: the manager's canvas selector, which a lock is asked for.
+	private char8* mCanvas = null;
+	/// SetRelativeMode.
+	private bool mLockAsked;
+	/// The browser holds the lock for the canvas.
+	private bool mLocked;
 	private bool mCursorVisible = true;
 
 	public float X => mX;
@@ -39,10 +44,21 @@ class WebMouse : IMouse
 	public bool IsButtonPressed(MouseButton button) => mButtons[Index(button)].Pressed;
 	public bool IsButtonReleased(MouseButton button) => mButtons[Index(button)].Released;
 
-	/// Pointer lock is a REQUEST a browser only grants from a user gesture, so this records
-	/// the wish and the lock itself is not wired.
-	public bool RelativeMode => mRelative;
-	public void SetRelativeMode(bool enabled) => mRelative = enabled;
+	/// Relative mode is the browser's pointer lock. A page may lock the pointer only from a user
+	/// action, so a lock asked outside one waits: the next press on the canvas asks the browser
+	/// (RequestLockOnPress). RelativeMode reads the lock the browser holds, which its Escape ends;
+	/// the ask stays, so a press locks it again until the game frees it.
+	public bool RelativeMode => mLocked;
+	public void SetRelativeMode(bool enabled)
+	{
+		mLockAsked = enabled;
+#if BF_PLATFORM_WASM
+		if (enabled && !mLocked && (mCanvas != null))
+			EmscriptenHtml5.emscripten_request_pointerlock(mCanvas, false); // granted only in a user action
+		else if (!enabled && mLocked)
+			EmscriptenHtml5.emscripten_exit_pointerlock();
+#endif
+	}
 
 	public bool CursorVisible => mCursorVisible;
 	public void SetCursorVisible(bool visible) => mCursorVisible = visible;
@@ -61,6 +77,21 @@ class WebMouse : IMouse
 	}
 
 	public void OnButton(MouseButton button, bool down) => mButtons[Index(button)].Set(down);
+
+	/// The canvas a lock is asked for (its selector, kept by the manager).
+	public void SetCanvas(char8* selector) => mCanvas = selector;
+
+	/// From a press on the canvas, a user action: a lock still asked is asked of the browser now.
+	public void RequestLockOnPress()
+	{
+#if BF_PLATFORM_WASM
+		if (mLockAsked && !mLocked && (mCanvas != null))
+			EmscriptenHtml5.emscripten_request_pointerlock(mCanvas, false);
+#endif
+	}
+
+	/// The browser's pointerlockchange: whether the canvas holds the lock now.
+	public void OnLockChanged(bool locked) => mLocked = locked;
 
 	public void OnWheel(float scrollX, float scrollY)
 	{

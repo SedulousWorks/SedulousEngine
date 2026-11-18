@@ -26,10 +26,23 @@ class FakeMouse : IMouse
 	public void SetDown(MouseButton button, bool value = true) => mDown[(uint32)button & 7] = value;
 	public void SetPressed(MouseButton button, bool value = true) => mPressed[(uint32)button & 7] = value;
 
-	public bool RelativeMode => false;
-	public void SetRelativeMode(bool enabled) {}
-	public bool CursorVisible => true;
-	public void SetCursorVisible(bool visible) {}
+	/// What a pointer lock last set, and the SetRelativeMode calls (every one, and those that
+	/// changed it).
+	public bool Relative = false;
+	public int RelativeCalls = 0;
+	public int RelativeChanges = 0;
+	public bool Visible = true;
+
+	public bool RelativeMode => Relative;
+	public void SetRelativeMode(bool enabled)
+	{
+		RelativeCalls++;
+		if (enabled != Relative)
+			RelativeChanges++;
+		Relative = enabled;
+	}
+	public bool CursorVisible => Visible;
+	public void SetCursorVisible(bool visible) => Visible = visible;
 	public void SetCursor(CursorType cursor) {}
 	public void SetGlobalCapture(bool enabled) {}
 }

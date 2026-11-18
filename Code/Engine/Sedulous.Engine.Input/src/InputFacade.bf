@@ -59,6 +59,17 @@ class InputFacade
 	[Scriptable]
 	public void StopRumble() => mRuntime?.StopRumble();
 
+	/// Locks the pointer for mouse look (hidden, held in place, only its movement read: bind
+	/// MouseDelta to a look action), or frees it with false. A browser grants a lock only on a
+	/// click, so on the web it takes effect at the player's next click in the game. A run's end
+	/// frees it.
+	[Scriptable]
+	public void LockPointer(bool locked) => mRuntime?.SetPointerLock(locked);
+	/// Whether the pointer is locked: asked and granted. False after a browser's Escape freed it
+	/// (a game shows its pause then).
+	[Scriptable]
+	public bool PointerLocked() => (mRuntime != null) && mRuntime.PointerLocked;
+
 	/// What the player presses for `action` on the device in hand ("Space", "Pad South"): the
 	/// control a GUI prompt for it shows, for a sentence that names it. Read from the
 	/// highest-priority enabled set with the action, after the player's rebinding; "" when it has

@@ -9,6 +9,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Scripts: `Input.LockPointer(true)` locks the pointer for mouse look (hidden, held in place, only
+  its movement read) and `Input.PointerLocked()` says whether it is; `LockPointer(false)` frees it,
+  and a run's end does too. On the web the lock takes effect at the next click, and the browser's
+  Escape ends it. The lock carries through an MCP `pie_run`, so its mouse moves turn the view.
 - Networking: `Net.SetRelevanceRadius(r)` on the host sends each player only the networked
   entities within `r` of the one it owns, for less traffic in large worlds. Off by default.
 - Scripts: `onAnimationEvent(string name)` on an entity's behaviours when its animation passes one
