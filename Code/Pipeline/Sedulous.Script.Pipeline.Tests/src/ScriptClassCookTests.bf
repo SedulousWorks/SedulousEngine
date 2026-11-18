@@ -202,6 +202,27 @@ static class ScriptClassCookTests
 		Test.Assert(!ScriptIncludes.Resolve("Player.as", "", path));
 	}
 
+	/// What an outside editor reads for AngelScript: the cook gives the declarations of the API its
+	/// checks see (as.predefined, the surface's types in it), and the backend names angel-lsp, which
+	/// needs no settings.
+	[Test]
+	public static void TheCookGivesItsDeclarationsAndTheBackendNamesItsExtension()
+	{
+		Registered();
+		let cook = ScriptLanguageCooks.Find("angelscript");
+		let fileName = scope String();
+		let text = scope String();
+		Test.Assert(cook.Declarations(fileName, text));
+		Test.Assert(fileName == "as.predefined");
+		Test.Assert(text.Contains("Gadget"), "the surface's types are declared");
+
+		Sedulous.Script.AngelScript.AngelScriptBackend.Register();
+		let tooling = ScriptBackends.EditorTooling("angelscript");
+		Test.Assert((tooling != null) && (tooling.VscodeExtension == "sashi0034.angel-lsp"));
+		Test.Assert(tooling.VscodeSettings.IsEmpty);
+		Test.Assert(ScriptBackends.EditorTooling("no-such-language") == null);
+	}
+
 	[Test]
 	public static void ABrokenScriptDoesNotCookAndSaysWhere()
 	{

@@ -52,6 +52,15 @@ class AngelScriptCook : IScriptLanguageCook
 		return true;
 	}
 
+	public bool Declarations(String outFileName, String outText)
+	{
+		let written = mChecks.Declarations(outFileName, outText);
+		// Called on a worker (the editor's Code folder tooling), which may have made the runtime:
+		// its thread local data, freed while the runtime's engine lives on for the checks.
+		AngelScriptRuntime.ThreadCleanup();
+		return written;
+	}
+
 	public int32 CookVersion => 1;
 
 	public uint64 SurfaceHash

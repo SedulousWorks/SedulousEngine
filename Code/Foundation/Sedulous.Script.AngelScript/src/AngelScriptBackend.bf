@@ -10,7 +10,8 @@ static class AngelScriptBackend
 
 	public static void Register()
 	{
-		ScriptBackends.Register(cLanguage, => Create);
+		// angel-lsp reads as.predefined beside the scripts, so it needs no settings.
+		ScriptBackends.Register(cLanguage, => Create, new ScriptEditorTooling("sashi0034.angel-lsp"));
 	}
 
 	private static ScriptRuntime Create() => new AngelScriptRuntime();

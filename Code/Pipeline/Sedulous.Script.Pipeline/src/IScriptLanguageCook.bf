@@ -55,6 +55,11 @@ interface IScriptLanguageCook
 	/// another surface or a cook that keeps nothing for its checks.
 	bool DescribeApi(ScriptSurface surface, List<ScriptApiType> outTypes) => false;
 
+	/// The same API as the declarations file an outside editor reads to complete and check the
+	/// language (ScriptRuntime.Declarations), from the runtime the checks keep: its file name into
+	/// `outFileName` and its text into `outText`. False, both untouched, for a language without one.
+	bool Declarations(String outFileName, String outText) => false;
+
 	/// How many times Check has made the runtime it keeps for checks: once, and again each time
 	/// the surface changes. 0 for a language whose every check builds its own.
 	uint32 CheckRuntimeBuildCount => 0;

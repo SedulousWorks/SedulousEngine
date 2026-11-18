@@ -59,6 +59,20 @@ class CachedCheckRuntime
 		}
 	}
 
+	/// The surface's API as the declarations file an outside editor reads; false when no runtime
+	/// could be made or it writes none.
+	public bool Declarations(String outFileName, String outText)
+	{
+		using (mLock.Enter())
+		{
+			let runtime = Current();
+			if (runtime == null)
+				return false;
+			runtime.Declarations(outFileName, outText);
+			return !outFileName.IsEmpty;
+		}
+	}
+
 	// The runtime, made again if the surface changed since; the caller holds the lock.
 	private ScriptRuntime Current()
 	{
