@@ -73,4 +73,18 @@ class CompositeLogger : ILogger
 		for (let logger in mLoggers)
 			logger.Log(logLevel, format, params args);
 	}
+
+	/// As Log, the references passed on: a child that keeps them gets them, the others the text.
+	public void LogReferenced(LogLevel logLevel, Span<LogReference> references, StringView format, params Object[] args)
+	{
+		if ((logLevel < MinimumLogLevel) || (logLevel >= .None))
+			return;
+		for (let logger in mLoggers)
+		{
+			if (references.IsEmpty)
+				logger.Log(logLevel, format, params args);
+			else
+				logger.LogReferenced(logLevel, references, format, params args);
+		}
+	}
 }

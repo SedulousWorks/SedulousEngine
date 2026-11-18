@@ -14,4 +14,11 @@ interface ILogger
 	String Name { get; }
 
 	void Log(LogLevel logLevel, StringView format, params Object[] args);
+
+	/// A line with the references it carries (borrowed for the call). A logger that keeps none (a
+	/// console, a file, the fixed size ring) writes the text alone, which is the default.
+	void LogReferenced(LogLevel logLevel, Span<LogReference> references, StringView format, params Object[] args)
+	{
+		Log(logLevel, format, params args);
+	}
 }

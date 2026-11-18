@@ -61,4 +61,22 @@ static
 			return;
 		sGlobalLogger.Log(level, format, params args);
 	}
+
+	/// GlobalLog with the references the line carries, borrowed for the call: a line a tool can
+	/// follow (a file at a line, an asset).
+	public static void GlobalLogReferenced(LogLevel level, Span<LogReference> references, StringView format, params Object[] args)
+	{
+		if (sGlobalLogger == null)
+			return;
+		sGlobalLogger.LogReferenced(level, references, format, params args);
+	}
+
+	/// GlobalLogReferenced with one reference, borrowed for the call.
+	public static void GlobalLogAt(LogLevel level, LogReference reference, StringView format, params Object[] args)
+	{
+		if (sGlobalLogger == null)
+			return;
+		LogReference[1] one = .(reference);
+		sGlobalLogger.LogReferenced(level, one, format, params args);
+	}
 }
