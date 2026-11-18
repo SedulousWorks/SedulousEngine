@@ -9,6 +9,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Input maps: a Touch drag binding reads how far a touch that came down in its region moved each
+  frame, for looking around by dragging on a touch screen.
 - MCP: `asset_delete` takes `deleteSource`, which also removes the asset's file under Sources/ when no
   other asset names it.
 - Scripts: `Input.LockPointer(true)` locks the pointer for mouse look (hidden, held in place, only

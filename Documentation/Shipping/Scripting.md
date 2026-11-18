@@ -83,6 +83,8 @@ from a Game tab, where the tab keeps the mouse however far the hidden pointer dr
 grants a lock only on a click, so on the web the lock takes effect at the next click on the
 canvas; its Escape ends it, `PointerLocked()` then reads false (a game shows its pause) and the
 next click locks it again until the game frees it. The run's end frees a pointer its game locked.
+On a touch screen, a Touch drag binding on a 2D action reads how far a finger that came down in
+its region moved each frame, the mouse movement's counterpart.
 
 An input map's sets switch from a script: `Input.PushSet("Menu")` makes that set modal, so only
 its actions read while a menu is up and gameplay hears nothing, and `Input.PopSet()` takes it off

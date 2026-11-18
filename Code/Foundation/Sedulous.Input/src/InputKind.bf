@@ -44,7 +44,7 @@ static class ShownBinding
 		switch (binding.Source)
 		{
 		case .GamepadButton, .GamepadAxis, .GamepadStick: return .Pad;
-		case .TouchButton, .TouchStick: return .Pointer;
+		case .TouchButton, .TouchStick, .TouchDrag: return .Pointer;
 		default: return .Keyboard;
 		}
 	}

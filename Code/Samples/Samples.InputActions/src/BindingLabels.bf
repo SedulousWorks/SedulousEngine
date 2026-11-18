@@ -20,6 +20,7 @@ static class BindingLabels
 		case .Composite2D: return "Keys4";
 		case .TouchButton: return "TouchBtn";
 		case .TouchStick: return "TouchStick";
+		case .TouchDrag: return "TouchDrag";
 		default: return "?";
 		}
 	}

@@ -73,6 +73,7 @@ class BindingNamesTests
 		Test.Assert(Describe(.GamepadStick, (.)StickCode.Right, .. scope String()) == "Right Stick");
 		Test.Assert(Describe(.TouchButton, 0, .. scope String()) == "Touch Region");
 		Test.Assert(Describe(.TouchStick, 0, .. scope String()) == "Touch Stick");
+		Test.Assert(Describe(.TouchDrag, 0, .. scope String()) == "Touch Drag");
 	}
 
 	/// A composite names all four keys, in the order the fields are declared, so a prompt
@@ -113,6 +114,7 @@ class BindingNamesTests
 		Test.Assert(BindingNames.SourceName(.GamepadButton) == "PadBtn");
 		Test.Assert(BindingNames.SourceName(.Composite2D) == "Keys4");
 		Test.Assert(BindingNames.SourceName(.TouchStick) == "TouchStick");
+		Test.Assert(BindingNames.SourceName(.TouchDrag) == "TouchDrag");
 
 		Test.Assert(BindingNames.KindName(.Button) == "Button");
 		Test.Assert(BindingNames.KindName(.Axis1D) == "Axis1D");
@@ -140,9 +142,10 @@ class BindingNamesTests
 
 		let axis2D = scope List<BindingSource>();
 		BindingNames.ValidSources(.Axis2D, axis2D);
-		Test.Assert(axis2D.Count == 4);
+		Test.Assert(axis2D.Count == 5);
 		Test.Assert(axis2D[0] == .GamepadStick);
 		Test.Assert(axis2D[1] == .Composite2D);
+		Test.Assert(axis2D[4] == .TouchDrag);
 	}
 
 	/// The list an editor cycles through and the rule a save enforces are the SAME rule.

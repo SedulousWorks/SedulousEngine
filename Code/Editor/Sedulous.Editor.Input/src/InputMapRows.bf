@@ -179,9 +179,9 @@ static class InputMapRows
 		let composite = source == .Composite2D;
 		let deadZone = (source == .MouseAxis) || (source == .GamepadAxis) || (source == .GamepadStick) || (source == .TouchStick);
 		let invert = (source == .MouseAxis) || (source == .MouseDelta) || (source == .GamepadAxis) || (source == .GamepadStick) ||
-			(source == .TouchStick) || composite;
+			(source == .TouchStick) || (source == .TouchDrag) || composite;
 		let gamepad = (source == .GamepadButton) || (source == .GamepadAxis) || (source == .GamepadStick);
-		let touch = (source == .TouchButton) || (source == .TouchStick);
+		let touch = (source == .TouchButton) || (source == .TouchStick) || (source == .TouchDrag);
 		if (field == "Source")
 		{
 			info.DisplayName.Set("Source");

@@ -62,6 +62,7 @@ static class InputMapEdit
 		case .Composite2D: return "Four keys";
 		case .TouchButton: return "Touch button";
 		case .TouchStick: return "Touch stick";
+		case .TouchDrag: return "Touch drag";
 		}
 	}
 

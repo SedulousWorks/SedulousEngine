@@ -9,7 +9,7 @@ namespace Sedulous.Input;
 /// movement. Republished every frame by whoever owns the UI, and sticky until it changes.
 struct ConsumptionMask
 {
-	/// MouseButton, MouseAxis, MouseDelta, TouchButton and TouchStick.
+	/// MouseButton, MouseAxis, MouseDelta and the touch sources.
 	public bool Pointer = false;
 	/// Key, and Composite2D, which is four keys.
 	public bool Keyboard = false;

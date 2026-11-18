@@ -145,6 +145,9 @@ static class BindingNames
 		case .TouchStick:
 			outName.Append("Touch Stick");
 
+		case .TouchDrag:
+			outName.Append("Touch Drag");
+
 		case .Composite2D:
 			// Up, left, down, right, as a player reads them ("W A S D"; the arrows "Up Left Down
 			// Right").
@@ -173,6 +176,7 @@ static class BindingNames
 		case .Composite2D: return "Keys4";
 		case .TouchButton: return "TouchBtn";
 		case .TouchStick: return "TouchStick";
+		case .TouchDrag: return "TouchDrag";
 		}
 	}
 
@@ -201,6 +205,7 @@ static class BindingNames
 			outSources.Add(.Composite2D);
 			outSources.Add(.MouseDelta);
 			outSources.Add(.TouchStick);
+			outSources.Add(.TouchDrag);
 		}
 	}
 

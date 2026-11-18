@@ -247,4 +247,69 @@ class TouchBindingTests
 		runtime.Update(devices, cStep);
 		Test.Assert(!runtime.IsDown(fire));
 	}
+
+	/// Touch look: a drag captures a touch that comes down in its region, and reads how far it
+	/// moved each frame (scaled), nothing while it rests, and lets it go when it lifts. A touch
+	/// that came down elsewhere and slides in is not taken, and the drag is not among the
+	/// on-screen controls.
+	[Test]
+	public static void ADragReadsTheMovementOfTheTouchItCaptured()
+	{
+		let map = new InputMap();
+		defer delete map;
+		let set = new ActionSet();
+		set.Name.Set("S");
+		map.Sets.Add(set);
+		let look = new InputAction();
+		look.Name.Set("Look");
+		look.Kind = .Axis2D;
+		var drag = Binding();
+		drag.Source = .TouchDrag;
+		drag.RegionX = 0.5f; // the right half
+		drag.RegionY = 0.0f;
+		drag.RegionW = 0.5f;
+		drag.RegionH = 1.0f;
+		drag.Scale = 100.0f;
+		look.Bindings.Add(drag);
+		set.Actions.Add(look);
+		let error = scope String();
+		Test.Assert(InputMapValidation.Validate(map, error), error);
+
+		let runtime = scope ActionRuntime();
+		runtime.SetMap(map);
+		let devices = scope FakeDevices();
+		let reference = runtime.Resolve("Look");
+
+		devices.FakeTouch.Set(0, 0.70f, 0.50f);
+		runtime.Update(devices, cStep); // captured: no movement yet
+		Test.Assert(Near(runtime.Value2D(reference).X, 0.0f));
+		devices.FakeTouch.Set(0, 0.72f, 0.47f);
+		runtime.Update(devices, cStep);
+		Test.Assert(Near(runtime.Value2D(reference).X, 2.0f), scope $"{runtime.Value2D(reference).X}");
+		Test.Assert(Near(runtime.Value2D(reference).Y, -3.0f), scope $"{runtime.Value2D(reference).Y}");
+		runtime.Update(devices, cStep); // resting: nothing
+		Test.Assert(Near(runtime.Value2D(reference).X, 0.0f));
+		// It follows its touch out of the region.
+		devices.FakeTouch.Set(0, 0.40f, 0.47f);
+		runtime.Update(devices, cStep);
+		Test.Assert(Near(runtime.Value2D(reference).X, -32.0f), scope $"{runtime.Value2D(reference).X}");
+		devices.FakeTouch.Remove(0);
+		runtime.Update(devices, cStep);
+		Test.Assert(Near(runtime.Value2D(reference).X, 0.0f));
+
+		// A touch that came down on the left half and slides into the region is not taken.
+		devices.FakeTouch.Set(1, 0.20f, 0.50f);
+		runtime.Update(devices, cStep);
+		devices.FakeTouch.Set(1, 0.70f, 0.50f);
+		runtime.Update(devices, cStep);
+		devices.FakeTouch.Set(1, 0.80f, 0.50f);
+		runtime.Update(devices, cStep);
+		Test.Assert(Near(runtime.Value2D(reference).X, 0.0f));
+		devices.FakeTouch.Remove(1);
+		runtime.Update(devices, cStep);
+
+		int shown = 0;
+		runtime.ForEachTouchControl(scope [&] (control) => { shown++; });
+		Test.Assert(shown == 0);
+	}
 }

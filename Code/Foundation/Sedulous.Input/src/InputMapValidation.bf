@@ -39,7 +39,8 @@ static class InputMapValidation
 				for (let binding in action.Bindings)
 				{
 					let is2D = (binding.Source == .GamepadStick) || (binding.Source == .Composite2D)
-						|| (binding.Source == .MouseDelta) || (binding.Source == .TouchStick);
+						|| (binding.Source == .MouseDelta) || (binding.Source == .TouchStick)
+						|| (binding.Source == .TouchDrag);
 					let isAxis = (binding.Source == .MouseAxis) || (binding.Source == .GamepadAxis);
 
 					switch (action.Kind)

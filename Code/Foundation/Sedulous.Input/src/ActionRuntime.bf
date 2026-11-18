@@ -49,6 +49,15 @@ class ActionRuntime
 		public Float2 TouchAnchor = .Zero;
 		public Float2 TouchPoint = .Zero;
 
+		/// A touch drag's contact: whether one holds it, which, and where it was last frame. And
+		/// the touches down last frame, because a drag takes only a touch that has just come down.
+		public const int cDragSeen = 10;
+		public bool DragHeld = false;
+		public uint64 DragId = 0;
+		public Float2 DragLast = .Zero;
+		public uint64[cDragSeen] DragSeen = default;
+		public int DragSeenCount = 0;
+
 		public this() {}
 	}
 
@@ -514,7 +523,7 @@ class ActionRuntime
 
 	public static bool IsPointerSource(BindingSource source)
 		=> (source == .MouseButton) || (source == .MouseAxis) || (source == .MouseDelta)
-			|| (source == .TouchButton) || (source == .TouchStick);
+			|| (source == .TouchButton) || (source == .TouchStick) || (source == .TouchDrag);
 
 	public static bool IsKeyboardSource(BindingSource source)
 		=> (source == .Key) || (source == .Composite2D);
@@ -824,8 +833,8 @@ class ActionRuntime
 			}
 			result.DigitalDown = (x != 0.0f) || (y != 0.0f);
 
-		case .TouchButton, .TouchStick:
-			// STATEFUL: a touch stick has to remember its own contact, so both touch
+		case .TouchButton, .TouchStick, .TouchDrag:
+			// STATEFUL: a touch stick or drag has to remember its own contact, so the touch
 			// sources are evaluated by the caller, which has the action's state to hand.
 		}
 
@@ -861,6 +870,7 @@ class ActionRuntime
 			// No touch device: drop the anchor, so plugging one in later does not resume a
 			// stick from a contact that ended long ago.
 			state.TouchHeld = false;
+			state.DragHeld = false;
 			return result;
 		}
 
@@ -880,6 +890,44 @@ class ActionRuntime
 					result.DigitalDown = true;
 					break;
 				}
+			}
+			return result;
+		}
+
+		if (binding.Source == .TouchDrag)
+		{
+			// A drag: the touch it captured (one that came down inside the region) moves the value
+			// by how far it went since last frame, until it lifts. A touch that came down elsewhere
+			// (on a stick, a button) and slides in is not taken.
+			var alive = false;
+			for (int32 i = 0; i < count; i++)
+			{
+				TouchPoint point;
+				if (!touch.GetTouchPoint(i, out point))
+					continue;
+				if (state.DragHeld && (point.Id == state.DragId))
+				{
+					alive = true;
+					result.Value.X = (point.X - state.DragLast.X) * binding.Scale;
+					result.Value.Y = (point.Y - state.DragLast.Y) * binding.Scale * (binding.Invert ? -1.0f : 1.0f);
+					state.DragLast = .(point.X, point.Y);
+					result.DigitalDown = (result.Value.X != 0.0f) || (result.Value.Y != 0.0f);
+				}
+				else if (!state.DragHeld && !alive && !DragSawBefore(ref state, point.Id) && InRegion(point.X, point.Y))
+				{
+					// Captured: no movement yet this frame.
+					alive = true;
+					state.DragId = point.Id;
+					state.DragLast = .(point.X, point.Y);
+				}
+			}
+			state.DragHeld = alive;
+			state.DragSeenCount = 0;
+			for (int32 i = 0; (i < count) && (state.DragSeenCount < ActionState.cDragSeen); i++)
+			{
+				TouchPoint point;
+				if (touch.GetTouchPoint(i, out point))
+					state.DragSeen[state.DragSeenCount++] = point.Id;
 			}
 			return result;
 		}
@@ -944,6 +992,17 @@ class ActionRuntime
 		return result;
 	}
 
+	/// Whether the touch `id` was down last frame, for a drag that takes only a fresh one.
+	private static bool DragSawBefore(ref ActionState state, uint64 id)
+	{
+		for (int i < state.DragSeenCount)
+		{
+			if (state.DragSeen[i] == id)
+				return true;
+		}
+		return false;
+	}
+
 	private static float ApplyResponse(float value, float exponent)
 	{
 		if ((exponent == 1.0f) || (value == 0.0f))
@@ -974,7 +1033,7 @@ class ActionRuntime
 			if (IsConsumed(binding.Source))
 				continue;
 
-			let contribution = ((binding.Source == .TouchButton) || (binding.Source == .TouchStick))
+			let contribution = ((binding.Source == .TouchButton) || (binding.Source == .TouchStick) || (binding.Source == .TouchDrag))
 				? EvaluateTouchBinding(binding, devices, ref state)
 				: EvaluateBinding(binding, devices);
 

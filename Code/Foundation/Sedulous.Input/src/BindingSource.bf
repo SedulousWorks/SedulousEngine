@@ -34,5 +34,9 @@ enum BindingSource : uint8
 	/// A FLOATING virtual stick: the touch that starts inside the region anchors there, and
 	/// the deflection from that anchor is the value. Anchoring where the thumb lands rather
 	/// than where the art sits is what makes one usable without looking.
-	TouchStick
+	TouchStick,
+	/// How far the touch it captured (one that came down inside the region) moved this frame, a
+	/// fraction of the screen times the scale: touch look, the mouse delta's counterpart. A rate,
+	/// so NEVER time scaled.
+	TouchDrag
 }
