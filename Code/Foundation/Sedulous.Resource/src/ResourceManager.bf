@@ -58,6 +58,15 @@ class ResourceManager
 	/// Comfortably more than the frames a renderer can have in flight at once.
 	private const uint32 cGraveFrames = 8;
 
+	/// Collections each loaded resource nothing holds has gone unused.
+	private Dictionary<Guid, uint32> mUnused = new .() ~ delete _;
+	/// SetUnusedFrames; 0 never releases.
+	private uint32 mUnusedFrames = 0;
+	/// What holds resources from outside the manager without a retained proxy: each adds the ids
+	/// it uses (a scene, the ids its components' references name).
+	private List<(uint64 Id, delegate void(HashSet<Guid> outHeld) Fn)> mHolders = new .() ~ { for (let holder in _) delete holder.Fn; delete _; };
+	private uint64 mNextHolderId = 1;
+
 	/// Whether a bind of a product type no factory builds is logged, as a host wiring error.
 	/// Off for a manager that only collects references (it has no factories by design, and
 	/// every bind landing unresolved is the answer it wants, not a fault to report).
@@ -413,6 +422,116 @@ class ResourceManager
 		}
 	}
 
+	// ---- releasing what nothing holds ----
+
+	/// The collections a loaded resource nothing holds stays loaded for before it is released
+	/// (0: never). A spawn by id that holds nothing between spawns finds it still loaded; one
+	/// left alone this long is unloaded, and a later bind builds it again.
+	public void SetUnusedFrames(uint32 frames) => mUnusedFrames = frames;
+	public uint32 UnusedFrames => mUnusedFrames;
+
+	/// How many resources have a product now.
+	public int LoadedCount
+	{
+		get
+		{
+			int count = 0;
+			for (let entry in mHandles)
+			{
+				if (entry.value.Product != null)
+					count++;
+			}
+			return count;
+		}
+	}
+
+	/// Adds a holder, TAKING OWNERSHIP of it: asked, before anything is released, to add the ids
+	/// it uses to the set it is handed. The id removes it.
+	public uint64 AddHolder(delegate void(HashSet<Guid> outHeld) holder)
+	{
+		mHolders.Add((mNextHolderId, holder));
+		return mNextHolderId++;
+	}
+
+	public void RemoveHolder(uint64 id)
+	{
+		for (int i < mHolders.Count)
+		{
+			if (mHolders[i].Id == id)
+			{
+				delete mHolders[i].Fn;
+				mHolders.RemoveAt(i);
+				return;
+			}
+		}
+	}
+
+	/// Whether a loaded resource is held: a stored proxy (the weak count past the cache's own), a
+	/// load in flight, or a dependent built from it that is loaded. The holders are asked
+	/// separately, once, for the resources this finds unheld for long enough.
+	private bool IsHeld(Guid id, ResourceHandle handle)
+	{
+		if ((handle.Control.WeakCount > 1) || (handle.State == .Pending) || mPending.ContainsKey(id))
+			return true;
+		if (mDependents.TryGetValue(id, let dependents))
+		{
+			for (let dependent in dependents)
+			{
+				if (mHandles.TryGetValue(dependent, let parent) && ((parent.Product != null) || (parent.State == .Pending)))
+					return true;
+			}
+		}
+		return false;
+	}
+
+	/// Releases the loaded resources nothing has held for UnusedFrames collections: each one's
+	/// product is parked for the frames in flight and its handle KEPT, empty and Unloaded, so a
+	/// reference that still points at it reads null and a later bind builds it again in place.
+	/// Releasing a product drops its own edges, so what it was built from follows in later
+	/// collections.
+	private void ReleaseUnused()
+	{
+		if (mUnusedFrames == 0)
+			return;
+		let due = scope List<Guid>();
+		for (let entry in mHandles)
+		{
+			if (entry.value.Product == null)
+			{
+				mUnused.Remove(entry.key);
+				continue;
+			}
+			if (IsHeld(entry.key, entry.value))
+			{
+				mUnused.Remove(entry.key);
+				continue;
+			}
+			uint32 idle = 1;
+			if (mUnused.TryGetValue(entry.key, let seen))
+				idle = seen + 1;
+			mUnused[entry.key] = idle;
+			if (idle >= mUnusedFrames)
+				due.Add(entry.key);
+		}
+		if (due.IsEmpty)
+			return;
+		// The holders, asked once for the whole batch.
+		let held = scope HashSet<Guid>();
+		for (let holder in mHolders)
+			holder.Fn(held);
+		for (let id in due)
+		{
+			mUnused.Remove(id);
+			if (held.Contains(id))
+				continue;
+			if (!mHandles.TryGetValue(id, let handle))
+				continue;
+			ClearForwardDependencies(id);
+			Bury(handle.Detach(null));
+			handle.SetState(.Unloaded);
+		}
+	}
+
 	/// Releases a handle nothing outside the cache is holding, and returns whether it did.
 	///
 	/// "Nothing outside" is the weak count: the cache's own reference is one, so anything
@@ -554,7 +673,8 @@ class ResourceManager
 
 	// ---- garbage ----
 
-	/// Ages the parked products and releases the ones no frame can still be referencing.
+	/// Ages the parked products and releases the ones no frame can still be referencing, then
+	/// releases what nothing has held for UnusedFrames collections.
 	///
 	/// Ticked once a frame by the host. Without it a hot reload frees a product's GPU
 	/// objects while a frame that was recorded against them is still executing.
@@ -585,6 +705,8 @@ class ResourceManager
 		// the NEXT collection rather than to the one in progress.
 		for (let product in dropped)
 			delete product;
+
+		ReleaseUnused();
 	}
 
 	/// How many products are waiting out their frames. For tests and for a memory report.

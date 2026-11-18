@@ -1,6 +1,6 @@
 # Resource ownership: what holds a loaded resource
 
-Status: plan (2026-11-17). Blocks releasing unheld resources (Raptor 1ab3dd0f1, with its material
+Status: approved (2026-11-18), being built. Blocks releasing unheld resources (Raptor 1ab3dd0f1, with its material
 fix cdcc6b1a5 and e5f2cf164), which stays unported until this lands.
 
 ## Why
@@ -27,21 +27,29 @@ A resource is held while any of these is true:
 1. Something outside the manager retains a proxy to it (`Control.WeakCount > 1`).
 2. A loaded resource depends on it (an edge in the manager's dependents map).
 3. It is pending (a load or a decode is in flight).
+4. A holder registered with the manager names it (a loaded scene's components), asked when it
+   would be released.
 
-Unheld for N collections (600 by default), it is released: removed from the manager, its
-product parked in the graveyard for the frames in flight, then deleted. N = 0 never releases.
+Unheld for N collections (600 by default), it is released: its product parked in the graveyard
+for the frames in flight, then deleted, and its handle kept for the next bind. N = 0 never
+releases.
 
 ## The pass
 
-### 1. Stored references retain
+### 1. Holders say what they use
 
-- Every component `Ref<T>` field retains when it binds and forgets when it rebinds or the
-  component goes: in `ResourceBindingComponentManager` / `IComponentResources`, so each
-  component does not do it by hand.
-- Every proxy a product stores (a model's meshes, materials, skeleton and clips; a particle
-  effect's textures, meshes and materials; terrain's heightfield, weights and layer textures;
-  a render profile's sky and grading LUT) retains when built and forgets in the product's
-  destructor.
+`Ref<T>` is a struct that is copied (a duplicated entity, a paste, a prefab, an undo step) and has
+no destructor, so a retain inside it would be forgotten twice by two copies, or never. Component
+references are not retained. Instead the manager asks at release time (ruling 2026-11-18):
+
+- `ResourceManager.AddHolder` registers a holder; before a batch is released, each holder adds the
+  ids it uses to a set, and an id in the set stays. A scene answers with the ids its components'
+  `Ref<T>` fields name (lists of them too), read by reflection, so whatever re-pointed a reference
+  (a script, an agent's `component_set`, the inspector, an undo) is seen without being told.
+- A released resource's handle is KEPT, empty and Unloaded, and the next bind builds into it, so a
+  reference that still points at it reads null, never freed memory.
+- A proxy a product stores (a model's meshes, a terrain's layers) is held by the dependency edge its
+  build recorded, rule 2; one stored elsewhere retains as before (rule 1).
 
 ### 2. Raw holders hold the owner, not the innards
 
