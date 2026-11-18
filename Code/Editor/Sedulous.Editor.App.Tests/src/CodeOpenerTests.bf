@@ -14,7 +14,8 @@ namespace Sedulous.Editor.App.Tests;
 /// Where code opens, over a scratch project with one script asset in Code/: the built-in page at
 /// the line by default; an outside editor's command with the location put in when the preference
 /// names one; the built-in page, with a warning, when that command does not start; the Code folder
-/// in the folder command or the file manager; and Open in Built-in Editor whatever the preference.
+/// in the folder command or the file manager; Open in Built-in Editor whatever the preference; and
+/// a file in the Code folder that is no asset as plain text.
 static class CodeOpenerTests
 {
 	/// A code page that records where it was asked to show.
@@ -185,5 +186,39 @@ static class CodeOpenerTests
 		Test.Assert(bed.Opener.Open(default, 0, 0));
 		Test.Assert(bed.Launched.Count == 1);
 		Test.Assert(bed.ShownFolders.Count == 2);
+	}
+
+	[Test]
+	public static void AFileInTheCodeFolderThatIsNoAssetOpensAsPlainText()
+	{
+		let bed = scope Bed();
+		let files = scope List<String>();
+		defer { ClearAndDeleteItems!(files); }
+		// The bed's opener again, now with a text page to open.
+		let services = new EditorCodeOpenerServices();
+		services.Context = bed.Context;
+		services.OpenPage = new (instance) => bed.Page;
+		services.OpenFile = new [=files, =bed] (file) =>
+			{
+				files.Add(new String(file));
+				return bed.Page;
+			};
+		let opener = scope EditorCodeOpener(services);
+
+		let codeRoot = bed.CodeRoot(.. scope .());
+		let project = PathJoin(codeRoot, "Opener.csproj", .. scope .());
+		Test.Assert(System.IO.Directory.CreateDirectory(codeRoot) case .Ok);
+		Test.Assert(System.IO.File.WriteAllText(project, "<Project/>") case .Ok);
+		Test.Assert(opener.Open(project, 2, 0));
+		Test.Assert(files.Count == 1);
+		Test.Assert(files[0] == project);
+		Test.Assert(bed.Page.Line == 2);
+
+		// A file outside the Code folder, or one not there, is not opened.
+		let outside = PathJoin(bed.Project.SourcesRoot(.. scope .()), "notes.txt", .. scope .());
+		Test.Assert(System.IO.File.WriteAllText(outside, "x") case .Ok);
+		Test.Assert(!opener.Open(outside, 0, 0));
+		Test.Assert(!opener.Open(PathJoin(codeRoot, "gone.luaurc", .. scope .()), 0, 0));
+		Test.Assert(files.Count == 1);
 	}
 }

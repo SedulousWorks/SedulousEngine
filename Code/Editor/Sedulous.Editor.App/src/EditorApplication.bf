@@ -201,6 +201,7 @@ class EditorApplication : IApplication
 			let code = new EditorCodeOpenerServices();
 			code.Context = mContext;
 			code.OpenPage = new (instance) => mPages.Open(instance);
+			code.OpenFile = new (file) => mPages.OpenFile(file);
 			code.ShowFolder = new (folder) =>
 				{
 					if (let dialogs = ShellDialogs())

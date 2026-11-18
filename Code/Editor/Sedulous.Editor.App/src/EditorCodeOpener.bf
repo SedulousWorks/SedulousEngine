@@ -12,9 +12,10 @@ namespace Sedulous.Editor.App;
 
 // EditorCodeOpener: where the editor opens code, by the user's Code Editor preference
 // (EditorCodeEditorSettings). An outside editor gets its command with the file, line, column and
-// the project's Code/ folder put in; the built-in editor opens the asset's page at the line. A
-// command that does not start falls back to the built-in page, saying so. The Code folder opens in
-// the outside editor's folder command, or the system's file manager. Every way the user opens code
+// the project's Code/ folder put in; the built-in editor opens the asset's page at the line, and a
+// file in the Code folder that is no asset (a .csproj) as plain text. A command that does not start
+// falls back to the built-in editor, saying so. The Code folder opens in the outside editor's
+// folder command, or the system's file manager. Every way the user opens code
 // comes here (the Assets browser, a log line, the menu); an agent's page_open keeps its page.
 
 /// What an EditorCodeOpener works over. The context is borrowed; the delegates are its own.
@@ -24,6 +25,8 @@ class EditorCodeOpenerServices
 	public EditorContext Context = null;
 	/// Opens (or brings forward) the page for an asset; null when it has none. Owned.
 	public delegate EditorPage(Instance instance) OpenPage ~ delete _;
+	/// Opens a page showing a file that is no asset as plain text; null when it cannot. Owned.
+	public delegate EditorPage(StringView file) OpenFile ~ delete _;
 	/// Starts a program and leaves it running; Process.LaunchDetached unless a test records it.
 	/// Owned.
 	public delegate bool(StringView program, Span<StringView> arguments) Launch ~ delete _;
@@ -120,12 +123,18 @@ class EditorCodeOpener
 		outProgram.Append(parts.IsEmpty ? command : parts[0]);
 	}
 
-	// The asset whose file `file` is opens its page at the line.
+	// The asset whose file `file` is opens its page at the line; another file in the Code folder
+	// opens as plain text.
 	private bool OpenBuiltIn(EditorProject project, StringView file, uint32 line, uint32 column)
 	{
 		let name = SourceNameOf(project, file, .. scope .());
 		let instance = name.IsEmpty ? null : FindBySource(project.SourceDb.RootGroup, name);
-		let page = ((instance != null) && (mServices.OpenPage != null)) ? mServices.OpenPage(instance) : null;
+		EditorPage page = null;
+		if ((instance != null) && (mServices.OpenPage != null))
+			page = mServices.OpenPage(instance);
+		else if ((instance == null) && (mServices.OpenFile != null) &&
+			SourcePath.AfterFolder(name, SourcePath.CodeFolder, let inCode) && !inCode.IsEmpty && FileExists(file))
+			page = mServices.OpenFile(file);
 		if (page == null)
 		{
 			Notify(.Warning, scope $"No page here opens {PathFilename(file, .. scope .())}.");

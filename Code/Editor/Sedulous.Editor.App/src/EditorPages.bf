@@ -161,6 +161,25 @@ class EditorPages
 		return (instance != null) ? Open(instance) : null;
 	}
 
+	/// Opens (or brings forward) a page showing `file`, a file on disk that is no asset, as plain
+	/// text (a script project's file in the Code folder).
+	public UIEditorPage OpenFile(StringView file)
+	{
+		let panel = scope String()..AppendF("file:{}", file);
+		for (let open in mOpen)
+		{
+			if ((open.Panel == panel) && !mClosing.Contains(open.Page))
+			{
+				Reveal(open.Page);
+				return open.Page;
+			}
+		}
+		let page = new TextFilePage(file);
+		mServices.Context.AdoptPage(page);
+		Dock(page, new String(panel));
+		return page;
+	}
+
 	/// The Game tab (`newInstance`: another one beside it, with a game instance of its own),
 	/// made through the context's GamePageFactory, the seam the play library registers.
 	public void OpenGame(bool newInstance)
