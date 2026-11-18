@@ -588,7 +588,9 @@ call and the export refuse it.
 - `asset_delete` refuses while anything uses the asset (the same scan as `asset_uses`, and
   the refusal names the users); change those first, or pass `force` and fix the dangling
   references after. It removes the asset, not the original file an import copied under
-  `Sources/`: delete that file yourself if it should go too.
+  `Sources/`, unless `deleteSource`, which removes that file when no other asset names it and
+  says so in `sourceDeleted` (or why not in `sourceKept`): delete a script or project file that
+  way before making it again, or the new one lands beside the old as `Name.2`.
 - `asset_rename` renames one within its group as the browser does: its guid stays, so what
   uses it still does, and the default scene's path follows; a name a file cannot take, or one
   taken in the group, is refused.

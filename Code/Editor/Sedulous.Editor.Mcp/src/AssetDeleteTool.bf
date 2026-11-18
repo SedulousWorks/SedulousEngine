@@ -1,15 +1,19 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Pipeline.Core;
+using Sedulous.Pipeline.Importer;
 
 namespace Sedulous.Editor.Mcp;
 
 /// asset_delete: the Assets browser's Delete for an agent. Refused while anything still uses
 /// the asset, by the same scan asset_uses runs, unless `force` says the breakage is meant;
 /// the host does the rest (the editor closes the asset's page and waits out a cook).
+/// `deleteSource` also removes its file under Sources/ when no other asset names that file, so an
+/// asset made again (a script, a project file) takes its old file name rather than "Name.2".
 static class AssetDeleteTool
 {
 	private class Context
@@ -30,8 +34,9 @@ static class AssetDeleteTool
 		let schema = scope SchemaBuilder();
 		schema.Str("guid", "the source asset to delete", true);
 		schema.Boolean("force", "delete even though something still uses it, leaving those references dangling (default false)");
+		schema.Boolean("deleteSource", "also remove its file under Sources/ when no other asset names it (default false)");
 		server.RegisterTool("asset_delete",
-			"Delete a source asset, as the editor's Assets browser does: its stored object and data files go, and the next cook sweeps its cooked product. The original file an import copied under Sources/ is NOT removed - it is an ordinary file. Refused while other assets or the project settings use it (the refusal names them, as asset_uses would); `force` deletes anyway. In the editor its open page closes first, and a running cook is waited out. Returns the deleted asset's identity.",
+			"Delete a source asset, as the editor's Assets browser does: its stored object and data files go, and the next cook sweeps its cooked product. The original file an import copied under Sources/ is NOT removed - it is an ordinary file - unless `deleteSource`, which removes it when no other asset names that file (a model's meshes share theirs). Refused while other assets or the project settings use it (the refusal names them, as asset_uses would); `force` deletes anyway. In the editor its open page closes first, and a running cook is waited out. Returns the deleted asset's identity.",
 			schema.Build(), .Deletes,
 			new (call, arguments, outResult, outError) => Delete(context, call, arguments, outResult, outError),
 			context);
@@ -87,6 +92,10 @@ static class AssetDeleteTool
 		outResult.Set("guid", McpTools.GuidToJson(instance.Id));
 		outResult.Set("name", JsonValue.MakeString(instance.Name));
 		outResult.Set("type", JsonValue.MakeString(instance.TypeName));
+		// The source file, read before the asset goes: kept when another asset names it.
+		let sourceName = scope String(instance.SourceName);
+		let deleteSource = McpTools.ArgBool(arguments, "deleteSource") && !sourceName.IsEmpty;
+		let sourceShared = deleteSource && ImportPaths.SourcesCopyUsedByOther(instance.OwningGroup, sourceName, instance);
 		switch (context.Operations.Delete(call, id, outError))
 		{
 		case .Failed: return .Failed;
@@ -94,6 +103,16 @@ static class AssetDeleteTool
 		case .Finished:
 		}
 		outResult.Set("deleted", JsonValue.MakeBool(true));
+		if (deleteSource)
+		{
+			let path = PathJoin(session.Project.SourcesRoot(.. scope .()), sourceName, .. scope .());
+			if (sourceShared)
+				outResult.Set("sourceKept", JsonValue.MakeString(scope $"{sourceName} (another asset names it)"));
+			else if (FileExists(path) && !DeleteFile(path))
+				outResult.Set("sourceKept", JsonValue.MakeString(scope $"{sourceName} (could not be removed)"));
+			else
+				outResult.Set("sourceDeleted", JsonValue.MakeString(sourceName));
+		}
 		return true;
 	}
 }

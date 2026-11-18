@@ -9,6 +9,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- MCP: `asset_delete` takes `deleteSource`, which also removes the asset's file under Sources/ when no
+  other asset names it.
 - Scripts: `Input.LockPointer(true)` locks the pointer for mouse look (hidden, held in place, only
   its movement read) and `Input.PointerLocked()` says whether it is; `LockPointer(false)` frees it,
   and a run's end does too. On the web the lock takes effect at the next click, and the browser's
