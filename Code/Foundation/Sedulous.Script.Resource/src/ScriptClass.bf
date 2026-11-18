@@ -19,6 +19,13 @@ class ScriptClass
 	public bool UsesCoroutines = false;
 	/// "Script Mover": a stable label for the profiler, which keeps the pointer.
 	public String ProfileName = new .() ~ delete _;
+	/// The project assembly the class is built into (ScriptClassSource.Assembly); nil for a class
+	/// that cooks alone.
+	public Guid AssemblyId;
+	/// That assembly, which the class loads in place of compiling its source; null for a class
+	/// that compiles. BORROWED: the resource manager owns it, and the factory's bind of it recorded
+	/// the edge, so a rebuilt assembly rebuilds this class too.
+	public ScriptAssembly Assembly = null;
 
 	/// A utility module: source with no behaviour class to instantiate.
 	public bool IsModule => ClassName.IsEmpty;
@@ -79,6 +86,8 @@ class ScriptClass
 		for (let h in source.Handlers)
 			Handlers.Add(new String(h));
 		UsesCoroutines = source.UsesCoroutines;
+		AssemblyId = source.Assembly;
+		Assembly = null; // bound by the factory, through the manager
 		ProfileName.Set("Script ");
 		ProfileName.Append(ClassName.IsEmpty ? "(module)" : ClassName);
 	}

@@ -88,6 +88,17 @@ abstract class ScriptRuntime
 	/// global initializers run as Compile's do.
 	public virtual bool CompileModule(StringView moduleName, Span<ScriptSection> sections, bool runInitializers = true) => false;
 
+	/// Loads the module from a built image in place of compiling `sections`: the assembly a
+	/// language that builds a project's classes together made of them, with its debug `symbols`
+	/// (empty when there are none) so a fault names its file and line. `sections` are the class's
+	/// own files, kept for the names its errors and breakpoints key on. False, with the reason in
+	/// Problems, for a backend that only compiles source.
+	public virtual bool LoadModuleImage(StringView moduleName, Span<ScriptSection> sections, Span<uint8> image, Span<uint8> symbols)
+	{
+		Problem(scope $"'{Name}' loads no built image; its classes compile from source");
+		return false;
+	}
+
 	/// Drops a module and everything compiled into it.
 	public virtual void DiscardModule(StringView moduleName) {}
 

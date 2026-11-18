@@ -3,7 +3,10 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
+using Sedulous.Content;
+using Sedulous.Resource;
 using Sedulous.Script.Resource;
+using Sedulous.VFS;
 
 namespace Sedulous.Script.Resource.Tests;
 
@@ -127,23 +130,37 @@ static class ScriptClassResourceTests
 		Test.Assert(ScriptPropertyNames.HashOf("speed") != ScriptPropertyNames.HashOf("Speed"));
 	}
 
-	/// A record cooked before each property carried its replicated flag is in another layout.
-	/// Read as this one it misread its counts (it could hold the editor for minutes opening
-	/// a scene); the data version refuses it, and the script recooks.
+	/// A record cooked before each property carried its replicated flag (no data version), before
+	/// it carried its included files (version 1), or before it named its assembly (version 2), is
+	/// in another layout. Read as this one it misread its counts (it could hold the editor for
+	/// minutes opening a scene); the data version refuses it, and the script recooks.
 	[Test]
-	public static void ARecordCookedBeforeTheReplicatedFlagIsRefused()
+	public static void ARecordCookedBeforeTheReplicatedFlagTheIncludesOrTheAssemblyIsRefused()
 	{
-		Test.Assert(ScriptClassSource.DataVersion == 1);
+		Test.Assert(ScriptClassSource.DataVersion == 3);
 
 		let old = scope UnversionedScriptRecord();
 		old.Language.Set("angelscript");
 		old.ClassName.Set("Mover");
 		old.Properties.Add(Property("speed", .Float, .Float(2)));
+		AssertRefused(old);
 
+		for (uint32 stale = 1; stale < ScriptClassSource.DataVersion; stale++)
+		{
+			let versioned = scope StaleScriptRecord(stale);
+			versioned.Language.Set("angelscript");
+			versioned.ClassName.Set("Mover");
+			versioned.Properties.Add(Property("speed", .Float, .Float(2)));
+			AssertRefused(versioned);
+		}
+	}
+
+	private static void AssertRefused(ISerializable stale)
+	{
 		let buffer = scope MemoryStream();
 		{
 			let writer = scope BinarySerializer(buffer, .Write);
-			((ISerializable)old).Serialize(writer);
+			stale.Serialize(writer);
 			Test.Assert(writer.IsOk);
 		}
 		buffer.Seek(0, .Begin);
@@ -153,6 +170,82 @@ static class ScriptClassResourceTests
 		((ISerializable)read).Serialize(reader);
 		Test.Assert(!reader.IsOk, "the stale record was refused");
 		Test.Assert(read.Language.IsEmpty && read.Properties.IsEmpty, "and left unread");
+	}
+
+	/// A class built into its project's assembly names the assembly in its cooked record; the
+	/// factory binds the assembly's product beside the class, its image and symbols whole, and the
+	/// class keeps its source. The assembly's class descriptions read back with its record, for
+	/// the cook of each class's asset.
+	[Test]
+	public static void AClassBuiltIntoAProjectAssemblyBindsTheAssembly()
+	{
+		let root = "scratch_scriptres_assembly";
+		RemoveDirectoryRecursive(root);
+		CreateDirectory(root);
+		defer { RemoveDirectoryRecursive(root); }
+		ScriptResources.RegisterAll(); // a read constructs its record by the stored type's name
+
+		let mount = scope NativeFileSystem(root);
+		SerializerFactory serializers = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let database = scope ContentDatabase(mount, serializers, "rasset");
+
+		let assembly = scope ScriptAssemblySource();
+		assembly.Language.Set("stand-in");
+		assembly.Image.Add(0x4D);
+		assembly.Image.Add(0x5A);
+		assembly.Image.Add(0x90);
+		assembly.Symbols.Add(0x42);
+		let mover = new ScriptAssemblyClass();
+		mover.ClassName.Set("Mover");
+		mover.Handlers.Add(new String("onUpdate"));
+		assembly.Classes.Add(mover);
+		let assemblyInstance = database.RootGroup.CreateInstance("assembly", typeof(ScriptAssemblySource).GetFullName(.. scope .()));
+		Test.Assert(assemblyInstance != null);
+		Test.Assert(assemblyInstance.WriteObject(assembly) case .Ok);
+
+		let cooked = scope ScriptClassSource();
+		cooked.Language.Set("stand-in");
+		cooked.ClassName.Set("Mover");
+		cooked.SourceName.Set("Mover.si");
+		cooked.Source.Set("class Mover");
+		cooked.Assembly = assemblyInstance.Id;
+		let classInstance = database.RootGroup.CreateInstance("mover", typeof(ScriptClassSource).GetFullName(.. scope .()));
+		Test.Assert(classInstance != null);
+		Test.Assert(classInstance.WriteObject(cooked) case .Ok);
+
+		// The record reads back with its classes, for the cook of each class's asset.
+		{
+			let read = assemblyInstance.ReadObject();
+			defer delete read;
+			let readBack = read as ScriptAssemblySource;
+			Test.Assert(readBack != null);
+			Test.Assert(readBack.FindClass("Mover") != null);
+			Test.Assert(readBack.FindClass("Mover").Handlers.Count == 1);
+			Test.Assert(readBack.FindClass("Nobody") == null);
+		}
+
+		let manager = scope ResourceManager(database, null);
+		let classes = scope ScriptClassFactory();
+		let assemblies = scope ScriptAssemblyFactory();
+		ScriptResources.AddFactories(manager, classes, assemblies);
+		let product = manager.Bind<ScriptClass>(classInstance.Id).Get;
+		Test.Assert(product != null, "bound");
+		Test.Assert(product.AssemblyId == assemblyInstance.Id);
+		Test.Assert(product.Source == "class Mover", "the class keeps its source");
+		Test.Assert(product.Assembly != null, "the assembly bound beside it");
+		Test.Assert(product.Assembly.Language == "stand-in");
+		Test.Assert((product.Assembly.Image.Count == 3) && (product.Assembly.Image[0] == 0x4D) && (product.Assembly.Image[2] == 0x90));
+		Test.Assert((product.Assembly.Symbols.Count == 1) && (product.Assembly.Symbols[0] == 0x42));
+		Test.Assert(product.Assembly === manager.Bind<ScriptAssembly>(assemblyInstance.Id).Get, "the assembly's own product, shared");
+
+		// A class that cooks alone binds none.
+		let alone = scope ScriptClassSource();
+		alone.Language.Set("stand-in");
+		alone.ClassName.Set("Loner");
+		let aloneInstance = database.RootGroup.CreateInstance("loner", typeof(ScriptClassSource).GetFullName(.. scope .()));
+		Test.Assert(aloneInstance.WriteObject(alone) case .Ok);
+		let loner = manager.Bind<ScriptClass>(aloneInstance.Id).Get;
+		Test.Assert((loner != null) && (loner.AssemblyId == Guid.Empty) && (loner.Assembly == null));
 	}
 
 	[Test]

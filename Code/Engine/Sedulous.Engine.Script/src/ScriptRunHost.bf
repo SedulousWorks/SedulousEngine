@@ -56,6 +56,10 @@ class ScriptRunHost
 		public String ModuleName = new .() ~ delete _;
 		/// The files it included, path and text, each pair in turn.
 		public List<String> Includes = new .() ~ DeleteContainerAndItems!(_);
+		/// The assembly image and symbols it loaded from, hashed (ImageHashOf); 0 for a class
+		/// compiled from source. Another file of its project changes the image and not the class's
+		/// source, and the class loads again for it.
+		public uint64 ImageHash = 0;
 
 		public void Set(ScriptClass scriptClass)
 		{
@@ -68,12 +72,16 @@ class ScriptRunHost
 				Includes.Add(new String(included.Path));
 				Includes.Add(new String(included.Source));
 			}
+			ImageHash = ImageHashOf(scriptClass);
 		}
 
-		/// Whether `scriptClass` is what was loaded: its source, its file and what it includes.
+		/// Whether `scriptClass` is what was loaded: its source, its file, what it includes and the
+		/// assembly it was built into.
 		public bool Matches(ScriptClass scriptClass)
 		{
 			if ((Source != scriptClass.Source) || (SourceName != scriptClass.SourceName) || (Includes.Count != scriptClass.Includes.Count * 2))
+				return false;
+			if (ImageHash != ImageHashOf(scriptClass))
 				return false;
 			for (int i < scriptClass.Includes.Count)
 			{
@@ -83,6 +91,16 @@ class ScriptRunHost
 			return true;
 		}
 	}
+	/// The class's assembly image and symbols hashed, 0 when it compiles from source.
+	private static uint64 ImageHashOf(ScriptClass scriptClass)
+	{
+		let assembly = scriptClass.Assembly;
+		if (assembly == null)
+			return 0;
+		let image = HashBytes(assembly.Image.Ptr, assembly.Image.Count);
+		return HashBytes(assembly.Symbols.Ptr, assembly.Symbols.Count, image);
+	}
+
 	/// How many class modules the run has loaded: each a class's own.
 	private int mGeneration = 0;
 	/// Modules of classes a reload replaced, discarded once nothing runs their code: discarding
@@ -298,7 +316,13 @@ class ScriptRunHost
 		sections.Add(.(scriptClass.SourceName, scriptClass.Source));
 		for (let included in scriptClass.Includes)
 			sections.Add(.(included.Path, included.Source));
-		if (!mRuntime.CompileModule(moduleName, sections))
+		// A class built into its project's assembly loads the assembly, with its symbols so a fault
+		// names its file and line; any other compiles its source.
+		let assembly = scriptClass.Assembly;
+		let loadedModule = (assembly != null)
+			? mRuntime.LoadModuleImage(moduleName, sections, assembly.Image, assembly.Symbols)
+			: mRuntime.CompileModule(moduleName, sections);
+		if (!loadedModule)
 		{
 			GlobalLog(.Error, scope $"Script: class '{scriptClass.ClassName}' failed to load");
 			ReportProblems();

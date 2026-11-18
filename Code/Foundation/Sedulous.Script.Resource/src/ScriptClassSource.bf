@@ -12,9 +12,10 @@ namespace Sedulous.Script.Resource;
 /// The harvested properties and handlers are what let the EDITOR render an inspector
 /// without a VM, and the RUNTIME dispatch handlers without probing for them per frame.
 ///
-/// Data version 1: each property's replicated flag; 2: the included files. A record cooked
-/// before is in another layout; the strict reader refuses it and the script recooks.
-[Serializable(2)]
+/// Data version 1: each property's replicated flag; 2: the included files; 3: the assembly a
+/// class is built into. A record cooked before is in another layout; the strict reader refuses
+/// it and the script recooks.
+[Serializable(3)]
 class ScriptClassSource
 {
 	/// The backend id, "angelscript".
@@ -32,4 +33,8 @@ class ScriptClassSource
 	public List<String> Handlers = new .() ~ DeleteContainerAndItems!(_);
 	/// The class starts coroutines, so a teardown has some to cancel.
 	public bool UsesCoroutines = false;
+	/// The project assembly the class is built into, for a language whose classes build
+	/// together: the cooked ScriptAssemblySource's id, which the factory binds. Nil for a class
+	/// that cooks alone.
+	public Guid Assembly;
 }

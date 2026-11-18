@@ -17,9 +17,10 @@ class ScriptClassAssetBuilder : IAssetBuilder
 
 	/// The shell's own version (2: each property a replicated flag; 3: the record carries
 	/// data version 1, so the reader refuses one from before the flag; 4: the class is the
-	/// asset's choice, never a guess among several; 5: the record carries the included files)
-	/// plus every cook's, so a cook change recooks.
-	public int32 Version => 5 + ScriptLanguageCooks.VersionSum;
+	/// asset's choice, never a guess among several; 5: the record carries the included files;
+	/// 6: the record names the assembly its class is built into) plus every cook's, so a cook
+	/// change recooks.
+	public int32 Version => 6 + ScriptLanguageCooks.VersionSum;
 
 	/// The surface the scripts are checked against: a change (an engine whose facades changed)
 	/// recooks them, so a script that no longer compiles is found at cook time, not at load.

@@ -78,7 +78,7 @@ static class ScriptClassCookTests
 			context.Sources = mount;
 			context.Output = instance;
 			let builder = scope ScriptClassAssetBuilder();
-			Test.Assert(builder.Version == 6, "the shell's 5 plus the cook's 1");
+			Test.Assert(builder.Version == 7, "the shell's 6 plus the cook's 1");
 			Test.Assert(builder.Build(asset, context) case .Ok, "cooked");
 		}
 

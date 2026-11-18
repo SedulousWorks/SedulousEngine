@@ -13,13 +13,16 @@ static class ScriptResources
 	/// initialisation order matters. The factories belong here, with the resources they
 	/// produce, not with an engine subsystem and not with an executable.
 	public static ResourceModule Module => sModule ?? (sModule = new .("script", () => RegisterAll(), new .(
-		.ByDefault<ScriptClass, ScriptClassSource, ScriptClassFactory>())));
+		.ByDefault<ScriptClass, ScriptClassSource, ScriptClassFactory>(),
+		.ByDefault<ScriptAssembly, ScriptAssemblySource, ScriptAssemblyFactory>())));
 	private static ResourceModule sModule ~ delete _;
 
-	/// The manager does not take ownership, so the caller keeps the factory alive for as
-	/// long as it keeps the manager.
-	public static void AddFactories(ResourceManager manager, ScriptClassFactory classes)
+	/// The manager does not take ownership, so the caller keeps the factories alive for as
+	/// long as it keeps the manager. `assemblies` may be null for a project none of whose
+	/// classes build together.
+	public static void AddFactories(ResourceManager manager, ScriptClassFactory classes, ScriptAssemblyFactory assemblies = null)
 	{
 		manager.AddFactory(classes);
+		manager.AddFactory(assemblies);
 	}
 }
