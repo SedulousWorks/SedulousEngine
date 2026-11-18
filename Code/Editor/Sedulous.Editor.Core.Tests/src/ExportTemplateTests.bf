@@ -149,7 +149,7 @@ static class ExportTemplateTests
 				Test.Assert((least == 1) && (most == 16384));
 			}
 		}
-		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource,qualityLevelId,androidApplicationId,androidVersionCode,androidVersionName,androidLabel,androidIcon,androidPackage,androidKeystore,androidKeyAlias", keys);
+		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,kind,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource,qualityLevelId,androidApplicationId,androidVersionCode,androidVersionName,androidLabel,androidIcon,androidPackage,androidKeystore,androidKeyAlias", keys);
 		// The Android app's fields are an Android64 preset's alone; the others are every platform's.
 		for (let field in fields)
 		{

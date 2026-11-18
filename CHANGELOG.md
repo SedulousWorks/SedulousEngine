@@ -86,6 +86,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Export: a preset says its kind. A template export ships the template's player; a native export
+  ships the game's own player, built with its packages. A template export of a project that needs
+  its own player is refused and says to make the preset native, where it used to switch players
+  unasked.
 - MCP tools read and write files by a given path only in the open project, the user-data and temp
   folders, the engine's data root, and folders the user allows (`Sedulous.Tools.Mcp --allow-path
   <dir>` and the folder it starts in; the editor's MCP `allowedFolders` setting); other paths are

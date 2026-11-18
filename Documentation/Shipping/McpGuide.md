@@ -533,12 +533,15 @@ the preset's `includeShaderSource` is set. A script cooks once and ships to ever
 an export cooks, every script is checked against what the preset's platform has of the project's
 plugins: one using a type of a plugin the project does not enable there refuses the export,
 naming the script, the plugin and the problem; `script_validate` with `platform` makes the same
-check for an agent (its `absentPlugins` says what was left out). The project's plugins choose the player: its own build's
-(Project > Build Project) when a package of its own is enabled on the host platform, else the
-template's when it carries every plugin enabled on the preset's platform at a version at least
-the plugin's; otherwise the export is refused, the response naming why (a plugin the template
-lacks or carries older, one enabled where it is not supported, the project's own player not
-built). The response's `player` says which ran and why. Each enabled plugin's deploy files ship
+check for an agent (its `absentPlugins` says what was left out). A preset's `kind` is how the
+export makes its player: `Template` ships the template's prebuilt player, `Native` the game's own
+build's (Project > Build Project), with its native parts linked in, for the host platform alone.
+A template export of a project that needs its own player (a package of its own enabled on the
+host platform) is refused, saying to make the preset native. A template export ships the
+template's player when it carries every plugin enabled on the preset's platform at a version at
+least the plugin's; otherwise the export is refused, the response naming why (a plugin the
+template lacks or carries older, one enabled where it is not supported, the project's own player
+not built). The response's `player` says which ran and why. Each enabled plugin's deploy files ship
 beside the player, and a plugin's export hooks run over the staged dist; one that fails fails the
 export with its reason. A preset with `pruneToReachable` ships only what its entry points reach (the
 project's default scene, startup script and manifest assets, and what is flagged Always Export),

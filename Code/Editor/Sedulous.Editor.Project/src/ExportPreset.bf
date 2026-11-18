@@ -77,6 +77,17 @@ enum AndroidPackage : uint8
 	case Both;
 }
 
+/// How an export makes its player. A template export copies the template's prebuilt player (no
+/// toolchain needed); a native export ships the game's own player, built from the engine
+/// checkout with the game's native parts linked in (its plugin packages). A project with native
+/// parts exports natively only.
+[Reflect(.StaticFields)]
+enum ExportKind : uint8
+{
+	case Template;
+	case Native;
+}
+
 /// A preset field that is one platform's alone (the Android app's id is no desktop's), so an
 /// editor of presets shows it only for a preset of that platform.
 [AttributeUsage(.Field, .ReflectAttribute, ReflectUser = .NonStaticFields)]
@@ -125,6 +136,9 @@ class ExportPreset
 	/// Stage the template's symbol files into the dist; the default ships stripped.
 	[Setting("Stage debug symbols")]
 	public bool StageSymbols = false;
+	/// The template's player, or the game's own.
+	[Appended, Setting("Export kind")]
+	public ExportKind Kind = .Template;
 	/// Ship only the closure of the entry points; the default packs everything, the escape
 	/// hatch for a team not managing reachability.
 	[Setting("Prune to reachable content")]
@@ -243,6 +257,7 @@ class ExportPreset
 			other.AdditionalFiles.Add(new String(file));
 		other.Config.Set(Config);
 		other.StageSymbols = StageSymbols;
+		other.Kind = Kind;
 		other.PruneToReachable = PruneToReachable;
 		other.OverridesRender = OverridesRender;
 		other.RenderWidth = RenderWidth;

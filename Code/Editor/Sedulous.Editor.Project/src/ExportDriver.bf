@@ -567,6 +567,21 @@ static class ExportDriver
 		let choice = scope PlayerChoice();
 		if (template != null)
 			ExportPlugins.ChoosePlayer(project, template, preset.Platform, choice);
+		// The preset says which kind of export it is: a template export ships the template's player,
+		// so a project that needs its own is refused and told so; a native export always ships the
+		// game's own, which is built for the host's platform alone.
+		if (choice.Refusal.IsEmpty && (preset.Kind == .Template) && choice.OwnPlayer)
+			choice.Refusal.AppendF("{}, so the game needs its own player: make '{}' a native export", choice.Reason, preset.Name);
+		if (choice.Refusal.IsEmpty && (preset.Kind == .Native) && !contentOnly)
+		{
+			if (preset.Platform != BuildLayout.HostPlatformName)
+				choice.Refusal.AppendF("a native export ships the game's own player, which is built for {} alone", BuildLayout.HostPlatformName);
+			else if (!choice.OwnPlayer)
+			{
+				choice.OwnPlayer = true;
+				choice.Reason.Set("the preset is a native export");
+			}
+		}
 		if (!choice.Refusal.IsEmpty)
 		{
 			GlobalLog(.Error, "Export: preset '{}': {}", preset.Name, choice.Refusal);

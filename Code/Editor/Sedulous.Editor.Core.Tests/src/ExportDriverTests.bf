@@ -392,8 +392,9 @@ static class ExportDriverTests
 		Test.Assert(ExportDriver.ExportOne(fx.Project, nowhere, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false) case .Err(.NotFound));
 	}
 
-	/// A project with a package of its own ships its own player: the project's build for the
-	/// preset's config, newer than every file of its packages, the template giving the rest.
+	/// A project with a package of its own exports natively, shipping its own player: the
+	/// project's build for the preset's config, newer than every file of its packages, the template
+	/// giving the rest. A template export of it is refused and told to export natively.
 	/// Never built, or older than a package's file, the export is refused before anything is
 	/// written: Build Project first.
 	[Test]
@@ -422,6 +423,14 @@ static class ExportDriverTests
 			Test.Assert(package.Write(manifest) case .Ok);
 		}
 		Test.Assert(WriteFile(source, .((uint8*)manifest.Ptr, manifest.Length)) case .Ok);
+
+		// A template export never ships the game's own player: refused, and told to export natively
+		// (it used to switch to the project's player unasked).
+		let template = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, template) case .Err(.InvalidArgument));
+		Test.Assert(template.Refusal.Contains("needs its own player"), template.Refusal);
+		Test.Assert(template.Refusal.Contains("make 'Host' a native export"), template.Refusal);
+		preset.Kind = .Native;
 
 		let never = scope ExportResult();
 		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, never) case .Err(.NotFound), "never built");

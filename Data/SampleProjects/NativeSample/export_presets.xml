@@ -18,6 +18,7 @@
 				<array name="additionalFiles" count="0"/>
 				<string name="config"/>
 				<bool name="stageSymbols">false</bool>
+				<u8 name="kind">1</u8>
 				<bool name="pruneToReachable">false</bool>
 				<bool name="overridesRender">false</bool>
 				<u32 name="renderWidth">0</u32>
