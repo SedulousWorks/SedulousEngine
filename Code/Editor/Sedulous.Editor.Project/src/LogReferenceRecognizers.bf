@@ -70,14 +70,27 @@ class LogReferenceRecognizers
 	}
 
 	/// A line's references, appended to `outAll` (the caller's): copies of those its log call
-	/// attached first, then those recognized in it.
+	/// attached first, then those recognized in it that overlap none of the attached parts, so a
+	/// place links once.
 	public void Of(StringView message, Span<LogReference> attached, List<LogReference> outAll)
 	{
 		for (let reference in attached)
 			outAll.Add(reference.Clone());
 		let recognized = scope List<LogReference>();
 		Recognize(message, recognized);
-		outAll.AddRange(recognized);
+		for (let reference in recognized)
+		{
+			bool overlaps = false;
+			for (let given in attached)
+			{
+				overlaps |= (given.Length > 0) && (reference.Start < (given.Start + given.Length)) &&
+					(given.Start < (reference.Start + reference.Length));
+			}
+			if (overlaps)
+				delete reference;
+			else
+				outAll.Add(reference);
+		}
 	}
 
 	private static bool Before(LogReference a, LogReference b)

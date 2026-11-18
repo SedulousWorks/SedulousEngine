@@ -10,7 +10,7 @@ namespace Sedulous.Core.Logging;
 class LogReference
 {
 	/// The kinds the engine makes; a plugin or a language may add its own.
-	public const String Source = "source"; // fields: file, line, column
+	public const String Source = "source"; // fields: file (on disk, or a project's source path), line, column
 	public const String Asset = "asset";   // fields: guid
 	public const String Entity = "entity"; // fields: scene, path
 	public const String Node = "node";     // fields: document, id

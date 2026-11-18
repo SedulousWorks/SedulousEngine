@@ -216,4 +216,39 @@ static class EditorLogBufferTests
 		overlapping.Recognize("at /p/Code/a.as:4", one);
 		Test.Assert((one.Count == 1) && (one[0].Field(0) == "/p/Code/a.as") && (one[0].Field(1) == "4"));
 	}
+
+	/// A script's problems name their file by its source path under Code/, as the AngelScript
+	/// runtime writes them: a compile error's place, and each frame of a fault's stack, link to the
+	/// file at the line. A recognized place over an attached reference's part links once.
+	[Test]
+	public static void AScriptsProblemsLinkToTheFileAtTheLine()
+	{
+		let recognizers = scope LogReferenceRecognizers();
+		recognizers.Add(LogReferenceRecognizers.SourcePath("/home/me/Game"));
+		let found = scope List<LogReference>();
+		defer { ClearAndDeleteItems!(found); }
+
+		recognizers.Recognize("Code/Scripts/Player.as(12,4): error: 'speed' is not declared", found);
+		Test.Assert(found.Count == 1);
+		Test.Assert(found[0].Field(0) == "/home/me/Game/Code/Scripts/Player.as");
+		Test.Assert((found[0].Field(1) == "12") && (found[0].Field(2) == "4"));
+
+		ClearAndDeleteItems!(found);
+		recognizers.Recognize("Code/Scripts/Player.as(7,1): exception: Null pointer access\n  at void Player::onUpdate(float) (Code/Scripts/Player.as:7)\n  at void Base::tick() (Code/Scripts/Base.as:30)", found);
+		Test.Assert(found.Count == 3);
+		Test.Assert(found[1].Field(0) == "/home/me/Game/Code/Scripts/Player.as" && (found[1].Field(1) == "7"));
+		Test.Assert(found[2].Field(0) == "/home/me/Game/Code/Scripts/Base.as" && (found[2].Field(1) == "30"));
+
+		// An attached reference over a part: the recognized one there is dropped.
+		let message = "Code/Scripts/Player.as:12: bad";
+		let attached = LogReference.ForSource("Code/Scripts/Player.as", 12);
+		defer delete attached;
+		attached.Length = 25;
+		LogReference[1] carried = .(attached);
+		let all = scope List<LogReference>();
+		defer { ClearAndDeleteItems!(all); }
+		recognizers.Of(message, carried, all);
+		Test.Assert(all.Count == 1);
+		Test.Assert(all[0].Field(0) == "Code/Scripts/Player.as");
+	}
 }

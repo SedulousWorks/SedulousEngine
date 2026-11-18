@@ -223,7 +223,15 @@ class EditorApplication : IApplication
 						line = parsedLine;
 					if (uint32.Parse(reference.Field(2)) case .Ok(let parsedColumn))
 						column = parsedColumn;
-					mCodeOpener.Open(reference.Field(0), line, column);
+					// A script may name its file by its source path (Code/Player.as).
+					var file = reference.Field(0);
+					let onDisk = scope String();
+					if (!PathIsAbsolute(file) && (mContext.Project != null))
+					{
+						mContext.Project.SourceFile(file, onDisk);
+						file = onDisk;
+					}
+					mCodeOpener.Open(file, line, column);
 				});
 			mContext.SetLogReferenceHandler(LogReference.Asset, new (reference, open) =>
 				{

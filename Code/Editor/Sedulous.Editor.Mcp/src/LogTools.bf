@@ -73,7 +73,7 @@ static class LogTools
 		readSchema.Str("category", "only entries with exactly this category (e.g. Cook, Scene)");
 		server.RegisterTool("log_read",
 			"""
-			Read the host's captured engine log (cook warnings, scene-load errors, subsystem output, agent markers). Poll incrementally: pass the lastSequence from the previous call as sinceSequence to get only what is new. Returns the newest `limit` matching entries; `dropped` > 0 means the ring overflowed and old entries were lost. An entry that names a file of the project (with its line and column), an asset, or another place has `references`: each a kind (source: file, line, column; asset: guid), its fields, and the part of the message it stands for (start and length in characters; length 0: the whole line).
+			Read the host's captured engine log (cook warnings, scene-load errors, subsystem output, agent markers). Poll incrementally: pass the lastSequence from the previous call as sinceSequence to get only what is new. Returns the newest `limit` matching entries; `dropped` > 0 means the ring overflowed and old entries were lost. An entry that names a file of the project (with its line and column), an asset, or another place has `references`: each a kind (source: file on disk, line, column; asset: guid), its fields, and the part of the message it stands for (start and length in characters; length 0: the whole line).
 			""",
 			readSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Read(context, arguments, outResult),
@@ -163,8 +163,15 @@ static class LogTools
 					let item = JsonValue.MakeObject();
 					item.Set("kind", JsonValue.MakeString(reference.Kind));
 					let fields = JsonValue.MakeArray();
-					for (let field in reference.Fields)
-						fields.Add(JsonValue.MakeString(field));
+					for (int f < reference.Fields.Count)
+					{
+						// A script's file may be its source path (Code/Player.as): given on disk.
+						let field = reference.Fields[f];
+						if ((f == 0) && (reference.Kind == LogReference.Source) && (session != null) && (session.Project != null) && !PathIsAbsolute(field))
+							fields.Add(JsonValue.MakeString(session.Project.SourceFile(field, .. scope .())));
+						else
+							fields.Add(JsonValue.MakeString(field));
+					}
 					item.Set("fields", fields);
 					item.Set("start", JsonValue.MakeNumber((double)reference.Start));
 					item.Set("length", JsonValue.MakeNumber((double)reference.Length));

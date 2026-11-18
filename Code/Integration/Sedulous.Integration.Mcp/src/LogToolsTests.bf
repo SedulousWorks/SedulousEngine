@@ -151,5 +151,13 @@ static class LogToolsTests
 		Test.Assert(attached.At(0).Get("length").AsNumber() == 0.0);
 		Test.Assert(!entries.At(2).Has("references"));
 
+		// A source reference naming a project source path is given on disk.
+		let sourcePath = LogReference.ForSource("Code/Scripts/Player.as", 4);
+		defer delete sourcePath;
+		GlobalLogAt(.Error, sourcePath, "Script: a fault");
+		let again = CallOk(server, "log_read", With(Obj(), "sinceSequence", read.Get("lastSequence").AsNumber()));
+		defer delete again;
+		let onDisk = again.Get("entries").At(0).Get("references").At(0).Get("fields").At(0).AsString();
+		Test.Assert(onDisk == project.SourceFile("Code/Scripts/Player.as", .. scope .()), scope String(onDisk));
 	}
 }
