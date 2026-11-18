@@ -139,8 +139,9 @@ static class PipelineRegistrationTests
 	}
 
 	/// Every creator the engine ships registers, three per script language on top of the
-	/// fixed set, and each makes an instance of its own type in a plain source database, with
-	/// no editor: the headless host's creation and the editor's are the same code.
+	/// fixed set and a project creator for a language whose classes build together, and each
+	/// makes an instance of its own type in a plain source database, with no editor: the headless
+	/// host's creation and the editor's are the same code.
 	[Test]
 	public static void EveryCreatorRegistersAndCreatesItsTypeWithNoEditor()
 	{
@@ -151,7 +152,13 @@ static class PipelineRegistrationTests
 		let languages = scope List<String>();
 		defer { ClearAndDeleteItems!(languages); }
 		ScriptLanguageCooks.CollectLanguages(languages);
-		Test.Assert(creators.Count == PipelineRegistration.cCreatorCount + ScriptCreators.CountFor(languages.Count),
+		int projectLanguages = 0;
+		for (let language in languages)
+		{
+			if (ScriptAssemblyCooks.Find(language) != null)
+				projectLanguages++;
+		}
+		Test.Assert(creators.Count == PipelineRegistration.cCreatorCount + ScriptCreators.CountFor(languages.Count, projectLanguages),
 			scope $"{creators.Count} creators");
 
 		let root = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_registration_creators", .. scope .());

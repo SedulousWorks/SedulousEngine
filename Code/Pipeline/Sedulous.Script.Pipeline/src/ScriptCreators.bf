@@ -9,8 +9,9 @@ using Sedulous.Pipeline.Core;
 namespace Sedulous.Script.Pipeline;
 
 /// The script domain's New Asset creators: for every language with a registered cook, a
-/// Behavior, a Level and a Game class from the cook's starter for that tier. The source file
-/// lands in the sources folder and the asset points at it. Registered AFTER the cooks are.
+/// Behavior, a Level and a Game class from the cook's starter for that tier, and for one whose
+/// classes build together its project file too. The source file lands in the sources folder and
+/// the asset points at it. Registered AFTER the cooks are.
 static class ScriptCreators
 {
 	public static void Register(AssetCreatorRegistry registry)
@@ -27,11 +28,27 @@ static class ScriptCreators
 			Add(registry, language, suffix, .Behavior, "Behavior", "NewBehavior");
 			Add(registry, language, suffix, .Level, "Level", "NewLevel");
 			Add(registry, language, suffix, .Game, "Game", "NewGame");
+			// A language whose classes build together needs its project file: one creator for it,
+			// seeded from the project build's template.
+			let project = ScriptAssemblyCooks.Find(language);
+			if (project != null)
+				AddProject(registry, language, project.ProjectExtension);
 		}
 	}
 
-	/// How many creators Register makes: three per language with a cook.
-	public static int CountFor(int languages) => languages * 3;
+	/// How many creators Register makes: three per language with a cook, and one more for each of
+	/// those whose classes build in a project.
+	public static int CountFor(int languages, int projectLanguages) => languages * 3 + projectLanguages;
+
+	private static void AddProject(AssetCreatorRegistry registry, StringView language, StringView projectSuffix)
+	{
+		let languageId = new String(language);
+		let suffixCopy = new String(projectSuffix);
+		registry.Register(new AssetCreator(scope $"{language} Project", "Scripts", typeof(ScriptAssemblyAsset), new [=languageId, =suffixCopy](context) =>
+			{
+				return CreateProject(context, languageId, suffixCopy);
+			} ~ { delete languageId; delete suffixCopy; }));
+	}
 
 	private static void Add(AssetCreatorRegistry registry, StringView language, StringView fileSuffix, ScriptTier tier, StringView tierLabel, StringView baseName)
 	{
@@ -90,6 +107,50 @@ static class ScriptCreators
 		asset.ClassName.Set(ScriptClasses.StarterClassName(tier, className));
 		if (!(instance.WriteObject(asset) case .Ok))
 			return null;
+		return instance;
+	}
+
+	/// A new project file for a language whose classes build together: the project build's
+	/// template under the sources folder (the next free name when another asset's file has that
+	/// one), its ScriptAssemblyAsset, and the build's local files beside it, so the project opens
+	/// in an IDE at once rather than after its first cook. Null when the language has no project
+	/// build, without a sources folder, or when a write is refused.
+	public static Instance CreateProject(AssetCreationContext context, StringView languageId, StringView projectSuffix)
+	{
+		let target = context.Target;
+		if ((target == null) || context.SourcesRoot.IsEmpty)
+			return null;
+		let cook = ScriptAssemblyCooks.Find(languageId);
+		if (cook == null)
+			return null;
+		let name = target.UniqueInstanceName(context.NameOr("Game"), .. scope .());
+		let fileName = scope String();
+		if (!AssetCreator.FreeSourceFileName(context.SourcesRoot, name, scope $".{projectSuffix}", fileName))
+			return null;
+		let text = scope String();
+		cook.NewProjectTemplate(ClassNameFor(name, "Game", .. scope .()), text);
+		let path = PathJoin(context.SourcesRoot, fileName, .. scope .());
+		if (!(WriteFile(path, .((uint8*)text.Ptr, text.Length)) case .Ok))
+			return null;
+		let instance = target.CreateInstance(name, typeof(ScriptAssemblyAsset).GetFullName(.. scope .()));
+		if (instance == null)
+			return null;
+		let asset = scope ScriptAssemblyAsset();
+		asset.FileName.Set(fileName);
+		asset.Language.Set(languageId);
+		if (!(instance.WriteObject(asset) case .Ok))
+			return null;
+
+		// Beside the project file, which lands in the sources folder itself.
+		let local = scope List<ScriptAssemblyFile>();
+		defer { ClearAndDeleteItems!(local); }
+		cook.LocalFiles(local);
+		for (let file in local)
+		{
+			let localPath = PathJoin(context.SourcesRoot, file.Path, .. scope .());
+			CreateDirectory(PathParent(localPath, .. scope .()));
+			WriteFile(localPath, .((uint8*)file.Text.Ptr, file.Text.Length)).IgnoreError();
+		}
 		return instance;
 	}
 }

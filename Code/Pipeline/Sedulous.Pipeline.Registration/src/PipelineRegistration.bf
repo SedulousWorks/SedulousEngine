@@ -70,12 +70,12 @@ static class PipelineRegistration
 {
 	/// The GUI's asset kinds: a document and a style sheet (Sedulous.GUI.Pipeline).
 	public const int cGuiAssetKinds = 2;
-	/// 30 and 12: the old UI's document and theme builders and its importer gone with it, a
-	/// Render Quality's builder added.
-	public const int cBuilderCount = 30 + cGuiAssetKinds;
-	public const int cImporterCount = 12;
-	/// The creators every build has; the scripts add three per language with a cook on top
-	/// (ScriptCreators.CountFor).
+	/// 31 and 13: the old UI's document and theme builders and its importer gone with it, a
+	/// Render Quality's builder added, and a script project's builder and importer.
+	public const int cBuilderCount = 31 + cGuiAssetKinds;
+	public const int cImporterCount = 13;
+	/// The creators every build has; the scripts add three per language with a cook on top, and
+	/// a project creator for each whose classes build together (ScriptCreators.CountFor).
 	public const int cCreatorCount = 31 + cGuiAssetKinds; // 31: the old UI's document and theme gone, a Render Quality added
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
@@ -154,6 +154,7 @@ static class PipelineRegistration
 	public static void Teardown()
 	{
 		ScriptLanguageCooks.Clear();
+		ScriptAssemblyCooks.Clear();
 		ScriptSurfaces.Unregister(sSurface);
 		delete sSurface;
 		sSurface = null;
@@ -195,6 +196,7 @@ static class PipelineRegistration
 		registry.Register(new AudioClipAssetBuilder());
 		registry.Register(new AudioBusLayoutAssetBuilder());
 		registry.Register(new SoundCueAssetBuilder());
+		registry.Register(new ScriptAssemblyAssetBuilder());
 		registry.Register(new ScriptClassAssetBuilder());
 	}
 
@@ -244,6 +246,7 @@ static class PipelineRegistration
 		registry.Register(new ShaderFileImporter());
 		registry.Register(new AudioFileImporter());
 		registry.Register(new ScriptFileImporter());
+		registry.Register(new ScriptAssemblyFileImporter());
 		registry.Register(new FontAssetImporter());
 		registry.Register(new ImageFileImporter());
 		registry.Register(new HeightfieldFileImporter());

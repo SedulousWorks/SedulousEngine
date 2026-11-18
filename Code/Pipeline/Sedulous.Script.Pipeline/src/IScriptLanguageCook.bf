@@ -58,4 +58,15 @@ interface IScriptLanguageCook
 	/// How many times Check has made the runtime it keeps for checks: once, and again each time
 	/// the surface changes. 0 for a language whose every check builds its own.
 	uint32 CheckRuntimeBuildCount => 0;
+
+	/// Whether the language's classes build together into their project's assembly (an
+	/// IScriptAssemblyCook builds it): the class builder then cooks a class with
+	/// CookFromAssembly, from what the project's build described, and not with Cook.
+	bool BuildsInAssembly => false;
+
+	/// Cooks the class `source` plays (chosen by `className` as Cook chooses it) from `assembly`,
+	/// its project's built assembly: its handlers and properties into `outRecord`, problems into
+	/// `problems`. False when the assembly does not declare it.
+	bool CookFromAssembly(StringView source, StringView sourceName, StringView className, ScriptAssemblySource assembly,
+		ScriptClassSource outRecord, List<String> problems) => false;
 }
