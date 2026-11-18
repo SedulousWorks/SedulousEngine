@@ -58,12 +58,14 @@ static class ProjectSeed
 	{
 		let root = project.SourceDb.RootGroup;
 		let importContext = scope ImportContext(project.SourcesRoot(.. scope .()));
+		project.CodeRoot(importContext.CodeRoot);
 
 		// The UI font, the one a shipped game binds. A distance-field font, so a 72 px title and
 		// a 14 px caption both draw clean from its one bake.
 		{
 			let source = DataPath(dataRoot, "Engine/Fonts/roboto/Roboto-Regular.ttf", .. scope .());
 			let copied = scope String();
+			importContext.Folder.Set("Fonts"); // in the group it is added to
 			if (ImportPaths.CopyIntoSources(importContext, source, copied) case .Ok)
 			{
 				if (let instance = GroupNamed(root, "Fonts").CreateInstance("Roboto", typeof(FontAsset).GetFullName(.. scope .())))
@@ -87,6 +89,7 @@ static class ProjectSeed
 			let source = DataPath(dataRoot,
 				"Templates/kloofendal_48d_partly_cloudy_puresky/kloofendal_48d_partly_cloudy_puresky_1k.hdr", .. scope .());
 			let copied = scope String();
+			importContext.Folder.Set("Environment"); // in the group it is added to
 			if (ImportPaths.CopyIntoSources(importContext, source, copied) case .Ok)
 			{
 				if (let instance = GroupNamed(root, "Environment").CreateInstance("Sky", typeof(TextureAsset).GetFullName(.. scope .())))

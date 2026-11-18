@@ -289,6 +289,7 @@ class EditorProjectOperations : IProjectOperations
 			let project = mSeams.Project;
 			let group = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
 			let context = scope ImportContext(project.SourcesRoot(.. scope .()));
+			project.CodeRoot(context.CodeRoot);
 			context.OnConflict = request.OnConflict;
 			ImportPaths.ImportLedgerPath(project.CacheRoot(.. scope .()), context.LedgerPath);
 			let placeStarted = Stopwatch.GetTimestamp();

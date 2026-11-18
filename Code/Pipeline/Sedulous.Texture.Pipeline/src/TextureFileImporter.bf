@@ -216,16 +216,19 @@ class TextureFileImporter : IFileImporter
 			asset.ColorSpace = DdsFormats.IsSrgb(header.Format) ? .Srgb : .Linear;
 	}
 
-	/// Copies all six faces into the sources tree and creates ONE cube asset naming the +X
-	/// face; the builder re-derives the set at cook time.
+	/// Copies all six faces into the group's folder under the sources tree and creates ONE cube
+	/// asset naming the +X face; the builder re-derives the set at cook time.
 	private static Result<Instance, ErrorCode> ImportCube(List<String> facePaths,
 		ImportContext context, Group group)
 	{
+		let inGroup = scope ImportContext(context.SourcesRoot);
+		inGroup.CopyFrom(context);
+		ImportPaths.GroupFolder(group, default, inGroup.Folder);
 		let posXName = scope String();
 		for (int i < facePaths.Count)
 		{
 			let copied = scope String();
-			if (ImportPaths.CopyIntoSources(context, facePaths[i], copied)
+			if (ImportPaths.CopyIntoSources(inGroup, facePaths[i], copied)
 				case .Err(let copyError))
 			{
 				return .Err(copyError);
@@ -239,7 +242,8 @@ class TextureFileImporter : IFileImporter
 		let name = scope String();
 		let derived = scope List<String>();
 		defer { ClearAndDeleteItems!(derived); }
-		if (CubemapFaces.Detect(posXName, derived) case .Ok)
+		// By the file's name alone: the folder it went in is no part of the cube's name.
+		if (CubemapFaces.Detect(ImportPaths.FileNameOf(posXName), derived) case .Ok)
 		{
 			var common = 0;
 			let a = derived[0];
@@ -257,7 +261,7 @@ class TextureFileImporter : IFileImporter
 			name.Append(StringView(sharedStem, 0, trimmed));
 		}
 		if (name.IsEmpty)
-			name.Append(ImportPaths.StemOf(posXName));
+			name.Append(ImportPaths.StemOf(ImportPaths.FileNameOf(posXName)));
 
 		let instance = group.CreateInstance(name, cAssetType);
 		if (instance == null)

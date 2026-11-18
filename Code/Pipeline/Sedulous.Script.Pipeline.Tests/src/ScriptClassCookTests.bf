@@ -163,6 +163,32 @@ static class ScriptClassCookTests
 		Test.Assert(problems.Back.Contains("leaves"), problems.Back);
 	}
 
+	/// A folder reader reads an include starting Code/ from the project's code folder, and any
+	/// other from its sources folder; with no code folder given, Code/ is a folder of the sources.
+	[Test]
+	public static void AFolderReaderReadsACodePathFromTheCodeFolder()
+	{
+		let root = "scratch_scriptpipe_code_includes";
+		RemoveDirectoryRecursive(root);
+		defer RemoveDirectoryRecursive(root);
+		let sources = PathJoin(root, "Sources", .. scope .());
+		let code = PathJoin(root, "Code", .. scope .());
+		Test.Assert(CreateDirectory(PathJoin(code, "lib", .. scope .())));
+		Test.Assert(CreateDirectory(PathJoin(sources, "Code/lib", .. scope .())));
+		Test.Assert(File.WriteAllText(PathJoin(code, "lib/Util.as", .. scope .()), "code") case .Ok);
+		Test.Assert(File.WriteAllText(PathJoin(sources, "Code/lib/Util.as", .. scope .()), "sources") case .Ok);
+		Test.Assert(File.WriteAllText(PathJoin(sources, "Data.as", .. scope .()), "data") case .Ok);
+
+		let text = scope String();
+		let withCode = scope FolderIncludeReader(sources, code);
+		Test.Assert(withCode.Read("Code/lib/Util.as", text) && (text == "code"), text);
+		text.Clear();
+		Test.Assert(withCode.Read("Data.as", text) && (text == "data"), text);
+		text.Clear();
+		let plain = scope FolderIncludeReader(sources);
+		Test.Assert(plain.Read("Code/lib/Util.as", text) && (text == "sources"), text);
+	}
+
 	[Test]
 	public static void AnIncludeResolvesAgainstItsFileInsideTheSources()
 	{
@@ -395,11 +421,12 @@ static class ScriptClassCookTests
 		RemoveDirectoryRecursive(root);
 		defer RemoveDirectoryRecursive(root);
 		let sources = PathJoin(root, "Sources", .. scope .());
+		let code = PathJoin(root, "Code", .. scope .());
 		let one = PathJoin(root, "one", .. scope .());
 		let two = PathJoin(root, "two", .. scope .());
 		let dbRoot = PathJoin(root, "db", .. scope .());
 		CreateDirectory(root);
-		for (let folder in scope StringView[](sources, one, two, dbRoot))
+		for (let folder in scope StringView[](sources, code, one, two, dbRoot))
 			Test.Assert(CreateDirectory(folder));
 		let first = PathJoin(one, "Battle.as", .. scope .());
 		let second = PathJoin(two, "Battle.as", .. scope .());
@@ -411,6 +438,7 @@ static class ScriptClassCookTests
 		let sourceDb = scope ContentDatabase(mount, serializers, "asset");
 		let group = sourceDb.RootGroup;
 		let context = scope Sedulous.Pipeline.Importer.ImportContext(sources);
+		context.CodeRoot.Set(code);
 		Sedulous.Pipeline.Importer.ImportPaths.ImportLedgerPath(PathJoin(root, ".cache", .. scope .()), context.LedgerPath);
 		let importer = scope ScriptFileImporter();
 
@@ -422,6 +450,7 @@ static class ScriptClassCookTests
 			return asset;
 		}
 		let sourcesMount = scope NativeFileSystem(sources);
+		sourcesMount.MapFolder(SourcePath.CodeFolder, code);
 		let cookedMount = scope NativeFileSystem(PathJoin(root, "cooked", .. scope .()));
 		CreateDirectory(PathJoin(root, "cooked", .. scope .()));
 		let cooked = scope ContentDatabase(cookedMount, serializers, "rasset");
@@ -449,6 +478,10 @@ static class ScriptClassCookTests
 			let asset = AssetOf(made);
 			defer delete asset;
 			Test.Assert(asset.ClassName == "Battle");
+			// A script lands in the code folder.
+			Test.Assert(asset.FileName.Value == "Code/Battle.as", scope String(asset.FileName.Value));
+			Test.Assert(FileExists(PathJoin(code, "Battle.as", .. scope .())));
+			Test.Assert(!FileExists(PathJoin(sources, "Battle.as", .. scope .())));
 		}
 
 		context.OnConflict = .KeepBoth;
@@ -458,7 +491,7 @@ static class ScriptClassCookTests
 		Test.Assert(beside != null);
 		let kept = AssetOf(beside);
 		defer delete kept;
-		Test.Assert(kept.FileName.Value == "Battle.2.as", scope String(kept.FileName.Value));
+		Test.Assert(kept.FileName.Value == "Code/Battle.2.as", scope String(kept.FileName.Value));
 		Test.Assert(kept.ClassName == "Battle");
 		let played = scope String();
 		Test.Assert(CookClass(kept, played));

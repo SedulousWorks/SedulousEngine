@@ -114,10 +114,11 @@ static class ProjectFlowTests
 		Test.Assert(asset.Mode == .DistanceField, "one bake draws every size clean");
 		let root = project.SourceDb.RootGroup;
 		Test.Assert((root.GetGroup("Environment") != null) && (root.GetGroup("Environment").GetInstance("Sky") != null));
-		Test.Assert(FileExists(PathJoin(dir, "Sources/kloofendal_48d_partly_cloudy_puresky_1k.hdr", .. scope .())));
+		// Each in its group's folder.
+		Test.Assert(FileExists(PathJoin(dir, "Sources/Environment/kloofendal_48d_partly_cloudy_puresky_1k.hdr", .. scope .())));
 		Test.Assert(!FileExists(PathJoin(dir, "Sources/BlueSky.hdr", .. scope .())), "the large one no more");
 		Test.Assert((root.GetGroup("Meshes") != null) && (root.GetGroup("Meshes").GetInstance("Cube") != null));
-		Test.Assert(FileExists(PathJoin(dir, "Sources/Roboto-Regular.ttf", .. scope .())));
+		Test.Assert(FileExists(PathJoin(dir, "Sources/Fonts/Roboto-Regular.ttf", .. scope .())));
 	}
 
 	[Test]
@@ -229,7 +230,9 @@ static class ProjectFlowTests
 		defer delete list;
 		Test.Assert(list.Get("count").AsInt() == 1);
 		Test.Assert(list.Get("assets").At(0).Get("group").AsString() == "scripts");
-		Test.Assert(FileExists(PathJoin(dir, "Sources/mcp_write_as_src.as", .. scope .())), "copied under Sources/");
+		// A script is code: copied into the project's Code/ folder, in its group's folder there.
+		Test.Assert(FileExists(PathJoin(dir, "Code/scripts/mcp_write_as_src.as", .. scope .())), "copied under Code/scripts/");
+		Test.Assert(!FileExists(PathJoin(dir, "Sources/mcp_write_as_src.as", .. scope .())));
 		Test.Assert(FileExists(PathJoin(dir, "Content/scripts/mcp_write_as_src.xasset", .. scope .())), "the source envelope");
 
 		let cooked = CallOk(server, "asset_cook", Obj());

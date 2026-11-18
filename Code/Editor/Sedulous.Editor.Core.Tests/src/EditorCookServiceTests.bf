@@ -73,6 +73,7 @@ static class EditorCookServiceTests
 		let dropped = PathJoin(dir, "Mover.as", .. scope .());
 		File.WriteAllText(dropped, "class Mover\n{\n\tEntity self;\n\tScene@ scene;\n\tvoid onUpdate(float dt) {}\n}\n").IgnoreError();
 		let context = scope ImportContext(project.SourcesRoot(.. scope .()));
+		project.CodeRoot(context.CodeRoot); // a script lands in Code/, which the cook's mount reads
 		let imported = importers.FindFor("as").Import(dropped, context, project.SourceDb.RootGroup, null, null, null);
 		Test.Assert(imported case .Ok);
 		let instance = imported.Value;

@@ -201,7 +201,7 @@ class AssetImport
 		if (!origin.IsEmpty && FileExists(origin))
 			outFound.Path.Set(origin);
 		else
-			PathJoin(project.SourcesRoot(.. scope .()), sourcesName, outFound.Path);
+			project.SourceFile(sourcesName, outFound.Path);
 		if (!FileExists(outFound.Path))
 		{
 			outWhy.Set(scope $"Its file, {sourcesName}, is missing.");
@@ -517,6 +517,7 @@ class AssetImport
 		}
 		let started = Stopwatch.GetTimestamp();
 		let context = scope ImportContext(project.SourcesRoot(.. scope .()));
+		project.CodeRoot(context.CodeRoot);
 		context.OnConflict = pending.OnConflict;
 		context.LedgerPath.Set(pending.LedgerPath);
 		let imported = pending.Importer.Import(pending.Path, context, group, pending.Options, pending.Prepared,

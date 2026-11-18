@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Script.Resource;
 using Sedulous.Script.Pipeline;
+using Sedulous.VFS;
 
 namespace Sedulous.Editor.Script;
 
@@ -13,6 +14,8 @@ namespace Sedulous.Editor.Script;
 class ScriptSourceDocument
 {
 	private String mSourcesRoot = new .() ~ delete _;
+	/// The project's Code/ folder, which a file name starting Code/ is in.
+	private String mCodeRoot = new .() ~ delete _;
 	private String mFileName = new .() ~ delete _;
 	private String mLanguage = new .() ~ delete _;
 	/// The class the asset prefers (its Class Name; empty: the one named like its file).
@@ -24,10 +27,13 @@ class ScriptSourceDocument
 	private bool mLastCompileOk = true;
 
 	/// An empty language means AngelScript, the default backend; `preferredClass` is the
-	/// asset's Class Name (empty: the class named like the file), which the check plays.
-	public void Bind(StringView sourcesRoot, StringView fileName, StringView language, StringView preferredClass = default)
+	/// asset's Class Name (empty: the class named like the file), which the check plays;
+	/// `codeRoot` is the project's Code/ folder, which a file name starting Code/ is in.
+	public void Bind(StringView sourcesRoot, StringView fileName, StringView language, StringView preferredClass = default,
+		StringView codeRoot = default)
 	{
 		mSourcesRoot.Set(sourcesRoot);
+		mCodeRoot.Set(codeRoot);
 		mFileName.Set(fileName);
 		mLanguage.Set(language.IsEmpty ? "angelscript" : language);
 		mPreferredClass.Set(preferredClass);
@@ -45,7 +51,7 @@ class ScriptSourceDocument
 
 	public Result<void, ErrorCode> Load()
 	{
-		let path = PathJoin(mSourcesRoot, mFileName, .. scope .());
+		let path = SourcePath.FileOnDisk(mSourcesRoot, mCodeRoot, mFileName, .. scope .());
 		let bytes = scope List<uint8>();
 		if (ReadFile(path, bytes) case .Err(let error))
 			return .Err(error);
@@ -56,7 +62,7 @@ class ScriptSourceDocument
 
 	public Result<void, ErrorCode> Save()
 	{
-		let path = PathJoin(mSourcesRoot, mFileName, .. scope .());
+		let path = SourcePath.FileOnDisk(mSourcesRoot, mCodeRoot, mFileName, .. scope .());
 		let written = WriteFile(path, .((uint8*)mSource.Ptr, mSource.Length));
 		if (written case .Ok)
 			mSaved.Set(mSource);
@@ -84,7 +90,7 @@ class ScriptSourceDocument
 		defer { ClearAndDeleteItems!(problems); }
 		let className = scope String();
 		// The files it includes, from the project's sources, as the cook reads them.
-		let ok = cook.Check(mSource, mFileName, mPreferredClass, className, problems, default, scope FolderIncludeReader(mSourcesRoot));
+		let ok = cook.Check(mSource, mFileName, mPreferredClass, className, problems, default, scope FolderIncludeReader(mSourcesRoot, mCodeRoot));
 		for (let problem in problems)
 			mErrors.Add(ScriptCompileError.Parse(problem));
 		if (ok)

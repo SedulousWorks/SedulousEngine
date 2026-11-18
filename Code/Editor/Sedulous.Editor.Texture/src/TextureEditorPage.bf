@@ -165,7 +165,7 @@ class TextureEditorPage : AssetObjectPage
 				mPreview.ShowNone("This texture names no source file.");
 			return;
 		}
-		let path = PathJoin(Context.Project.SourcesRoot(.. scope .()), asset.FileName.Value, .. scope .());
+		let path = Context.Project.SourceFile(asset.FileName.Value, .. scope .());
 		let source = scope Sedulous.Image.Image();
 		Sedulous.Image.Image shown = null;
 		if (ImageIO.LoadImage(path, source) case .Ok)

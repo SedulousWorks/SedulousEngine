@@ -138,6 +138,7 @@ static class ExportDriver
 		bool cook, bool rebuild, ExportStats stats, List<Guid> outReachable, ExportProgress onProgress = null)
 	{
 		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
+		project.AddCodeFolder(sourcesMount);
 		let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));
 		let jobs = scope JobSystem();
 		let driver = scope CookDriver(project.SourceDb, project.CookedDb, builders, sourcesMount, cacheMount, jobs);
@@ -225,6 +226,7 @@ static class ExportDriver
 		let hostRecords = scope CookDb();
 		hostRecords.Load(cacheMount);
 		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
+		project.AddCodeFolder(sourcesMount);
 		let jobs = scope JobSystem();
 		int failed = 0;
 		for (let variant in variants)
@@ -428,6 +430,7 @@ static class ExportDriver
 			onProgress("Cooking content...", 0.05f);
 		{
 			let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
+			project.AddCodeFolder(sourcesMount);
 			let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));
 			let jobs = scope JobSystem();
 			let driver = scope CookDriver(project.SourceDb, project.CookedDb, builders, sourcesMount, cacheMount, jobs);

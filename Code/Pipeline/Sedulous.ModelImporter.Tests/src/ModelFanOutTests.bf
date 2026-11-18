@@ -58,9 +58,10 @@ class ModelFanOutTests
 		Test.Assert(manifest.Manifest.MeshSkinned[0]);
 		Test.Assert(!manifest.Manifest.MeshSkinned[1]);
 
-		// The provenance copy lands in the sources tree under the dropped file's own name.
+		// The provenance copy lands in the sources tree under the dropped file's own name, in the
+		// model's own folder (its group's).
 		let copied = scope String();
-		fixture.SubPath("Sources/character.glb", copied);
+		fixture.SubPath("Sources/character/character.glb", copied);
 		Test.Assert(FileExists(copied));
 	}
 

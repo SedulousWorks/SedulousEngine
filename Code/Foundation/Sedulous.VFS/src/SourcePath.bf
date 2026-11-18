@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 
 namespace Sedulous.VFS;
@@ -18,6 +19,44 @@ namespace Sedulous.VFS;
 /// Windows-authored case mismatch is caught by a test rather than by a user on Linux.
 class SourcePath
 {
+	/// The top-level name a source path reserves for a project's code: Code/Weapon.cs is a file in
+	/// the project's Code/ folder, any other path one under its Sources/ folder.
+	public const String CodeFolder = "Code";
+
+	/// The rest of `path` after its first folder `folder` ("Weapon.cs" for "Code/Weapon.cs"; empty
+	/// for "Code" itself), or false when it does not start with that folder (a longer name,
+	/// "Codex/", is not it). An empty `folder` matches nothing.
+	public static bool AfterFolder(StringView path, StringView folder, out StringView rest)
+	{
+		rest = default;
+		if (folder.IsEmpty || !path.StartsWith(folder))
+			return false;
+		if (path.Length == folder.Length)
+		{
+			rest = StringView(path, path.Length, 0);
+			return true;
+		}
+		if (path[folder.Length] != '/')
+			return false;
+		rest = StringView(path, folder.Length + 1);
+		return true;
+	}
+
+	/// The file on disk a source path names, into `outPath`: under `codeRoot` when it starts with
+	/// Code/ (and a code folder is given), else under `sourcesRoot`.
+	public static void FileOnDisk(StringView sourcesRoot, StringView codeRoot, StringView path, String outPath)
+	{
+		if (!codeRoot.IsEmpty && AfterFolder(path, CodeFolder, let rest))
+		{
+			if (rest.IsEmpty)
+				outPath.Set(codeRoot);
+			else
+				PathJoin(codeRoot, rest, outPath);
+			return;
+		}
+		PathJoin(sourcesRoot, path, outPath);
+	}
+
 	private String mValue = new .() ~ delete _;
 
 	public this()

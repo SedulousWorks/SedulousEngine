@@ -30,4 +30,15 @@ class Asset
 	/// asks which assets share a copy without reading them. This answers
 	/// ISerializable.SourceName for every concrete asset, the interface [Serializable] adds.
 	public StringView SourceName() => FileName.Value;
+
+	/// Whether its file is code (a script, a script project), which lives in the project's Code/
+	/// folder: its file name starts Code/ (SourcePath.CodeFolder).
+	public virtual bool IsCode => false;
+
+	/// The files beside its file that belong with it, relative to its folder (a .gltf's buffers
+	/// and images), appended to `outFiles` (the caller owns them): they move with it.
+	/// `fileOnDisk` is its file's path. None by default.
+	public virtual void CompanionFiles(StringView fileOnDisk, System.Collections.List<String> outFiles)
+	{
+	}
 }

@@ -27,7 +27,7 @@ static class Audition
 		outMetadata = default;
 		if ((project == null) || (asset == null) || asset.FileName.IsEmpty)
 			return null;
-		let path = PathJoin(project.SourcesRoot(.. scope .()), asset.FileName.Value, .. scope .());
+		let path = project.SourceFile(asset.FileName.Value, .. scope .());
 		let bytes = scope List<uint8>();
 		if (!(ReadFile(path, bytes) case .Ok))
 			return null;

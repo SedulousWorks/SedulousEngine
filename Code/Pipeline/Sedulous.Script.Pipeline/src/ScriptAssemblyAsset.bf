@@ -16,4 +16,6 @@ class ScriptAssemblyAsset : Asset
 	/// The backend id, from the project file's extension.
 	[DisplayName("Language")]
 	public String Language = new .() ~ delete _;
+
+	public override bool IsCode => true;
 }

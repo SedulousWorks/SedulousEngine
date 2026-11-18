@@ -1,4 +1,7 @@
+using System;
+using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Model.Resource;
 using Sedulous.Pipeline.Core;
@@ -23,4 +26,15 @@ class ModelManifestAsset : Asset
 	/// Re-import memory: the review dialog's decisions from the import that wrote this, which
 	/// a re-import merges onto the fresh plan instead of asking again.
 	public ImportPlan ImportSelection = new .() ~ delete _;
+
+	/// A .gltf's sidecars, which sit beside it and move with it; a .glb holds its own.
+	public override void CompanionFiles(StringView fileOnDisk, List<String> outFiles)
+	{
+		if (ImportPaths.ExtensionLower(fileOnDisk, .. scope .()) != "gltf")
+			return;
+		let bytes = scope List<uint8>();
+		if (ReadFile(fileOnDisk, bytes) case .Err)
+			return;
+		GltfSidecars.Uris(StringView((char8*)bytes.Ptr, bytes.Count), outFiles);
+	}
 }

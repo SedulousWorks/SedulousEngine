@@ -71,6 +71,7 @@ static class AssetUsesTool
 		}
 
 		let sourcesMount = scope NativeFileSystem(session.Project.SourcesRoot(.. scope .()));
+		session.Project.AddCodeFolder(sourcesMount);
 		let uses = scope List<Use>();
 		defer { ClearAndDeleteItems(uses); }
 		Collect(db.RootGroup, scope String(), id, db, context.Builders, sourcesMount, uses);
@@ -112,6 +113,7 @@ static class AssetUsesTool
 	{
 		let db = session.Project.SourceDb;
 		let sourcesMount = scope NativeFileSystem(session.Project.SourcesRoot(.. scope .()));
+		session.Project.AddCodeFolder(sourcesMount);
 		let uses = scope List<Use>();
 		defer { ClearAndDeleteItems(uses); }
 		Collect(db.RootGroup, scope String(), id, db, builders, sourcesMount, uses);

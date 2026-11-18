@@ -50,7 +50,7 @@ static class AssetWriteTools
 		importSchema.Str("onConflict", "when another file's asset of this type has the name: refuse (default), replace, or keepBoth");
 		server.RegisterTool("asset_import",
 			"""
-			Import an OS file into the open project: copy it under Sources/ and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. A name held by an asset of another type is refused; one held by another file's asset of its type is refused unless `onConflict` says `replace` (that asset takes the new file, its guid and references kept) or `keepBoth` (the next free name); re-importing the same file replaces its asset. Does not cook - call asset_cook next.
+			Import an OS file into the open project: copy it under Sources/, in its group's folder (a script or a script project file into the project's Code/ folder instead, its fileName starting Code/), and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. A name held by an asset of another type is refused; one held by another file's asset of its type is refused unless `onConflict` says `replace` (that asset takes the new file, its guid and references kept) or `keepBoth` (the next free name); re-importing the same file replaces its asset. Does not cook - call asset_cook next.
 			""",
 			importSchema.Build(), ToolAnnotations.Creates.OpenWorld,
 			new (call, arguments, outResult, outError) => Import(context, call, arguments, outResult, outError),

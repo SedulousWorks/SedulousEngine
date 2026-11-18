@@ -48,8 +48,9 @@ class AssetCreator
 	}
 
 	/// Runs the creator with its default group in the context: what every host calls.
-	public Instance Create(Group picked, Group root, StringView sourcesRoot, StringView name = default) =>
-		Run(.(picked, root, sourcesRoot, name, DefaultGroup));
+	/// `codeRoot` is the project's Code/ folder, where a script's file goes.
+	public Instance Create(Group picked, Group root, StringView sourcesRoot, StringView name = default, StringView codeRoot = default) =>
+		Run(.(picked, root, sourcesRoot, name, DefaultGroup, codeRoot));
 
 	/// The group a creation lands in, WITHOUT making it: the picked group, else the default
 	/// group if it exists, else the root; null when the default group does not exist yet
@@ -63,23 +64,37 @@ class AssetCreator
 		return (root != null) ? root.GetGroup(DefaultGroup) : null;
 	}
 
-	/// The file a linked source asset named `name` takes under `sourcesRoot`: "<name><suffix>"
-	/// (the dotted extension, ".xml"), or the first free "<name>.2<suffix>", ".3" and on. Names
-	/// are unique per group but the sources folder is flat, so another group's asset of that
-	/// name may hold the file already, and a creation never writes over it. False when `name`
-	/// is not one plain file name.
-	public static bool FreeSourceFileName(StringView sourcesRoot, StringView name, StringView suffix, String outFileName)
+	/// The file a linked source asset named `name` in `target` takes, as a name under the
+	/// sources: "<name><suffix>" (the dotted extension, ".xml") in the target group's folder
+	/// (under `under` when given: Code for a script, Code/<group>/), or the first free
+	/// "<name>.2<suffix>", ".3" and on. Names are unique per group, not per folder, so a file
+	/// already there (edited, or another asset's) may hold the name, and a creation never writes
+	/// over it. False when `name` is not one plain file name.
+	public static bool FreeSourceFileName(AssetCreationContext context, Group target, StringView name, StringView suffix,
+		String outFileName, StringView under = default)
 	{
 		if (!PathIsPlainComponent(name))
 			return false;
-		outFileName.Set(name);
-		outFileName.Append(suffix);
-		let path = PathJoin(sourcesRoot, outFileName, .. scope .());
+		let folder = scope String();
+		if (target != null)
+			target.GetPath(folder);
+		if (!under.IsEmpty)
+		{
+			if (folder.IsEmpty)
+				folder.Set(under);
+			else
+				PathJoin(under, scope String(folder), folder);
+		}
+		let file = scope String();
+		file.AppendF("{}{}", name, suffix);
+		PathJoin(folder, file, outFileName);
+		let path = context.FileOf(outFileName, .. scope .());
 		for (int n = 2; FileExists(path); n++)
 		{
-			outFileName.Set(name);
-			outFileName.AppendF(".{}{}", n, suffix);
-			PathJoin(sourcesRoot, outFileName, path);
+			file.Clear();
+			file.AppendF("{}.{}{}", name, n, suffix);
+			PathJoin(folder, file, outFileName);
+			context.FileOf(outFileName, path);
 		}
 		return true;
 	}

@@ -96,6 +96,7 @@ class Program
 			Console.Error.WriteLine("Sedulous.Tools.Cook: {}", refusal.Reason);
 
 		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
+		project.AddCodeFolder(sourcesMount);
 		let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));
 		let jobs = scope JobSystem();
 

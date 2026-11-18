@@ -9,6 +9,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Projects keep their code in a `Code/` folder beside `Sources/`: scripts and script project files
+  imported or created land there, so a code editor opened on it sees only code. An older project's
+  scripts move into it when it opens.
 - Input maps: a Touch drag binding reads how far a touch that came down in its region moved each
   frame, for looking around by dragging on a touch screen.
 - MCP: `asset_delete` takes `deleteSource`, which also removes the asset's file under Sources/ when no
@@ -94,6 +97,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- A project's folders follow its asset groups: imported and new files land in their group's folder,
+  a model's files (sidecars too) in its own; moving an asset or renaming a group moves its file
+  along; an older project's files move into their groups' folders when it opens.
 - Export: a preset says its kind. A template export ships the template's player; a native export
   ships the game's own player, built with its packages. A template export of a project that needs
   its own player is refused and says to make the preset native, where it used to switch players

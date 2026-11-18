@@ -53,12 +53,14 @@ static class HeadlessCookTests
 		let importer = importers.FindFor("as");
 		Test.Assert(importer != null, "an importer claims .as");
 		let context = scope ImportContext(project.SourcesRoot(.. scope .()));
+		project.CodeRoot(context.CodeRoot); // a script lands in the project's Code/ folder
 		let imported = importer.Import(dropped, context, project.SourceDb.RootGroup, null, null, null);
 		Test.Assert(imported case .Ok, "imported");
 		let assetId = imported.Value.Id;
 
 		// The cook: the CLI's body, on the project's own mounts.
 		let sources = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
+		project.AddCodeFolder(sources);
 		let cache = scope NativeFileSystem(project.CacheRoot(.. scope .()));
 		let driver = scope CookDriver(project.SourceDb, project.CookedDb, builders, sources, cache);
 		let plan = scope CookPlan();

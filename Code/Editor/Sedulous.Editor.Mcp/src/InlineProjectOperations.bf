@@ -49,6 +49,7 @@ class InlineProjectOperations : IProjectOperations
 		// Second mounts on Sources/ and .cache/: the cook driver hashes source files and
 		// persists its records through these; the source and cooked databases are open already.
 		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
+		project.AddCodeFolder(sourcesMount);
 		let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));
 		// The driver fans its asset batch out over these, and hands them to every build
 		// through the context so a texture's block rows and mip rows split too.
@@ -74,6 +75,7 @@ class InlineProjectOperations : IProjectOperations
 		let project = mSession.Project;
 		let group = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
 		let importContext = scope ImportContext(project.SourcesRoot(.. scope .()));
+		project.CodeRoot(importContext.CodeRoot);
 		importContext.OnConflict = request.OnConflict;
 		ImportPaths.ImportLedgerPath(project.CacheRoot(.. scope .()), importContext.LedgerPath);
 		let importer = request.Importer;

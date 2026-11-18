@@ -69,7 +69,7 @@ class EditorAssetCreation
 			context.Notify(.Error, "Create failed: no project is open.");
 			return;
 		}
-		let instance = creator.Create(group, mProject.SourceDb.RootGroup, mProject.SourcesRoot(.. scope .()), name);
+		let instance = creator.Create(group, mProject.SourceDb.RootGroup, mProject.SourcesRoot(.. scope .()), name, mProject.CodeRoot(.. scope .()));
 		if (instance == null)
 		{
 			context.Notify(.Error, scope $"Create failed: the {creator.Label} could not be written.");

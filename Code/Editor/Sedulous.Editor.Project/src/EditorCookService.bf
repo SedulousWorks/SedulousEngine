@@ -122,6 +122,7 @@ class EditorCookService
 		mProject = project;
 		mBuilders = builders;
 		mSources = new NativeFileSystem(project.SourcesRoot(.. scope .()));
+		project.AddCodeFolder(mSources);
 		mCache = new NativeFileSystem(project.CacheRoot(.. scope .()));
 		mJobs = new JobSystem();
 		mDriver = new CookDriver(project.SourceDb, project.CookedDb, builders, mSources, mCache, mJobs);

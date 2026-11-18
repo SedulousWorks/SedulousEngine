@@ -73,6 +73,7 @@ static class ProjectHealthTool
 		let project = session.Project;
 		let db = project.SourceDb;
 		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
+		project.AddCodeFolder(sourcesMount);
 
 		let sweep = scope Sweep();
 		SweepGroup(db.RootGroup, db, context.Builders, sourcesMount, sweep);

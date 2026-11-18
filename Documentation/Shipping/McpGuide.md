@@ -269,7 +269,9 @@ is
 the one call soundness sweep (dangling refs, broken sources, cook state); a dirty count
 alone is normal, clear it with `asset_cook`.
 
-**Assets**: `asset_import` (an OS file into Sources/ plus a typed asset) then `asset_cook`
+**Assets**: `asset_import` (an OS file into Sources/ plus a typed asset; a script or a script
+project file goes to the project's Code/ folder instead, its fileName starting `Code/`, which
+`project_info`'s `codeRoot` names) then `asset_cook`
 (incremental; `force` for a full one). When several importers claim an extension, `.png`
 say, the first is used and the result lists the others under `alsoClaimableBy`; re-import
 with `importer` set to choose. `options` sets the importer's settings by label, as the import
@@ -297,6 +299,12 @@ copy under Sources/, which keeps its name) or `keepBoth` (this one under the nex
 file's: it takes the next free name ("a.2.png"); a copy two assets share (the very same bytes from
 two folders) is overwritten for neither, so a `replace` over one of them copies in beside. Which
 OS file each came from is kept in the project's ignored `.cache/imports.txt`.
+A project's folders read as its asset groups do: a copy lands in its group's folder
+(`Sources/<group>/`, `Code/<group>/` for code; a model's files, sidecars too, in its own group's),
+and a new file from `asset_create` or `script_create` likewise. Moving an asset to another group or
+renaming a group in the editor moves its file with it (a .gltf's sidecars with it); a file assets in
+different groups share stays where it is. Opening an older project puts every file in its group's
+folder once.
 `asset_list` and `asset_info` inspect either database.
 Assets that are authored rather than imported (input maps, materials, scenes, prefabs,
 particle effects, animation graphs, physics, audio and UI assets, primitive meshes, script
@@ -396,7 +404,8 @@ values (Wind's Strength, Speed and Height) are floats in the group's own `values
 signatures. A property is listed only when a script can use it: a type's own and its bases',
 writable only where its setter is bound (an asset reference, a skeletal animation's `Clip`, reads
 and writes as the Guid it holds). A member with `readOnly: true` (a network identity's
-`Authority`, for one) reads and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier), then
+`Authority`, for one) reads and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier; its file in the
+project's Code/ folder, `Code/<group>/<name>.<ext>`), then
 edit the returned source FILE, loop on `script_validate`, and `asset_cook` to make the
 class attachable. A script file may declare several classes (data, helpers); the one it plays is
 its asset's Class Name (`ClassName`: the name its file was imported under, or a new script's
@@ -414,7 +423,8 @@ engine wraps it in its forward, depth and pick programs and every variant, so it
 variants lines. A LOW-LEVEL shader is the whole program, `VSMain` and `PSMain` with its own
 variants lines and the forward contract (`forward_vs.hlsli`, `lighting.hlsli`,
 `forward_ps.hlsli`). `asset_create` with `Lit Surface Shader`, `Unlit Surface Shader` or
-`Low-Level Shader` writes a starter to Sources/ and links it; edit that FILE, loop on
+`Low-Level Shader` writes a starter to Sources/ (in its group's folder, `Sources/Shaders/` by
+default) and links it; edit that FILE, loop on
 `shader_validate` (every program and variant, as the cook compiles them; each error with its
 file, line and column, plus the parsed properties and the main program's variant flags), then
 `asset_cook`. A property is a global name in the generated code: one the engine's shaders already

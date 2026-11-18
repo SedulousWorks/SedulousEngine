@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Script.Resource;
+using Sedulous.VFS;
 
 namespace Sedulous.Script.Pipeline;
 
@@ -18,10 +19,14 @@ interface IScriptIncludeReader
 class FolderIncludeReader : IScriptIncludeReader
 {
 	private String mRoot = new .() ~ delete _;
+	private String mCodeRoot = new .() ~ delete _;
 
-	public this(StringView root)
+	/// Reads includes from the project's sources folder `root`, and those starting Code/ from its
+	/// code folder `codeRoot` when given.
+	public this(StringView root, StringView codeRoot = default)
 	{
 		mRoot.Set(root);
+		mCodeRoot.Set(codeRoot);
 	}
 
 	public bool Read(StringView path, String outText)
@@ -29,7 +34,7 @@ class FolderIncludeReader : IScriptIncludeReader
 		if (mRoot.IsEmpty)
 			return false;
 		let bytes = scope List<uint8>();
-		if (ReadFile(PathJoin(mRoot, path, .. scope .()), bytes) case .Err)
+		if (ReadFile(SourcePath.FileOnDisk(mRoot, mCodeRoot, path, .. scope .()), bytes) case .Err)
 			return false;
 		outText.Append(StringView((char8*)bytes.Ptr, bytes.Count));
 		return true;

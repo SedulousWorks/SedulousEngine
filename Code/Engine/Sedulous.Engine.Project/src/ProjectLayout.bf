@@ -1,4 +1,5 @@
 using System;
+using Sedulous.VFS;
 
 namespace Sedulous.Engine.Project;
 
@@ -12,6 +13,9 @@ static class ProjectLayout
 	public const String ManifestFile = "Project.xml";
 	public const String ContentDir = "Content";
 	public const String SourcesDir = "Sources";
+	/// A project's code (scripts and their project files), beside Sources/: the folder a source
+	/// path starting Code/ names (SourcePath.CodeFolder).
+	public const String CodeDir = SourcePath.CodeFolder;
 	public const String CookedDir = "Cooked";
 	public const String EditorDir = "Editor";
 	public const String CacheDir = ".cache";

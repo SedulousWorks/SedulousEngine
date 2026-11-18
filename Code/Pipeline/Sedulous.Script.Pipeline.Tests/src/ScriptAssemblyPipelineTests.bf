@@ -365,12 +365,39 @@ static class ScriptAssemblyPipelineTests
 		let bed = scope Bed("scratch_scriptassembly_local");
 		let text = scope String();
 
-		// Made: the project file from its build's template and, beside it, the local files.
-		let made = ScriptCreators.CreateProject(.(null, bed.SourceDb.RootGroup, bed.Src, "Made"), cLanguage, "siproj");
+		// Made: the project file from its build's template in the project's code folder (its file
+		// name Code/Made.siproj) and, beside it, the local files; nothing under the sources folder.
+		let code = PathJoin(Directory.GetCurrentDirectory(.. scope .()), scope $"{bed.Root}/code", .. scope .());
+		String ReadAt(StringView path, String outText)
+		{
+			outText.Clear();
+			File.ReadAllText(PathJoin(code, path, .. scope .()), outText).IgnoreError();
+			return outText;
+		}
+		let made = ScriptCreators.CreateProject(.(null, bed.SourceDb.RootGroup, bed.Src, "Made", default, code), cLanguage, "siproj");
 		Test.Assert(made != null);
 		Test.Assert(made.TypeName == ScriptAssemblies.cAssetType);
-		Test.Assert(bed.Read("Made.siproj", text) == "project Made");
-		Test.Assert(bed.Read("obj/Local.txt", text) == "this machine");
+		Test.Assert(ReadAt("Made.siproj", text) == "project Made");
+		Test.Assert(ReadAt("obj/Local.txt", text) == "this machine");
+		Test.Assert(!File.Exists(PathJoin(bed.Src, "Made.siproj", .. scope .())));
+		{
+			let object = made.ReadObject();
+			defer delete object;
+			let asset = object as ScriptAssemblyAsset;
+			Test.Assert((asset != null) && (asset.FileName.Value == "Code/Made.siproj"));
+		}
+		// Made in a group: in that group's folder under Code/, its local files beside it.
+		let tools = bed.SourceDb.RootGroup.CreateGroup("Tools");
+		let grouped = ScriptCreators.CreateProject(.(tools, bed.SourceDb.RootGroup, bed.Src, "Builder", default, code), cLanguage, "siproj");
+		Test.Assert(grouped != null);
+		{
+			let object = grouped.ReadObject();
+			defer delete object;
+			let asset = object as ScriptAssemblyAsset;
+			Test.Assert((asset != null) && (asset.FileName.Value == "Code/Tools/Builder.siproj"));
+		}
+		Test.Assert(ReadAt("Tools/Builder.siproj", text) == "project Builder");
+		Test.Assert(ReadAt("Tools/obj/Local.txt", text) == "this machine");
 
 		// Cooked: written beside the project's file, and written again when another machine's (or
 		// an edit) is there.
@@ -417,8 +444,9 @@ static class ScriptAssemblyPipelineTests
 		defer delete object;
 		let asset = object as ScriptAssemblyAsset;
 		Test.Assert(asset != null);
-		Test.Assert((asset.Language == cLanguage) && (asset.FileName.Value == "Game.siproj"));
+		// Code, with no code folder given: a folder Code under the sources.
+		Test.Assert((asset.Language == cLanguage) && (asset.FileName.Value == "Code/Game.siproj"));
 		let text = scope String();
-		Test.Assert(bed.Read("Game.siproj", text) == "project Game");
+		Test.Assert(bed.Read("Code/Game.siproj", text) == "project Game");
 	}
 }

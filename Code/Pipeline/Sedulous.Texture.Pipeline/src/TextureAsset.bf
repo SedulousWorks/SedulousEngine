@@ -1,4 +1,5 @@
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Image;
@@ -126,5 +127,23 @@ class TextureAsset : Asset
 	{
 		SetupForEquirectangularSkybox();
 		Shape = .Cubemap;
+	}
+
+	/// A cubemap's other five faces, beside the +X face it names: the cook finds them there by
+	/// name, so they move with it.
+	public override void CompanionFiles(StringView fileOnDisk, System.Collections.List<String> outFiles)
+	{
+		if (Shape != .Cubemap)
+			return;
+		let name = PathFilename(fileOnDisk, .. scope .());
+		let faces = scope System.Collections.List<String>();
+		defer { ClearAndDeleteItems!(faces); }
+		if (CubemapFaces.Detect(name, faces) case .Err)
+			return;
+		for (let face in faces)
+		{
+			if (face != name)
+				outFiles.Add(new String(face));
+		}
 	}
 }

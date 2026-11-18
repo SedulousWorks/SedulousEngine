@@ -164,6 +164,7 @@ static class ExportPlugins
 		ExportStaging.CollectAllInstances(project.SourceDb.RootGroup, instances);
 		let scriptType = typeof(ScriptClassAsset).GetFullName(.. scope .());
 		let sources = project.SourcesRoot(.. scope .());
+		let code = project.CodeRoot(.. scope .());
 		for (let instance in instances)
 		{
 			if (instance.TypeName != scriptType)
@@ -175,14 +176,14 @@ static class ExportPlugins
 				continue;
 			let cook = ScriptLanguageCooks.Find(script.Language.IsEmpty ? "angelscript" : StringView(script.Language));
 			let bytes = scope List<uint8>();
-			if ((cook == null) || (ReadFile(PathJoin(sources, script.FileName.Value, .. scope .()), bytes) case .Err))
+			if ((cook == null) || (ReadFile(project.SourceFile(script.FileName.Value, .. scope .()), bytes) case .Err))
 				continue; // the cook reports a script it cannot read or has no cook for
 			let problems = scope List<String>();
 			defer { ClearAndDeleteItems!(problems); }
 			let className = scope String();
 			let preferred = ScriptClasses.Preferred(script, .. scope .());
 			if (cook.Check(StringView((char8*)bytes.Ptr, bytes.Count), script.FileName.Value, preferred, className, problems, (Span<StringView>)views,
-				scope FolderIncludeReader(sources)))
+				scope FolderIncludeReader(sources, code)))
 				continue;
 			outWhy.AppendF("script '{}' cannot run on {}, where plugin(s) {} are not enabled", script.FileName.Value, platform, absent);
 			if (!problems.IsEmpty)

@@ -6,6 +6,7 @@ using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
+using Sedulous.VFS;
 
 namespace Sedulous.Script.Pipeline;
 
@@ -46,7 +47,8 @@ class ScriptFileImporter : IFileImporter
 		let fileName = scope String();
 		// The name claimed by the clash rule, the file copied in beside any other's.
 		let clash = scope ImportClash();
-		let claimed = ImportPaths.ClaimSingleAsset(context, group, options, sourcePath, cAssetType, fileName, clash);
+		// Code goes in the project's Code/ folder, in its group's folder there.
+		let claimed = ImportPaths.ClaimSingleAsset(context, group, options, sourcePath, cAssetType, fileName, clash, SourcePath.CodeFolder);
 		if (claimed case .Err(let claimError))
 			return .Err(claimError);
 		let instance = claimed.Value;

@@ -56,7 +56,7 @@ static class MaterialShaderToolTests
 		let still = CallOk(server, "asset_create", With(With(Obj(), "creator", "Low-Level Shader"), "name", "Still"));
 		defer delete still;
 		{
-			let path = PathJoin(session.Project.SourcesRoot(.. scope .()), "Still.hlsl", .. scope .());
+			let path = session.Project.SourceFile("Shaders/Still.hlsl", .. scope .()); // in its group's folder
 			let text = scope String();
 			Test.Assert(System.IO.File.ReadAllText(path, text) case .Ok);
 			let declared = "// variants(vertex): SKINNED INSTANCED WIND";

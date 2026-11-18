@@ -73,9 +73,13 @@ static class ScriptValidateTool
 		defer { ClearAndDeleteItems(problems); }
 		// The files it includes, from the open project's sources, resolved against `name`.
 		let sourcesRoot = scope String();
+		let codeRoot = scope String();
 		if ((session != null) && session.IsOpen)
+		{
 			session.Project.SourcesRoot(sourcesRoot);
-		let includes = scope FolderIncludeReader(sourcesRoot);
+			session.Project.CodeRoot(codeRoot);
+		}
+		let includes = scope FolderIncludeReader(sourcesRoot, codeRoot);
 		var ok = cook.Cook(source, name, className, record, problems, includes);
 		// Then against the platform's surface, when one is asked for and it lacks plugins.
 		let absent = scope String();

@@ -156,7 +156,7 @@ class VegetationMaskPage : AssetObjectPage
 			// Imported: its image at its own size, a plane per channel up to its plane count, as the
 			// cook decodes it.
 			mImported = true;
-			let path = PathJoin(Context.Project.SourcesRoot(.. scope .()), asset.FileName.Value, .. scope .());
+			let path = Context.Project.SourceFile(asset.FileName.Value, .. scope .());
 			let source = scope Sedulous.Image.Image();
 			if (!(ImageIO.LoadImage(path, source) case .Ok) || (source.Format != .RGBA8) || (source.Width == 0))
 			{

@@ -12,6 +12,10 @@ namespace Sedulous.VFS;
 class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem, IStatFileSystem, IWatchableFileSystem
 {
 	private String mRoot = new .() ~ delete _;
+	/// MapFolder: the top-level name read from another folder (empty when nothing is mapped),
+	/// and that folder on disk.
+	private String mMappedName = new .() ~ delete _;
+	private String mMappedRoot = new .() ~ delete _;
 	/// Lazy: most mounts are never watched, and a change source carries a file snapshot.
 	private NativeChangeSource mChangeSource ~ delete _;
 
@@ -34,7 +38,34 @@ class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem
 			OnWritten(path);
 	}
 
-	private void Resolve(StringView path, String outFull) => PathJoin(mRoot, path, outFull);
+	/// Makes the top-level folder `name` of this mount another folder on disk, `folder`: a path
+	/// whose first part is `name` resolves under `folder`, and listing the root shows `name` in
+	/// place of any folder of that name under it (a project's Code/ beside its Sources/, read as
+	/// one). One mapping; a second replaces the first.
+	public void MapFolder(StringView name, StringView folder)
+	{
+		mMappedName.Set(name);
+		mMappedRoot.Set(folder);
+	}
+
+	/// The file on disk that `path` (relative to the mount) names, into `outFull`.
+	public void FullPath(StringView path, String outFull)
+	{
+		if (SourcePath.AfterFolder(path, mMappedName, let rest))
+		{
+			if (rest.IsEmpty)
+				outFull.Set(mMappedRoot);
+			else
+				PathJoin(mMappedRoot, rest, outFull);
+			return;
+		}
+		PathJoin(mRoot, path, outFull);
+	}
+
+	private void Resolve(StringView path, String outFull) => FullPath(path, outFull);
+
+	/// Whether `folder` is the mount's root.
+	private static bool IsTop(StringView folder) => folder.IsEmpty || (folder == ".");
 
 	// ---- IFileSystem ----
 
@@ -87,8 +118,23 @@ class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem
 	public Result<void, ErrorCode> Enumerate(StringView folder, List<DirEntry> outEntries)
 	{
 		let full = Resolve(folder, .. scope String());
+		let before = outEntries.Count;
 		if (!ListDirectory(full, scope (name, isDirectory) => outEntries.Add(DirEntry(name, isDirectory))))
 			return .Err(.NotFound);
+		if (!mMappedName.IsEmpty && IsTop(folder))
+		{
+			// The mapped folder stands in for any folder of its name under the root.
+			for (int i = outEntries.Count - 1; i >= before; i--)
+			{
+				if (outEntries[i].Name == mMappedName)
+				{
+					outEntries[i].Dispose();
+					outEntries.RemoveAt(i);
+				}
+			}
+			if (DirectoryExists(mMappedRoot))
+				outEntries.Add(DirEntry(mMappedName, true));
+		}
 		return .Ok;
 	}
 

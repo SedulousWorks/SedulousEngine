@@ -21,4 +21,6 @@ class ScriptClassAsset : Asset
 	/// its file, else its only one (ScriptClasses.Preferred, ScriptClasses.Choose).
 	[DisplayName("Class Name")]
 	public String ClassName = new .() ~ delete _;
+
+	public override bool IsCode => true;
 }

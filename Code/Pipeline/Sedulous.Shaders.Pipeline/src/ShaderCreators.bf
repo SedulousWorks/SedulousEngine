@@ -151,9 +151,9 @@ static class ShaderCreators
 			new (context) => Create(context, "Shader", cStarter)).Under("Shaders"));
 	}
 
-	/// `starter` in a new .hlsl under the sources folder, named like the instance (the next free
-	/// name when another asset's file has that one), and the shader asset linking it. Refused
-	/// without a sources folder or for a name that is not one file name.
+	/// `starter` in a new .hlsl in the target group's folder under the sources, named like the
+	/// instance (the next free name when another file has that one), and the shader asset
+	/// linking it. Refused without a sources folder or for a name that is not one file name.
 	private static Instance Create(AssetCreationContext context, StringView baseName, StringView starter)
 	{
 		let target = context.Target;
@@ -161,9 +161,11 @@ static class ShaderCreators
 			return null;
 		let name = target.UniqueInstanceName(context.NameOr(baseName), .. scope .());
 		let fileName = scope String();
-		if (!AssetCreator.FreeSourceFileName(context.SourcesRoot, name, ".hlsl", fileName))
+		if (!AssetCreator.FreeSourceFileName(context, target, name, ".hlsl", fileName))
 			return null;
-		if (WriteFile(PathJoin(context.SourcesRoot, fileName, .. scope .()), Span<uint8>((uint8*)starter.Ptr, starter.Length)) case .Err)
+		let path = context.FileOf(fileName, .. scope .());
+		CreateDirectory(PathParent(path, .. scope .()));
+		if (WriteFile(path, Span<uint8>((uint8*)starter.Ptr, starter.Length)) case .Err)
 			return null;
 		let instance = target.CreateInstance(name, typeof(ShaderAsset).GetFullName(.. scope .()));
 		if (instance == null)

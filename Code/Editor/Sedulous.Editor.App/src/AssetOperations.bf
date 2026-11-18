@@ -119,6 +119,12 @@ class AssetOperations
 		}
 		if (let cooked = GroupAt(project.CookedDb, oldPath))
 			project.CookedDb.RenameGroup(cooked, name).IgnoreError();
+		// Its files follow it to its new folder, its subgroups' too.
+		{
+			let inside = scope List<Instance>();
+			ExportStaging.CollectAllInstances(group, inside);
+			project.PlaceInGroupFolders((Span<Instance>)inside);
+		}
 		RefreshDefaultScenePath(project);
 		MoveDefaultScenePathUnder(project, oldPath, group);
 		GlobalLog(.Information, "Assets: renamed group '{}' -> '{}'", oldPath, group.GetPath(.. scope .()));
@@ -237,6 +243,7 @@ class AssetOperations
 		let toPath = to.GetPath(.. scope .());
 		let settings = project.Settings;
 		int moved = 0;
+		let movedAssets = scope List<Instance>(); // their files follow them to the group's folder
 		for (let id in ids)
 		{
 			let instance = Find(id);
@@ -255,6 +262,7 @@ class AssetOperations
 				continue;
 			}
 			moved++;
+			movedAssets.Add(instance);
 			GlobalLog(.Information, "Assets: moved '{}' -> '{}'", from, instance.GetPath(.. scope .()));
 			// Its product's place in step: everything binds by guid, but the mirror only reads true.
 			if (project.CookedDb.GetInstance(id) != null)
@@ -267,6 +275,7 @@ class AssetOperations
 			if (!settings.DefaultSceneId.IsSet && (settings.DefaultScene == from))
 				settings.DefaultSceneId = id;
 		}
+		project.PlaceInGroupFolders((Span<Instance>)movedAssets);
 		RefreshDefaultScenePath(project);
 		if (moved > 0)
 			Context.SetStatus((moved == 1) ? scope:: $"Moved 1 asset to {shown}." : scope:: $"Moved {moved} assets to {shown}.");

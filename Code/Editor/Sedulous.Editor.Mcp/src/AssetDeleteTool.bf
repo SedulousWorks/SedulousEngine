@@ -105,7 +105,7 @@ static class AssetDeleteTool
 		outResult.Set("deleted", JsonValue.MakeBool(true));
 		if (deleteSource)
 		{
-			let path = PathJoin(session.Project.SourcesRoot(.. scope .()), sourceName, .. scope .());
+			let path = session.Project.SourceFile(sourceName, .. scope .());
 			if (sourceShared)
 				outResult.Set("sourceKept", JsonValue.MakeString(scope $"{sourceName} (another asset names it)"));
 			else if (FileExists(path) && !DeleteFile(path))

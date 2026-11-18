@@ -165,14 +165,14 @@ class ModelDdsImportTests
 
 		// ONE copy each, at the model relative path the sidecar pass uses, never a second flat
 		// copy beside it.
-		for (let relative in scope String[]("Sources/tex/albedo.dds", "Sources/tex/normal.dds"))
+		for (let relative in scope String[]("Sources/tri/tex/albedo.dds", "Sources/tri/tex/normal.dds"))
 		{
 			let path = scope String();
 			fixture.SubPath(relative, path);
 			Test.Assert(FileExists(path), relative);
 		}
 		let flat = scope String();
-		fixture.SubPath("Sources/albedo.dds", flat);
+		fixture.SubPath("Sources/tri/albedo.dds", flat);
 		Test.Assert(!FileExists(flat), "the sidecar pass already placed it");
 
 		let modelGroup = fixture.RootGroup.GetGroup("tri");
@@ -185,7 +185,7 @@ class ModelDdsImportTests
 			let asset = ReadTextureAsset(albedoInstance);
 			defer delete asset;
 			Test.Assert(asset != null);
-			Test.Assert(asset.FileName.Value == "tex/albedo.dds", "file backed, not embedded");
+			Test.Assert(asset.FileName.Value == "tri/tex/albedo.dds", "file backed, not embedded, in the model's folder");
 			Test.Assert(asset.EmbeddedWidth == 0);
 			Test.Assert(asset.Usage == .Color);
 			Test.Assert(asset.ColorSpace == .Srgb, "the DX10 header's own fact");
@@ -195,7 +195,7 @@ class ModelDdsImportTests
 			let asset = ReadTextureAsset(normalInstance);
 			defer delete asset;
 			Test.Assert(asset != null);
-			Test.Assert(asset.FileName.Value == "tex/normal.dds");
+			Test.Assert(asset.FileName.Value == "tri/tex/normal.dds");
 			Test.Assert(asset.Usage == .Normal, "the material slot says so");
 			Test.Assert(asset.ColorSpace == .Linear);
 		}
@@ -251,8 +251,8 @@ class ModelDdsImportTests
 		for (let write in deferred)
 			Test.Assert(write.Execute() case .Ok, scope $"{write.Label}");
 
-		for (let relative in scope String[]("Sources/tex/albedo.dds", "Sources/tex/normal.dds",
-			"Sources/tri.bin"))
+		for (let relative in scope String[]("Sources/tri/tex/albedo.dds", "Sources/tri/tex/normal.dds",
+			"Sources/tri/tri.bin"))
 		{
 			let path = scope String();
 			fixture.SubPath(relative, path);
@@ -261,7 +261,7 @@ class ModelDdsImportTests
 
 		// The PNG the document names is not in the package, so nothing was written for it.
 		let missing = scope String();
-		fixture.SubPath("Sources/tex/albedo.png", missing);
+		fixture.SubPath("Sources/tri/tex/albedo.png", missing);
 		Test.Assert(!FileExists(missing));
 	}
 }

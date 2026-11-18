@@ -48,7 +48,7 @@ class ImageEditorPage : AssetObjectPage
 				mPreview.ShowNone("This image names no source file.");
 			return;
 		}
-		let path = PathJoin(Context.Project.SourcesRoot(.. scope .()), asset.FileName.Value, .. scope .());
+		let path = Context.Project.SourceFile(asset.FileName.Value, .. scope .());
 		let source = scope Sedulous.Image.Image();
 		if (!(ImageIO.LoadImage(path, source) case .Ok) || (source.Width == 0) || (source.Height == 0))
 		{

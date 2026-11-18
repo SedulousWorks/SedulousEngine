@@ -5,6 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.Script;
 using Sedulous.Pipeline.Core;
+using Sedulous.VFS;
 
 namespace Sedulous.Script.Pipeline;
 
@@ -77,9 +78,10 @@ static class ScriptCreators
 			outClass.Insert(0, '_');
 	}
 
-	/// A new class from the language cook's starter for `tier`: the source file under the
-	/// sources folder (the next free name when another asset's file has that one), and the asset
-	/// pointing at it. Refused without a sources folder or for a name that is not one file name.
+	/// A new class from the language cook's starter for `tier`: the source file in the project's
+	/// Code/ folder, in its group's folder there (the next free name when another file has that
+	/// one), and the asset pointing at it. Refused without a sources folder or for a name that is
+	/// not one file name.
 	public static Instance CreateScript(AssetCreationContext context, StringView languageId, StringView fileSuffix, ScriptTier tier, StringView baseName)
 	{
 		let target = context.Target;
@@ -90,12 +92,13 @@ static class ScriptCreators
 			return null;
 		let name = target.UniqueInstanceName(context.NameOr(baseName), .. scope .());
 		let fileName = scope String();
-		if (!AssetCreator.FreeSourceFileName(context.SourcesRoot, name, scope $".{fileSuffix}", fileName))
+		if (!AssetCreator.FreeSourceFileName(context, target, name, scope $".{fileSuffix}", fileName, SourcePath.CodeFolder))
 			return null;
 		let starter = scope String();
 		let className = ClassNameFor(name, baseName, .. scope .());
 		cook.NewAssetTemplate(tier, className, starter);
-		let path = PathJoin(context.SourcesRoot, fileName, .. scope .());
+		let path = context.FileOf(fileName, .. scope .());
+		CreateDirectory(PathParent(path, .. scope .()));
 		if (!(WriteFile(path, .((uint8*)starter.Ptr, starter.Length)) case .Ok))
 			return null;
 		let instance = target.CreateInstance(name, typeof(ScriptClassAsset).GetFullName(.. scope .()));
@@ -111,8 +114,9 @@ static class ScriptCreators
 	}
 
 	/// A new project file for a language whose classes build together: the project build's
-	/// template under the sources folder (the next free name when another asset's file has that
-	/// one), its ScriptAssemblyAsset, and the build's local files beside it, so the project opens
+	/// template in the project's Code/ folder, in its group's folder there (the next free name
+	/// when another file has that one), its ScriptAssemblyAsset, and the build's local files
+	/// beside it, so the project opens
 	/// in an IDE at once rather than after its first cook. Null when the language has no project
 	/// build, without a sources folder, or when a write is refused.
 	public static Instance CreateProject(AssetCreationContext context, StringView languageId, StringView projectSuffix)
@@ -125,11 +129,12 @@ static class ScriptCreators
 			return null;
 		let name = target.UniqueInstanceName(context.NameOr("Game"), .. scope .());
 		let fileName = scope String();
-		if (!AssetCreator.FreeSourceFileName(context.SourcesRoot, name, scope $".{projectSuffix}", fileName))
+		if (!AssetCreator.FreeSourceFileName(context, target, name, scope $".{projectSuffix}", fileName, SourcePath.CodeFolder))
 			return null;
 		let text = scope String();
 		cook.NewProjectTemplate(ClassNameFor(name, "Game", .. scope .()), text);
-		let path = PathJoin(context.SourcesRoot, fileName, .. scope .());
+		let path = context.FileOf(fileName, .. scope .());
+		CreateDirectory(PathParent(path, .. scope .()));
 		if (!(WriteFile(path, .((uint8*)text.Ptr, text.Length)) case .Ok))
 			return null;
 		let instance = target.CreateInstance(name, typeof(ScriptAssemblyAsset).GetFullName(.. scope .()));
@@ -141,13 +146,14 @@ static class ScriptCreators
 		if (!(instance.WriteObject(asset) case .Ok))
 			return null;
 
-		// Beside the project file, which lands in the sources folder itself.
+		// Beside the project file, in its folder.
+		let folder = PathParent(fileName, .. scope .());
 		let local = scope List<ScriptAssemblyFile>();
 		defer { ClearAndDeleteItems!(local); }
 		cook.LocalFiles(local);
 		for (let file in local)
 		{
-			let localPath = PathJoin(context.SourcesRoot, file.Path, .. scope .());
+			let localPath = context.FileOf(PathJoin(folder, file.Path, .. scope .()), .. scope .());
 			CreateDirectory(PathParent(localPath, .. scope .()));
 			WriteFile(localPath, .((uint8*)file.Text.Ptr, file.Text.Length)).IgnoreError();
 		}

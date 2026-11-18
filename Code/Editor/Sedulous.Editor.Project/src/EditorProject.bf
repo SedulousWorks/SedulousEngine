@@ -107,6 +107,9 @@ class EditorProject
 		let project = new EditorProject(directory, settings);
 		if ((msaaBeforeLevels != 0) && settings.QualityLevelIds.IsEmpty)
 			ProjectSeed.UpgradeToQualityLevels(project, msaaBeforeLevels);
+		// An older project's files, flat under Sources/ with its code among them, into their
+		// groups' folders, code under Code/.
+		PlaceFilesAtOpen(project);
 		return project;
 	}
 
@@ -290,6 +293,20 @@ class EditorProject
 
 	/// Raw import sources, mounted as the build context's sources at cook time.
 	public void SourcesRoot(String outPath) => PathJoin(mDirectory, ProjectLayout.SourcesDir, outPath);
+	/// The project's code folder, read through the sources mount as its Code/ (AddCodeFolder).
+	public void CodeRoot(String outPath) => PathJoin(mDirectory, ProjectLayout.CodeDir, outPath);
+	/// The file on disk a source path names (an asset's file name), into `outPath`: under Code/
+	/// when it starts with Code/, else under Sources/.
+	public void SourceFile(StringView sourceName, String outPath)
+	{
+		SourcePath.FileOnDisk(SourcesRoot(.. scope .()), CodeRoot(.. scope .()), sourceName, outPath);
+	}
+	/// Makes a mount of SourcesRoot read the code folder as its Code/: every mount the sources
+	/// are read through (the cook, an export, the tools) is given it.
+	public void AddCodeFolder(NativeFileSystem sources)
+	{
+		sources.MapFolder(ProjectLayout.CodeDir, CodeRoot(.. scope .()));
+	}
 	/// Per user editor state: the dock layout, the open pages.
 	public void EditorStateRoot(String outPath) => PathJoin(mDirectory, ProjectLayout.EditorDir, outPath);
 	/// The picture the launcher shows a project by: its scene view, captured by the editor

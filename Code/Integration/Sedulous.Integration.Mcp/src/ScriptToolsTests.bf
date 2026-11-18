@@ -101,10 +101,12 @@ static class ScriptToolsTests
 		let created = CallOk(server, "script_create", With(With(With(Obj(), "name", "Mover"), "language", "angelscript"), "group", "gameplay"));
 		defer delete created;
 		Test.Assert(created.Get("name").AsString() == "Mover");
-		Test.Assert(created.Get("fileName").AsString() == "Mover.as");
+		// A new script is in the project's Code/ folder, in its group's folder there.
+		Test.Assert(created.Get("fileName").AsString() == "Code/gameplay/Mover.as");
 		Test.Assert(created.Get("tier").AsString() == "behavior");
 		let sourceFile = scope String(created.Get("sourceFile").AsString());
 		Test.Assert(FileExists(sourceFile), "the starter is on disk");
+		Test.Assert(sourceFile.EndsWith("/Code/gameplay/Mover.as"), sourceFile);
 
 		// The file's content validates through the tool: the tools compose.
 		let source = scope String();

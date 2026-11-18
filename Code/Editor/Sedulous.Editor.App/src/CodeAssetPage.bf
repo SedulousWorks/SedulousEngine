@@ -96,7 +96,7 @@ abstract class CodeAssetPage : AssetObjectPage
 		if ((asset != null) && !asset.FileName.IsEmpty && (context.Project != null))
 		{
 			mFileName.Set(asset.FileName.Value);
-			PathJoin(context.Project.SourcesRoot(.. scope .()), mFileName, mSourcePath);
+			context.Project.SourceFile(mFileName, mSourcePath);
 			if (System.IO.File.ReadAllText(mSourcePath, mSaved, true) case .Ok)
 			{
 				mRead = true;

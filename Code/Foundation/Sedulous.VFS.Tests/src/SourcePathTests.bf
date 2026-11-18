@@ -158,4 +158,26 @@ class SourcePathTests
 		}
 		Test.Assert(target.Value == "Textures/Ground/Albedo.png");
 	}
+
+	/// Code/ names the project's code folder: the rest after it, a longer name not it, and a path
+	/// starting Code/ found under the code folder while every other is under the sources.
+	[Test]
+	public static void ACodePathIsAFileInTheCodeFolder()
+	{
+		StringView rest;
+		Test.Assert(SourcePath.AfterFolder("Code/Weapons/Gun.cs", SourcePath.CodeFolder, out rest));
+		Test.Assert(rest == "Weapons/Gun.cs");
+		Test.Assert(SourcePath.AfterFolder("Code", "Code", out rest));
+		Test.Assert(rest.IsEmpty);
+		Test.Assert(!SourcePath.AfterFolder("Codex/Gun.cs", "Code", out rest));
+		Test.Assert(!SourcePath.AfterFolder("Models/Code/Gun.cs", "Code", out rest));
+		Test.Assert(!SourcePath.AfterFolder("Code/Gun.cs", "", out rest));
+
+		Test.Assert(SourcePath.FileOnDisk("/p/Sources", "/p/Code", "Code/Gun.cs", .. scope .()) == "/p/Code/Gun.cs");
+		Test.Assert(SourcePath.FileOnDisk("/p/Sources", "/p/Code", "Code", .. scope .()) == "/p/Code");
+		Test.Assert(SourcePath.FileOnDisk("/p/Sources", "/p/Code", "Codex/Gun.cs", .. scope .()) == "/p/Sources/Codex/Gun.cs");
+		Test.Assert(SourcePath.FileOnDisk("/p/Sources", "/p/Code", "Models/a.png", .. scope .()) == "/p/Sources/Models/a.png");
+		// No code folder given: such a name is a folder under the sources.
+		Test.Assert(SourcePath.FileOnDisk("/p/Sources", "", "Code/Gun.cs", .. scope .()) == "/p/Sources/Code/Gun.cs");
+	}
 }

@@ -134,12 +134,13 @@ static class ModelImportTextures
 	{
 		let relative = IsModelRelativeUri(texture.Uri);
 		// What the asset references under the sources tree: the model relative uri, else the
-		// bare file name.
-		let fileName = relative
+		// bare file name, in the model's folder.
+		let localName = relative
 			? StringView(texture.Uri)
 			: ImportPaths.FileNameOf(texture.SourceFile);
-		if (fileName.IsEmpty)
+		if (localName.IsEmpty)
 			return null;
+		let fileName = context.InFolder(localName, .. scope .());
 
 		let textureName = scope String();
 		ImportedNames.ForTexture(texture, index, textureName);
@@ -155,7 +156,7 @@ static class ModelImportTextures
 			{
 				let copy = new DeferredImportWrite();
 				copy.CopyFrom.Set(texture.SourceFile);
-				PathJoin(context.SourcesRoot, fileName, copy.CopyTo);
+				context.FileOf(fileName, copy.CopyTo);
 				deferredWrites.Add(copy);
 			}
 			else
@@ -164,7 +165,7 @@ static class ModelImportTextures
 				if (ReadFile(texture.SourceFile, bytes) case .Err)
 					return null;
 				let target = scope String();
-				PathJoin(context.SourcesRoot, fileName, target);
+				context.FileOf(fileName, target);
 				let parent = scope String();
 				PathParent(target, parent);
 				if (!parent.IsEmpty)
@@ -179,7 +180,7 @@ static class ModelImportTextures
 		asset.SourceHint.Set(texture.Uri);
 		// The FILE's facts first, BC5 being a normal map, BC4 a mask and a DX10 header naming
 		// the colour space, and then the slot, which knows what the material does with it.
-		TextureFileImporter.SetupForDds(asset, texture.SourceFile, ImportPaths.StemOf(fileName));
+		TextureFileImporter.SetupForDds(asset, texture.SourceFile, ImportPaths.StemOf(localName));
 		if (normalSlot)
 			asset.SetupForNormalMap();
 		else if (linear)

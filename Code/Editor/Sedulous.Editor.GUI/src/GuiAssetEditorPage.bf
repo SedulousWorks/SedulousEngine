@@ -140,7 +140,7 @@ class GuiAssetEditorPage : CodeAssetPage
 		if ((document == null) || document.FileName.IsEmpty)
 			return; // an unlinked document has no markup to preview over
 		let text = scope String();
-		if (System.IO.File.ReadAllText(PathJoin(Context.Project.SourcesRoot(.. scope .()), document.FileName.Value, .. scope .()), text, true) case .Err)
+		if (System.IO.File.ReadAllText(Context.Project.SourceFile(document.FileName.Value, .. scope .()), text, true) case .Err)
 			return;
 		// Copied once: the page's to change from now on (the document is not touched).
 		mMarkup.SetText(text);

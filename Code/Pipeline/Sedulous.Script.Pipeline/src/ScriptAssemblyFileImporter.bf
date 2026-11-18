@@ -4,6 +4,7 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Pipeline.Importer;
+using Sedulous.VFS;
 
 namespace Sedulous.Script.Pipeline;
 
@@ -40,7 +41,9 @@ class ScriptAssemblyFileImporter : IFileImporter
 		}
 
 		let fileName = scope String();
-		let claimed = ImportPaths.ClaimSingleAsset(context, group, options, sourcePath, ScriptAssemblies.cAssetType, fileName);
+		// A project file is code: in the project's Code/ folder, in its group's folder there.
+		let claimed = ImportPaths.ClaimSingleAsset(context, group, options, sourcePath, ScriptAssemblies.cAssetType, fileName, null,
+			SourcePath.CodeFolder);
 		if (claimed case .Err(let claimError))
 			return .Err(claimError);
 		let instance = claimed.Value;

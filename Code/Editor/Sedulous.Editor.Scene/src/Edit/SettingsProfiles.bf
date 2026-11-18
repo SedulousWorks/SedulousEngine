@@ -97,7 +97,7 @@ static class SettingsProfiles
 			context.Notify(.Error, "Make Profile: nothing creates this profile.");
 			return null;
 		}
-		let instance = creator.Create(null, project.SourceDb.RootGroup, project.SourcesRoot(.. scope .()), name);
+		let instance = creator.Create(null, project.SourceDb.RootGroup, project.SourcesRoot(.. scope .()), name, project.CodeRoot(.. scope .()));
 		if ((instance == null) || (WriteValues(instance, system.EffectiveSettingsInstance) case .Err))
 		{
 			context.Notify(.Error, "Make Profile: the profile could not be written.");

@@ -221,9 +221,9 @@ static class GuiPipelineTests
 		Test.Assert(said.IsEmpty);
 	}
 
-	/// Names are unique per group but the sources folder is flat: a second "Menu" document in
-	/// another group takes its own file, never the first one's, and a name that is not one file
-	/// name is refused.
+	/// A document's file goes in its group's folder: a second "Menu" document in another group
+	/// takes its own file there, never over a file already in that folder, and a name that is not
+	/// one file name is refused.
 	[Test]
 	public static void AFileBackedCreationNeverWritesOverAnotherAssetsSource()
 	{
@@ -244,13 +244,17 @@ static class GuiPipelineTests
 		let a = db.RootGroup.CreateGroup("A");
 		let b = db.RootGroup.CreateGroup("B");
 
+		// Each in its group's folder; a file already in B's (edited, of no asset) is kept, the
+		// creation taking the next free name.
 		Test.Assert(document.Create(a, db.RootGroup, sources, "Menu") != null);
-		let first = PathJoin(sources, "Menu.xml", .. scope .());
+		Test.Assert(FileExists(PathJoin(sources, "A/Menu.xml", .. scope .())));
+		let first = PathJoin(sources, "B/Menu.xml", .. scope .());
+		Test.Assert(CreateDirectory(PathJoin(sources, "B", .. scope .())));
 		Write(first, "<edited/>");
 
 		Test.Assert(document.Create(b, db.RootGroup, sources, "Menu") != null);
-		Test.Assert(ReadText(first, .. scope .()) == "<edited/>", "the first document's source is its own");
-		Test.Assert(FileExists(PathJoin(sources, "Menu.2.xml", .. scope .())));
+		Test.Assert(ReadText(first, .. scope .()) == "<edited/>", "the file there is kept");
+		Test.Assert(FileExists(PathJoin(sources, "B/Menu.2.xml", .. scope .())));
 
 		Test.Assert(document.Create(b, db.RootGroup, sources, "../Escape") == null);
 		Test.Assert(!FileExists(PathJoin(root, "Escape.xml", .. scope .())));

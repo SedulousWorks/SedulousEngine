@@ -73,7 +73,7 @@ class ShaderCreatorTests
 		defer delete asset;
 		// The second took a unique name, and its shader name and file follow it.
 		Test.Assert((asset.Name == second.Name) && (asset.Name != first.Name));
-		let expected = scope $"{second.Name}.hlsl";
+		let expected = scope $"Shaders/{second.Name}.hlsl"; // in its group's folder
 		Test.Assert(asset.FileName.Value == expected);
 		Test.Assert(asset.VertexEntryPoint == "VSMain");
 		Test.Assert(FileExists(PathJoin(sources, expected, .. scope .())));

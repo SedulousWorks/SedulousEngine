@@ -28,8 +28,9 @@ class GltfSidecarTests
 
 	private static void CheckSourcesTree(ImportFixture fixture)
 	{
-		for (let relative in scope String[]("Sources/character.gltf", "Sources/character.bin",
-			"Sources/textures/Texture.png"))
+		// In the model's own folder (its group's), the relative paths kept.
+		for (let relative in scope String[]("Sources/character/character.gltf", "Sources/character/character.bin",
+			"Sources/character/textures/Texture.png"))
 		{
 			let path = scope String();
 			fixture.SubPath(relative, path);
@@ -40,6 +41,8 @@ class GltfSidecarTests
 		// model's own directory would land outside the sources tree.
 		let escaped = scope String();
 		fixture.SubPath("Sources/escapes/out.png", escaped);
+		Test.Assert(!FileExists(escaped));
+		fixture.SubPath("Sources/character/escapes/out.png", escaped);
 		Test.Assert(!FileExists(escaped));
 	}
 
@@ -151,5 +154,41 @@ class GltfSidecarTests
 			scope $"same size: eager {eager.Count}, lazy {lazy.Count}");
 		Test.Assert(Internal.MemCmp(eager.Ptr, lazy.Ptr, eager.Count) == 0,
 			"deferring WHEN the geometry is built must not change WHAT is built");
+	}
+
+	/// A .gltf's companions: the files its buffers and images name beside it, each once, in
+	/// order; data URIs and paths leaving its folder are not among them. The model's manifest
+	/// asset reports them for its file, so a move of the model takes them along; a .glb holds
+	/// its own.
+	[Test]
+	public static void AGltfsSidecarsAreItsManifestsCompanionFiles()
+	{
+		let text = """
+			{"buffers":[{"uri":"Crate.bin"},{"uri":"data:application/octet-stream;base64,AAAA"}],
+			"images":[{"uri" : "textures/wood.png"},{"uri":"../outside.png"},{"uri":"/abs.png"},{"uri":"Crate.bin"}]}
+			""";
+		let uris = scope List<String>();
+		defer { ClearAndDeleteItems!(uris); }
+		GltfSidecars.Uris(text, uris);
+		Test.Assert(uris.Count == 2, scope $"{uris.Count} uris");
+		Test.Assert(uris[0] == "Crate.bin");
+		Test.Assert(uris[1] == "textures/wood.png");
+
+		let dir = "scratch_modelimporter_companions";
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(CreateDirectory(dir));
+		let gltf = PathJoin(dir, "Crate.gltf", .. scope .());
+		Test.Assert(WriteFile(gltf, .((uint8*)text.Ptr, text.Length)) case .Ok);
+		let manifest = scope ModelManifestAsset();
+		let companions = scope List<String>();
+		defer { ClearAndDeleteItems!(companions); }
+		manifest.CompanionFiles(gltf, companions);
+		Test.Assert(companions.Count == 2);
+		Test.Assert(companions[1] == "textures/wood.png");
+		let glb = scope List<String>();
+		defer { ClearAndDeleteItems!(glb); }
+		manifest.CompanionFiles(PathJoin(dir, "Crate.glb", .. scope .()), glb);
+		Test.Assert(glb.IsEmpty, "a .glb holds its own");
 	}
 }

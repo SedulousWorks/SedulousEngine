@@ -8,8 +8,8 @@ namespace Sedulous.ModelImporter.Tests;
 
 /// A model claims its folder by the import's clash rule (ImportPaths.FindImportClash): the same
 /// file again is a re-import in place (its manifest's guid kept); another folder's file of the same
-/// name is refused, or kept beside in the next folder ("character.2") with its own copy under the
-/// sources tree, the first model's untouched.
+/// name is refused, or kept beside in the next folder ("character.2") with its own copy in that
+/// folder under the sources tree, the first model's untouched.
 class ModelImportClashTests
 {
 	private static Result<Instance, ErrorCode> ImportPrepared(IFileImporter importer, StringView path, ImportFixture fixture)
@@ -61,8 +61,9 @@ class ModelImportClashTests
 		let second = root.GetGroup("character.2");
 		Test.Assert(second != null);
 		Test.Assert(beside.Value.OwningGroup == second);
-		Test.Assert(FileOf(beside.Value, .. scope .()) == "character.2.glb");
-		Test.Assert(FileOf(fixture.Db.GetInstance(manifest), .. scope .()) == "character.glb");
+		// Each in its own folder (its group's), the file keeping its name.
+		Test.Assert(FileOf(beside.Value, .. scope .()) == "character.2/character.glb");
+		Test.Assert(FileOf(fixture.Db.GetInstance(manifest), .. scope .()) == "character/character.glb");
 	}
 
 	/// The import window lists a model file by its manifest's icon; the clash check still sees no

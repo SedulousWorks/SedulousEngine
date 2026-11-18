@@ -99,12 +99,29 @@ static class ImportPaths
 
 			// An interface handle reaches its class through the object it is part of.
 			let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as Asset;
-			if ((asset == null) || (asset.FileName.Value != fileName))
+			// Its copy's file name, in whichever folder it went (its group's).
+			if ((asset == null) || (FileNameOf(asset.FileName.Value) != fileName))
 				continue;
 
 			outPlan.Add(new ImportPlanEntry(.Asset, StemOf(fileName), instance.Name));
 			return;
 		}
+	}
+
+	/// The folder under the sources a file of `group` belongs in, into `outFolder`: the group's
+	/// path ("Models/Crate"), under `under` when given ("Code/Weapons" for code); empty for the
+	/// root group with nothing under.
+	public static void GroupFolder(Group group, StringView under, String outFolder)
+	{
+		let groupPath = scope String();
+		if (group != null)
+			group.GetPath(groupPath);
+		if (under.IsEmpty)
+			outFolder.Set(groupPath);
+		else if (groupPath.IsEmpty)
+			outFolder.Set(under);
+		else
+			PathJoin(under, groupPath, outFolder);
 	}
 
 	// === the import ledger ===
@@ -205,19 +222,20 @@ static class ImportPaths
 	/// ledger names another origin, or the caller says it may not overwrite), the next free one
 	/// ("a.2.png"), unless the bytes there are `bytes` (shared, nothing lost). Noted in the ledger
 	/// as `sourcePath`'s. For a copy made later (a deferred write); CopyIntoSources copies at once.
+	/// The copy goes in the context's folder (its group's: Models/Crate/Crate.gltf,
+	/// Code/Weapons/Weapon.cs).
 	public static void SourcesNameFor(ImportContext context, StringView sourcePath, String outName,
 		bool mayOverwrite = true, List<uint8> bytes = null)
 	{
 		let fileName = FileNameOf(sourcePath);
 		let stem = StemOf(fileName);
 		let @extension = fileName.Substring(stem.Length); // with its dot
-		let name = scope String(fileName);
+		let name = context.InFolder(fileName, .. scope String());
 		let target = scope String();
 		let origin = scope String();
 		for (int n = 2; ; n++)
 		{
-			target.Clear();
-			PathJoin(context.SourcesRoot, name, target);
+			context.FileOf(name, target);
 			if (!FileExists(target))
 				break;
 			origin.Clear();
@@ -230,8 +248,7 @@ static class ImportPaths
 				if ((ReadFile(target, existing) case .Ok) && SameBytes(existing, bytes))
 					break; // the very same bytes: shared, nothing lost
 			}
-			name.Clear();
-			name.AppendF("{}.{}{}", stem, n, @extension); // another file's: the next name
+			context.InFolder(scope String()..AppendF("{}.{}{}", stem, n, @extension), name); // another file's: the next name
 		}
 		RecordImportOrigin(context.LedgerPath, name, sourcePath);
 		outName.Append(name);
@@ -267,13 +284,14 @@ static class ImportPaths
 	/// there untouched (no re-cook churn).
 	private static Result<void, ErrorCode> WriteSourcesCopy(ImportContext context, StringView sourcesName, List<uint8> bytes)
 	{
-		let target = PathJoin(context.SourcesRoot, sourcesName, .. scope .());
+		let target = context.FileOf(sourcesName, .. scope .());
 		if (FileExists(target))
 		{
 			let existing = scope List<uint8>();
 			if ((ReadFile(target, existing) case .Ok) && SameBytes(existing, bytes))
 				return .Ok;
 		}
+		CreateDirectory(PathParent(target, .. scope .())); // a folder under the sources (a group's, Code/)
 		if (WriteFile(target, bytes) case .Err(let writeError))
 			return .Err(writeError);
 		return .Ok;
@@ -369,8 +387,8 @@ static class ImportPaths
 				outClash.Kind = .Reimport;
 			return;
 		}
-		if (held == FileNameOf(sourcePath))
-			outClash.Kind = .Reimport; // before the ledger: the file name decides, as it did
+		if (FileNameOf(held) == FileNameOf(sourcePath))
+			outClash.Kind = .Reimport; // before the ledger: the file name decides, in its group's folder
 	}
 
 	/// The clash said for a person, appended: what holds the name and what to do.
@@ -409,10 +427,15 @@ static class ImportPaths
 	/// else the file is copied in beside, as a new asset's is. Refused (AlreadyExists) for an asset
 	/// of another type, or of its type from another file when the choice is Refuse; nothing is
 	/// copied or made then. `outClash`, when given, gets what the name met (Reimport: this file's
-	/// own earlier import), for an importer that keeps something across a re-import.
+	/// own earlier import), for an importer that keeps something across a re-import. A new copy
+	/// goes in the group's folder, under `under` when given (Code for a script: Code/<group>/).
 	public static Result<Instance, ErrorCode> ClaimSingleAsset(ImportContext context, Group group,
-		ImportOptions options, StringView sourcePath, StringView typeName, String outFileName, ImportClash outClash = null)
+		ImportOptions options, StringView sourcePath, StringView typeName, String outFileName, ImportClash outClash = null,
+		StringView under = default)
 	{
+		let inGroup = scope ImportContext(context.SourcesRoot);
+		inGroup.CopyFrom(context);
+		GroupFolder(group, under, inGroup.Folder);
 		let stem = StemOf(FileNameOf(sourcePath));
 		let name = scope String(SingleAssetName(options, stem));
 		var clash = outClash;
@@ -429,7 +452,7 @@ static class ImportPaths
 			reuse = clash.Existing;
 			let held = scope String();
 			AssetFileOf(reuse, held);
-			overwriteOwn = held == FileNameOf(sourcePath);
+			overwriteOwn = held == inGroup.InFolder(FileNameOf(sourcePath), .. scope .());
 			if (!held.IsEmpty && (ExtensionLower(held, .. scope .()) == ExtensionLower(sourcePath, .. scope .()))
 				&& !SourcesCopyUsedByOther(group, held, reuse))
 				own.Set(held);
@@ -449,7 +472,7 @@ static class ImportPaths
 			return .Ok(reuse);
 		}
 		let copied = scope String();
-		if (CopyIntoSources(context, sourcePath, copied, overwriteOwn) case .Err(let error))
+		if (CopyIntoSources(inGroup, sourcePath, copied, overwriteOwn) case .Err(let error))
 			return .Err(error);
 		let instance = (reuse != null) ? reuse : group.CreateInstance(name, typeName);
 		if (instance == null)

@@ -33,7 +33,7 @@ static class AssetCreation
 				return null;
 			}
 		}
-		let instance = request.Creator.Create(picked, root, project.SourcesRoot(.. scope .()), request.Name);
+		let instance = request.Creator.Create(picked, root, project.SourcesRoot(.. scope .()), request.Name, project.CodeRoot(.. scope .()));
 		if (instance == null)
 			outError.AppendF("the {} creator made nothing (a write was refused)", request.Creator.Label);
 		return instance;

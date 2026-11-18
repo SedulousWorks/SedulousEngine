@@ -251,4 +251,43 @@ class TextureImportTests
 		// the same as an exclusion.
 		Test.Assert(options.SelectionEnabled(.Asset, "something-else"));
 	}
+
+	/// A cube's six faces land together in its group's folder, its asset named for the set and
+	/// naming the +X face there; its other faces are that face's companions, which move with it.
+	[Test]
+	public static void ACubesFacesLandInItsGroupsFolderAndAreItsCompanions()
+	{
+		let fixture = scope TexturePipelineFixture("cube_folder");
+		let loose = fixture.PathIn("loose", .. scope .());
+		Test.Assert(CreateDirectory(loose));
+		for (let face in scope StringView[]("sky_px", "sky_nx", "sky_py", "sky_ny", "sky_pz", "sky_nz"))
+			Test.Assert(WriteFile(PathJoin(loose, scope $"{face}.png", .. scope .()), scope List<uint8>() { 0x89, 0x50 }) case .Ok);
+		let sources = fixture.PathIn("Sources", .. scope .());
+		Test.Assert(CreateDirectory(sources));
+		let group = fixture.Database.RootGroup.CreateGroup("Sky");
+
+		let importer = scope TextureFileImporter();
+		let context = scope ImportContext(sources);
+		let imported = importer.Import(PathJoin(loose, "sky_ny.png", .. scope .()), context, group, null, null, null);
+		Test.Assert(imported case .Ok);
+		Test.Assert(imported.Value.Name == "sky", scope String(imported.Value.Name));
+		let object = imported.Value.ReadObject();
+		defer delete object;
+		let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as TextureAsset;
+		Test.Assert(asset != null);
+		Test.Assert(asset.FileName.Value == "Sky/sky_px.png", scope String(asset.FileName.Value));
+		for (let face in scope StringView[]("sky_px", "sky_nx", "sky_py", "sky_ny", "sky_pz", "sky_nz"))
+			Test.Assert(FileExists(PathJoin(sources, scope $"Sky/{face}.png", .. scope .())), scope String(face));
+
+		let companions = scope List<String>();
+		defer { ClearAndDeleteItems!(companions); }
+		asset.CompanionFiles(PathJoin(sources, asset.FileName.Value, .. scope .()), companions);
+		Test.Assert(companions.Count == 5, scope $"{companions.Count} companions");
+		Test.Assert((companions[0] == "sky_nx.png") && (companions[4] == "sky_nz.png"));
+		// A plain texture has none.
+		asset.Shape = .Texture2D;
+		let none = scope List<String>();
+		asset.CompanionFiles(PathJoin(sources, asset.FileName.Value, .. scope .()), none);
+		Test.Assert(none.IsEmpty);
+	}
 }

@@ -19,7 +19,7 @@ static class ProjectInfoTool
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("project_info",
-			"Details about the currently open project: name, directory, sources root, and `settings`, keyed by the names project_settings_set takes: each asset setting (defaultSceneId, startupScriptId, defaultInputMapId, defaultBusLayoutId, defaultUiThemeId, loadingDocumentId, defaultUiFontId, guiLoadingDocumentId, the engine GUI's loading screen) as {guid, path} or null when unset, uiFontIds (the other UI fonts) and guiStyleSheetIds (the engine GUI's sheets, in order over its theme) each a list of {guid, path}, the display (renderWidth/renderHeight, the resolution the game draws at, 0 for its output's size, and renderFit; the player's windowWidth, windowHeight, windowMode and windowResizable; orientation, Any, Landscape or Portrait, the shape the game is made for, presented turned on a window of the other shape), name, and the quality: qualityLevelIds, the game's Render Quality levels in the order an options menu lists them, a list of {guid, path}, and defaultQualityId, the one it starts at where no export preset picks another, null for the list's last; and `settingCategories`, the dialog's tabs in order, each with its settings' names.",
+			"Details about the currently open project: name, directory, sources root, code root (the Code/ folder a source path starting Code/ names: scripts and script project files), and `settings`, keyed by the names project_settings_set takes: each asset setting (defaultSceneId, startupScriptId, defaultInputMapId, defaultBusLayoutId, defaultUiThemeId, loadingDocumentId, defaultUiFontId, guiLoadingDocumentId, the engine GUI's loading screen) as {guid, path} or null when unset, uiFontIds (the other UI fonts) and guiStyleSheetIds (the engine GUI's sheets, in order over its theme) each a list of {guid, path}, the display (renderWidth/renderHeight, the resolution the game draws at, 0 for its output's size, and renderFit; the player's windowWidth, windowHeight, windowMode and windowResizable; orientation, Any, Landscape or Portrait, the shape the game is made for, presented turned on a window of the other shape), name, and the quality: qualityLevelIds, the game's Render Quality levels in the order an options menu lists them, a list of {guid, path}, and defaultQualityId, the one it starts at where no export preset picks another, null for the list's last; and `settingCategories`, the dialog's tabs in order, each with its settings' names.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Info(session, outResult, outError));
 
@@ -44,6 +44,7 @@ static class ProjectInfoTool
 		outResult.Set("name", JsonValue.MakeString(project.Name));
 		outResult.Set("directory", JsonValue.MakeString(project.Directory));
 		outResult.Set("sourcesRoot", JsonValue.MakeString(project.SourcesRoot(.. scope .())));
+		outResult.Set("codeRoot", JsonValue.MakeString(project.CodeRoot(.. scope .())));
 		let fields = scope List<FieldInfo>();
 		SettingFields.Of(typeof(ProjectSettings), fields);
 		outResult.Set("settings", ReflectedFields.ToJson(project.Settings, fields, project.SourceDb));

@@ -154,7 +154,7 @@ class FontEditorPage : AssetObjectPage
 		if ((asset == null) || asset.FileName.IsEmpty || (Context.Project == null))
 			return request;
 		request.Valid = true;
-		PathJoin(Context.Project.SourcesRoot(.. scope .()), asset.FileName.Value, request.Path);
+		Context.Project.SourceFile(asset.FileName.Value, request.Path);
 		request.DistanceField = asset.Mode == .DistanceField;
 		request.Size = asset.DistanceFieldSize;
 		request.DistanceFieldRange = asset.DistanceFieldRange;

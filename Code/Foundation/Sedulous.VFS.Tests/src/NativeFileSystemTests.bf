@@ -239,4 +239,77 @@ class NativeFileSystemTests
 		Test.Assert((now.Count == 1) && (now[0] == 9));
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
+
+	/// A mapped top-level folder: a project's Code/ read through its Sources/ mount. A path starting
+	/// with the name resolves under the other folder; listing the root shows the mapped folder in
+	/// place of a folder of the same name under the root; a watch sweeps into it.
+	[Test]
+	public static void AMappedTopLevelFolderIsReadFromAnotherFolderOnDisk()
+	{
+		const String root = "scratch_vfs_map";
+		RemoveDirectoryRecursive(root);
+		Test.Assert(CreateDirectory(root));
+		let sources = PathJoin(root, "Sources", .. scope .());
+		let code = PathJoin(root, "Code", .. scope .());
+		let disk = scope NativeFileSystem(".");
+		uint8[1] art = .(1);
+		uint8[2] script = .(2, 3);
+		uint8[1] hidden = .(9);
+		Test.Assert(disk.Save("scratch_vfs_map/Sources/Models/a.bin", .(&art[0], 1)) case .Ok);
+		Test.Assert(disk.Save("scratch_vfs_map/Code/Weapon.cs", .(&script[0], 2)) case .Ok);
+		Test.Assert(disk.Save("scratch_vfs_map/Sources/Code/Old.cs", .(&hidden[0], 1)) case .Ok);
+
+		let project = scope NativeFileSystem(sources);
+		project.MapFolder("Code", code);
+		Test.Assert(project.Exists("Models/a.bin"));
+		Test.Assert(project.Exists("Code/Weapon.cs"));
+		Test.Assert(!project.Exists("Code/Old.cs"), "the folder of that name under Sources/ is hidden");
+		Test.Assert(project.FullPath("Code/Weapon.cs", .. scope .()) == PathJoin(code, "Weapon.cs", .. scope .()));
+		Test.Assert(project.FullPath("Code", .. scope .()) == code);
+		// A longer name is not it.
+		Test.Assert(project.FullPath("Codex/x.cs", .. scope .()) == PathJoin(sources, "Codex/x.cs", .. scope .()));
+
+		// Writes land in the mapped folder.
+		Test.Assert(project.Save("Code/Enemies/Enemy.cs", .(&script[0], 2)) case .Ok);
+		Test.Assert(disk.Exists("scratch_vfs_map/Code/Enemies/Enemy.cs"));
+
+		// The root lists Code once, and it is the mapped one.
+		{
+			let top = scope List<DirEntry>();
+			defer { for (var entry in ref top) entry.Dispose(); }
+			Test.Assert(project.Enumerate("", top) case .Ok);
+			int codes = 0;
+			for (let entry in top)
+			{
+				if (entry.Name == "Code")
+					codes++;
+			}
+			Test.Assert(codes == 1);
+			let inCode = scope List<DirEntry>();
+			defer { for (var entry in ref inCode) entry.Dispose(); }
+			Test.Assert(project.Enumerate("Code", inCode) case .Ok);
+			bool hasWeapon = false;
+			bool hasOld = false;
+			for (let entry in inCode)
+			{
+				hasWeapon = hasWeapon || (entry.Name == "Weapon.cs");
+				hasOld = hasOld || (entry.Name == "Old.cs");
+			}
+			Test.Assert(hasWeapon && !hasOld);
+		}
+
+		// A watch of the root sees a file added under the mapped folder.
+		let changes = project.ChangeSource;
+		changes.Track("");
+		Test.Assert(disk.Save("scratch_vfs_map/Code/New.cs", .(&script[0], 2)) case .Ok);
+		let changed = scope List<String>();
+		defer { ClearAndDeleteItems!(changed); }
+		changes.Poll(changed);
+		bool sawNew = false;
+		for (let path in changed)
+			sawNew = sawNew || (path == "Code/New.cs");
+		Test.Assert(sawNew);
+
+		Test.Assert(RemoveDirectoryRecursive(root));
+	}
 }

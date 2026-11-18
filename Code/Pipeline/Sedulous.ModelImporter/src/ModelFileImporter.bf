@@ -492,7 +492,7 @@ class ModelFileImporter : IFileImporter
 			{
 				defer delete previous;
 				if (let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(previous)) as Asset)
-					overwriteOwn = asset.FileName.Value == sourceFileName;
+					overwriteOwn = ImportPaths.FileNameOf(asset.FileName.Value) == sourceFileName;
 			}
 		}
 		else if (clash.Kind == .SameType)
@@ -502,17 +502,27 @@ class ModelFileImporter : IFileImporter
 			folderName.Set(free);
 		}
 
+		// Its files go in its own group's folder (the group it is about to claim, under the one
+		// it is imported into): the model file, its sidecars and its textures.
+		let placed = scope ImportContext(context.SourcesRoot);
+		placed.CopyFrom(context);
+		{
+			let groupFolder = scope String();
+			ImportPaths.GroupFolder(group, default, groupFolder);
+			PathJoin(groupFolder, folderName, placed.Folder);
+		}
+
 		let fileName = scope String();
 		if (deferredWrites != null)
 		{
 			// Named now (from what is there and the ledger), copied on the worker.
-			ImportPaths.SourcesNameFor(context, sourcePath, fileName, overwriteOwn);
+			ImportPaths.SourcesNameFor(placed, sourcePath, fileName, overwriteOwn);
 			let copy = new DeferredImportWrite();
 			copy.CopyFrom.Set(sourcePath);
-			PathJoin(context.SourcesRoot, fileName, copy.CopyTo);
+			placed.FileOf(fileName, copy.CopyTo);
 			deferredWrites.Add(copy);
 		}
-		else if (ImportPaths.CopyIntoSources(context, sourcePath, fileName, overwriteOwn) case .Err(let error))
+		else if (ImportPaths.CopyIntoSources(placed, sourcePath, fileName, overwriteOwn) case .Err(let error))
 		{
 			return .Err(error);
 		}
@@ -541,7 +551,7 @@ class ModelFileImporter : IFileImporter
 		ImportPaths.ExtensionLower(sourcePath, suffix);
 		let sidecarsCopied = suffix == "gltf";
 		if (sidecarsCopied)
-			GltfSidecars.Copy(sourcePath, context, deferredWrites);
+			GltfSidecars.Copy(sourcePath, placed, deferredWrites);
 
 		let stem = StringView(folderName); // the folder's and the manifest's name
 		let modelGroup = group.CreateGroup(stem);
@@ -574,7 +584,7 @@ class ModelFileImporter : IFileImporter
 		let textureGuids = scope List<Guid>();
 		if (opt.ImportTextures)
 		{
-			ModelImportTextures.Import(model, context, sidecarsCopied, modelGroup, opt,
+			ModelImportTextures.Import(model, placed, sidecarsCopied, modelGroup, opt,
 				textureGuids, claimed, deferredWrites);
 		}
 		else

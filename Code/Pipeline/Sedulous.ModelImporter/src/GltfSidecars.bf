@@ -14,31 +14,11 @@ namespace Sedulous.ModelImporter;
 /// spell.
 static class GltfSidecars
 {
-	/// Copies every relative reference from beside the original file into the sources tree.
-	///
-	/// A failure only warns: the import itself already succeeded from the original, and losing
-	/// one sidecar is not a reason to lose the model.
-	public static void Copy(StringView originalPath, ImportContext context,
-		List<DeferredImportWrite> deferredWrites)
+	/// The files a .gltf's text names beside it (its buffers' and images' relative "uri"s), each
+	/// once and in order, appended to `outUris` (the caller owns them). Data URIs and paths that
+	/// leave its folder (PathStaysInside) are not among them.
+	public static void Uris(StringView text, List<String> outUris)
 	{
-		let bytes = scope List<uint8>();
-		if (ReadFile(originalPath, bytes) case .Err)
-			return;
-
-		let text = StringView((char8*)bytes.Ptr, bytes.Count);
-
-		var dirEnd = 0;
-		for (int i = originalPath.Length; i > 0; --i)
-		{
-			let c = originalPath[i - 1];
-			if ((c == '/') || (c == '\\'))
-			{
-				dirEnd = i;
-				break;
-			}
-		}
-		let dir = originalPath.Substring(0, dirEnd);
-
 		// A plain text scan rather than a parse: the references live in string values under a
 		// known key, and the import has no reason to hold a whole JSON document in memory
 		// alongside the model it already loaded.
@@ -78,7 +58,51 @@ static class GltfSidecars
 				GlobalLog(.Warning, "Import: the glTF sidecar '{}' leaves the model's folder, so it is skipped", uri);
 				continue;
 			}
+			var seen = false;
+			for (let known in outUris)
+			{
+				if (known == uri)
+				{
+					seen = true;
+					break;
+				}
+			}
+			if (!seen)
+				outUris.Add(new String(uri));
+		}
+	}
 
+	/// Copies every relative reference from beside the original file into the sources tree, in
+	/// the import's folder (the model's own).
+	///
+	/// A failure only warns: the import itself already succeeded from the original, and losing
+	/// one sidecar is not a reason to lose the model.
+	public static void Copy(StringView originalPath, ImportContext context,
+		List<DeferredImportWrite> deferredWrites)
+	{
+		let bytes = scope List<uint8>();
+		if (ReadFile(originalPath, bytes) case .Err)
+			return;
+
+		let text = StringView((char8*)bytes.Ptr, bytes.Count);
+
+		var dirEnd = 0;
+		for (int i = originalPath.Length; i > 0; --i)
+		{
+			let c = originalPath[i - 1];
+			if ((c == '/') || (c == '\\'))
+			{
+				dirEnd = i;
+				break;
+			}
+		}
+		let dir = originalPath.Substring(0, dirEnd);
+
+		let uris = scope List<String>();
+		defer { ClearAndDeleteItems!(uris); }
+		Uris(text, uris);
+		for (let uri in uris)
+		{
 			let from = scope String(dir);
 			from.Append(uri);
 
@@ -97,7 +121,7 @@ static class GltfSidecars
 			{
 				let copy = new DeferredImportWrite();
 				copy.CopyFrom.Set(from);
-				PathJoin(context.SourcesRoot, uri, copy.CopyTo);
+				context.FileOf(context.InFolder(uri, .. scope .()), copy.CopyTo);
 				deferredWrites.Add(copy);
 				continue;
 			}
@@ -107,7 +131,7 @@ static class GltfSidecars
 				continue; // unreadable rather than absent, and the model worked without it
 
 			let target = scope String();
-			PathJoin(context.SourcesRoot, uri, target);
+			context.FileOf(context.InFolder(uri, .. scope .()), target);
 			// A NESTED reference, which "textures/x.jpg" is, needs its parents made first.
 			let slash = target.LastIndexOf('/');
 			if (slash > 0)
