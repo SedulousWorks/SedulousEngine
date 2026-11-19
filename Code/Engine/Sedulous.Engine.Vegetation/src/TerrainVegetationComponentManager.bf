@@ -51,6 +51,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		public AABB LocalBounds = AABB.Empty();
 		public Float3 WorldCenter = .(0, 0, 0);
 		public float WorldRadius = 0.0f;
+		public AABB WorldBounds = AABB.Empty();
 	}
 
 	/// One layer entity's cache.
@@ -302,6 +303,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		}
 		set.WorldCenter = world.Center();
 		set.WorldRadius = Length(world.Extents());
+		set.WorldBounds = world;
 		set.Version = ++mNextVersion; // the renderer re-uploads the set's buffer on a version change
 	}
 
@@ -589,6 +591,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			rd.SubmeshMaterialCount = multiMaterial ? (uint32)cache.Materials.Count : 0;
 			rd.WorldCenter = set.WorldCenter;
 			rd.WorldRadius = set.WorldRadius;
+			rd.WorldBounds = set.WorldBounds;
 			rd.EntityId = RenderExtract.PackEntity(owner);
 			rd.Category = RenderCategories.CategoryForMaterial(material);
 			rd.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(mesh),

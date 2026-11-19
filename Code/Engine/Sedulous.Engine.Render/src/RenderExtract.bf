@@ -127,6 +127,7 @@ static class RenderExtract
 			localBounds = posed;
 		data.WorldCenter = TransformPoint(localBounds.Center(), data.World);
 		data.WorldRadius = WorldBoundsRadius(localBounds, data.World);
+		data.WorldBounds = TransformAABB(localBounds, data.World);
 		data.Color = ToLinear(component.Color); // authored sRGB to linear render data
 		data.Mesh = component.Mesh.Get;
 		data.Material = primary;

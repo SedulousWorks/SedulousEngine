@@ -156,23 +156,78 @@ static class ShadowMath
 		return cascades;
 	}
 
-	/// What of a view receives its directional shadows: its frustum from the near plane to
-	/// `shadowDistance`, the depth the cascades cover (measured as ComputeCascades measures it),
-	/// with the planes pointing outward. The far plane is the cut at that depth, not the camera's.
-	public static BoundingFrustum ShadowReceiverFrustum(ViewCamera camera, float shadowDistance)
+	/// The share of a cascade's depth range, at its far end, over which the shader blends toward
+	/// the next cascade: a receiver there samples both. Matches SampleCSM in lighting.hlsli.
+	public const float CascadeBlendBand = 0.15f;
+
+	/// The view depths cascade `c` of `cascades` shades, as SampleCSM picks it: its own slice,
+	/// and the blend band at the far end of the slice before (a receiver there samples this one
+	/// too). `cameraNear` is the view's near plane, where the first slice starts.
+	public static void CascadeReceiverDepths(ShadowCascades cascades, float cameraNear, int c, out float outNear, out float outFar)
+	{
+		outFar = cascades.SplitFar[c];
+		if (c == 0)
+		{
+			outNear = cameraNear;
+			return;
+		}
+		let prevFar = cascades.SplitFar[c - 1];
+		let prevNear = (c == 1) ? 0.0f : cascades.SplitFar[c - 2];
+		outNear = Max(cameraNear, prevFar - (prevFar - prevNear) * CascadeBlendBand);
+	}
+
+	/// The part of a view between two of its view depths (the depth the shader compares with
+	/// the cascades' splits): its frustum with the near and far planes moved there, planes
+	/// pointing outward, the depths kept to what the view sees. The cuts are taken along the
+	/// view's own axis, between its projection's near and far planes, rather than from the
+	/// planes themselves, which an endless projection does not have.
+	public static BoundingFrustum ShadowSliceFrustum(ViewCamera camera, float nearDepth, float farDepth)
 	{
 		var frustum = BoundingFrustum(camera.ViewProjection);
 		let nearZ = camera.NearPlane;
-		let farZ = Max(nearZ + 1.0f, shadowDistance);
-		let cameraFar = Max(farZ, camera.FarPlane);
+		let projectionFar = Max(camera.FarPlane, nearZ + 1e-3f);
 		let inverseViewProj = Inverse(camera.ViewProjection);
 		let nearCentre = UnprojectNDC(inverseViewProj, 0.0f, 0.0f, Projection.NdcDepthNear);
 		let farCentre = UnprojectNDC(inverseViewProj, 0.0f, 0.0f, Projection.NdcDepthFar);
-		let cut = nearCentre + (farCentre - nearCentre) * ((farZ - nearZ) / (cameraFar - nearZ));
-		// From the view's own axis rather than the projection's far plane, which an endless
-		// projection does not have.
-		frustum.Planes[1] = Plane.FromPointNormal(cut, Normalized(farCentre - nearCentre));
+		let axis = Normalized(farCentre - nearCentre);
+		Float3 At(float depth) => nearCentre + (farCentre - nearCentre) * ((Math.Clamp(depth, nearZ, projectionFar) - nearZ) / (projectionFar - nearZ));
+		frustum.Planes[1] = Plane.FromPointNormal(At(farDepth), axis);
+		if (nearDepth > nearZ)
+			frustum.Planes[0] = Plane.FromPointNormal(At(Min(nearDepth, farDepth)), -axis);
 		return frustum;
+	}
+
+	/// What of a view receives its directional shadows: its frustum from the near plane to
+	/// `shadowDistance`, the depth the cascades cover.
+	public static BoundingFrustum ShadowReceiverFrustum(ViewCamera camera, float shadowDistance)
+	{
+		return ShadowSliceFrustum(camera, camera.NearPlane, shadowDistance);
+	}
+
+	/// How far along the light a caster's shadow can still land on something: `reach` (the
+	/// furthest a cascade carries a shadow), cut short where the sweep of its sphere (xyz
+	/// centre, w radius) along `lightDir` (unit) leaves `receivers`, the bounds of everything the
+	/// scene draws. Past them there is nothing for the shadow to fall on: a tree's shadow ends at
+	/// the ground, not hundreds of metres beyond it. Invalid bounds (nothing drawn) leave
+	/// `reach` as it is.
+	public static float ShadowSweepLength(Float4 sphere, Float3 lightDir, float reach, AABB receivers)
+	{
+		if (!receivers.IsValid())
+			return reach;
+		let r = sphere.W;
+		float[3] centre = .(sphere.X, sphere.Y, sphere.Z);
+		float[3] direction = .(lightDir.X, lightDir.Y, lightDir.Z);
+		float[3] lo = .(receivers.Min.X - r, receivers.Min.Y - r, receivers.Min.Z - r);
+		float[3] hi = .(receivers.Max.X + r, receivers.Max.Y + r, receivers.Max.Z + r);
+		var exit = reach;
+		for (int a < 3)
+		{
+			if (direction[a] > 1e-6f)
+				exit = Min(exit, (hi[a] - centre[a]) / direction[a]);
+			else if (direction[a] < -1e-6f)
+				exit = Min(exit, (lo[a] - centre[a]) / direction[a]);
+		}
+		return Math.Clamp(exit, 0.0f, reach);
 	}
 
 	/// Whether a directional light's caster can shadow what the view receives shadows on. A

@@ -261,6 +261,7 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 		// is still visible.
 		data.WorldCenter = TransformPoint(cache.LocalBounds.Center(), data.ChunkToWorld);
 		data.WorldRadius = Length(cache.LocalBounds.Extents());
+		data.WorldBounds = TransformAABB(cache.LocalBounds, data.ChunkToWorld);
 	}
 
 	private void ExtractMaterial(TerrainResource resource, TerrainRenderData data)

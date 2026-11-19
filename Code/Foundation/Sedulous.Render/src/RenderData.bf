@@ -33,6 +33,11 @@ class RenderData
 	public Float3 WorldCenter = .(0, 0, 0);
 	/// The bounding radius about that point, which is what the view frustum culls against.
 	public float WorldRadius = 0.0f;
+	/// The world space box, where the producer knows one tighter than the sphere: a mesh's
+	/// bounds through its transform, a vegetation chunk's or a terrain's. Empty: the sphere
+	/// stands for it. Where shadows can land is built from these (a flat ground's sphere would
+	/// reach far below it).
+	public AABB WorldBounds = AABB.Empty();
 	/// Folds a mesh and material identity into the sort, so same state draws stay contiguous.
 	/// Opaque work only: blended work zeroes it, since depth has to dominate there.
 	public uint32 SortBatchKey = 0;

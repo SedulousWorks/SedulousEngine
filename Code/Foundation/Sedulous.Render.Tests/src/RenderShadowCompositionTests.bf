@@ -336,4 +336,114 @@ class RenderShadowCompositionTests
 		Test.Assert(info.Length == 1);
 		Test.Assert(info[0].DirectionalCasters == 0, "a view turned to the sky keeps none");
 	}
+
+	private static MeshRenderData AddCaster(ExtractedScene scene, StaticMesh mesh, Material material, Float3 place, float radius)
+	{
+		let data = scene.Add<MeshRenderData>();
+		data.World = Float4x4.Translation(place);
+		data.Mesh = mesh;
+		data.Material = material;
+		data.Category = RenderCategories.Opaque;
+		data.WorldCenter = place;
+		data.WorldRadius = radius;
+		return data;
+	}
+
+	/// Each cascade draws only the casters whose shadow lands on its slice. A camera looking
+	/// down -Z over 100 m, the sun straight down: a caster 5 m in front shadows the first slice
+	/// alone, one 65 m out the last alone, so each is drawn into its own cascade, not all four.
+	[Test]
+	public static void EachCascadeDrawsOnlyTheCastersWhoseShadowLandsOnItsSlice()
+	{
+		let fixture = scope RenderFrameFixture(128, 128);
+		if (!fixture.Ready)
+			return;
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(meshRenderer);
+		let shadows = scope ShadowSystem(fixture.Device, 2);
+		Test.Assert(shadows.Initialize() case .Ok);
+		let frame = scope RenderFrame(fixture.Device, registry, 2, null, null, shadows);
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MakeLitMaterial();
+		defer delete material;
+
+		let scene = scope ExtractedScene();
+		AddCaster(scene, cube, material, .(0, 0, 0), 1.0f);
+		AddCaster(scene, cube, material, .(0, 0, -60), 1.0f);
+		var directional = DirectionalShadow();
+		directional.Direction = .(0, -1, 0);
+		directional.Valid = true;
+		scene.SetDirectionalShadow(directional);
+
+		let camera = RenderFrameFixture.LookingAtTheOrigin();
+		frame.Begin(fixture.Encoder, 0);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.End();
+
+		let info = frame.ViewShadowInfo;
+		Test.Assert(info.Length == 1);
+		Test.Assert(info[0].DirectionalCasters == 2);
+		Test.Assert(info[0].CascadeCasters[0] == 1, "the near one");
+		Test.Assert(info[0].CascadeCasters[1] == 0);
+		Test.Assert(info[0].CascadeCasters[2] == 0);
+		Test.Assert(info[0].CascadeCasters[3] == 1, "the far one");
+	}
+
+	/// A shadow ends at the ground's box, not its sphere. A flat ground 200 m across (it casts
+	/// nothing) and a grass tuft on it about 40 m ahead of a camera looking down over it, the sun
+	/// shining away from the camera. The ground's sphere reaches 141 m below it, its box 0.1 m:
+	/// swept to the sphere's bottom, the tuft's shadow would run deep into the furthest cascade;
+	/// to the box's, it stays in its own slice.
+	[Test]
+	public static void AShadowEndsAtTheGroundsBoxNotItsSphere()
+	{
+		let fixture = scope RenderFrameFixture(128, 128);
+		if (!fixture.Ready)
+			return;
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(meshRenderer);
+		let shadows = scope ShadowSystem(fixture.Device, 2);
+		Test.Assert(shadows.Initialize() case .Ok);
+		let frame = scope RenderFrame(fixture.Device, registry, 2, null, null, shadows);
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MakeLitMaterial();
+		defer delete material;
+
+		let eye = Float3(0.0f, 30.0f, 0.0f);
+		let forward = Normalized(Float3(0.0f, -0.563f, -0.826f));
+		let scene = scope ExtractedScene();
+		let ground = AddCaster(scene, cube, material, .(0, 0, 0), Length(Float3(100.0f, 0.1f, 100.0f)));
+		ground.CastShadows = false;
+		ground.WorldBounds = AABB(.(-100.0f, -0.1f, -100.0f), .(100.0f, 0.1f, 100.0f));
+		var tuft = eye + forward * 35.0f;
+		tuft.Y = 0.5f;
+		AddCaster(scene, cube, material, tuft, 0.5f);
+		var directional = DirectionalShadow();
+		directional.Direction = Normalized(Float3(-0.55f, -0.62f, -0.56f));
+		directional.Valid = true;
+		scene.SetDirectionalShadow(directional);
+
+		var camera = ViewCamera();
+		camera.View = Float4x4.LookAtRH(eye, eye + forward, .(0, 1, 0));
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, 1.0f, 0.1f, 200.0f);
+		camera.FarZ = 200.0f;
+		camera.Position = eye;
+		frame.Begin(fixture.Encoder, 0);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.End();
+
+		let info = frame.ViewShadowInfo;
+		Test.Assert(info.Length == 1);
+		Test.Assert(info[0].DirectionalCasters == 1);
+		Test.Assert(info[0].CascadeCasters[1] == 1, "its slice: about 40 m out");
+		Test.Assert(info[0].CascadeCasters[3] == 0, "not the furthest");
+	}
 }

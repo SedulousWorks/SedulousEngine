@@ -148,10 +148,16 @@ class RenderFrame
 	private List<AtlasDraw> mStaticRenderDraws = new .() ~ delete _;
 	/// The per tile culled subset, reused.
 	private List<DrawItem> mShadowCullScratch = new .() ~ delete _;
-	/// Per shadow view, the scene's casters whose shadow can reach it and their bounds, aligned:
-	/// what its cascades cull from. Filled as the cascades are declared, read as they record.
-	private List<DrawItem>[ShadowSystem.MaxShadowViews] mViewCasters = .(new .(), new .(), new .(), new .()) ~ { for (let list in _) delete list; };
-	private List<Float4>[ShadowSystem.MaxShadowViews] mViewCasterBounds = .(new .(), new .(), new .(), new .()) ~ { for (let list in _) delete list; };
+	/// Per shadow view and cascade (view * ShadowCascades.Count + cascade), the scene's casters
+	/// whose shadow can land on what that cascade shades, and their bounds, aligned: what it draws
+	/// (after its own frustum cull). Filled as the cascades are declared, read as they record.
+	private List<List<DrawItem>> mCascadeCasters = new .() ~ DeleteContainerAndItems!(_);
+	private List<List<Float4>> mCascadeCasterBounds = new .() ~ DeleteContainerAndItems!(_);
+	/// The profiler's counters of them, over the frame's views: the casters whose shadow reaches
+	/// a view ("Shadow casters"), then those each cascade draws ("Shadow casters cascade N").
+	private uint32[1 + ShadowCascades.Count] mShadowCounterIds = default;
+	private Sedulous.Profiler.Profiler mShadowCountersProfiler = null;
+	private double[1 + ShadowCascades.Count] mShadowCasterSums = default;
 
 	private List<ViewShadowDebug> mViewShadowDebug = new .() ~ delete _;
 	private List<ShadowBinding> mViewShadows = new .() ~ delete _;
@@ -672,6 +678,29 @@ class RenderFrame
 	/// Builds a scene's camera INDEPENDENT caster list, opaque and masked, grouped so the depth
 	/// pass batches. Shared by that scene's cascades and its local tiles alike, which is what
 	/// keeps view frustum culling from ever dropping a caster whose shadow is visible.
+	/// The profiler's counters of the casters a view's shadows draw (set as each view adds its
+	/// share: the frame keeps the last, the total), which show how many each cascade draws.
+	private void CountShadowCasters(uint32 reaching, int view, uint32 cascadeCount)
+	{
+		if (!HasGlobalProfiler())
+			return;
+		let profiler = GlobalProfiler();
+		if (mShadowCountersProfiler !== profiler)
+		{
+			mShadowCounterIds[0] = profiler.RegisterCounter("Shadow casters", .Count);
+			for (int c < ShadowCascades.Count)
+				mShadowCounterIds[1 + c] = profiler.RegisterCounter(scope String()..AppendF("Shadow casters cascade {}", c + 1), .Count);
+			mShadowCountersProfiler = profiler;
+		}
+		mShadowCasterSums[0] += (double)reaching;
+		profiler.SetCounter(mShadowCounterIds[0], mShadowCasterSums[0]);
+		for (uint32 c = 0; c < cascadeCount; c++)
+		{
+			mShadowCasterSums[1 + c] += (double)mCascadeCasters[view * ShadowCascades.Count + (int)c].Count;
+			profiler.SetCounter(mShadowCounterIds[1 + c], mShadowCasterSums[1 + c]);
+		}
+	}
+
 	private void BuildShadowCasterList(ExtractedScene scene, SceneShadowContext context)
 	{
 		context.Casters.Clear();
@@ -693,8 +722,14 @@ class RenderFrame
 			if (data == null)
 				continue;
 			// Everything drawn can receive a shadow, caster or not (a grass filler, a blended
-			// glass). Bounds that are not finite would make the box meaningless.
-			if (data.WorldRadius.IsFinite && data.WorldCenter.X.IsFinite && data.WorldCenter.Y.IsFinite
+			// glass): by its box where its producer gave one, which a flat ground keeps flat, else
+			// its sphere. Bounds that are not finite would make the box meaningless.
+			if (data.WorldBounds.IsValid())
+			{
+				context.ReceiverBounds.Expand(data.WorldBounds.Min);
+				context.ReceiverBounds.Expand(data.WorldBounds.Max);
+			}
+			else if (data.WorldRadius.IsFinite && data.WorldCenter.X.IsFinite && data.WorldCenter.Y.IsFinite
 				&& data.WorldCenter.Z.IsFinite)
 			{
 				let r = Float3(data.WorldRadius, data.WorldRadius, data.WorldRadius);
@@ -1269,6 +1304,13 @@ class RenderFrame
 		// barriered before the first sample.
 		mViewShadows.Clear();
 		mViewShadowDebug.Clear();
+		for (var sum in ref mShadowCasterSums)
+			sum = 0.0;
+		while (mCascadeCasters.Count < (int)ShadowSystem.MaxShadowViews * ShadowCascades.Count)
+		{
+			mCascadeCasters.Add(new .());
+			mCascadeCasterBounds.Add(new .());
+		}
 		for (int i < mViews.ActiveCount)
 		{
 			mViewShadows.Add(.());
@@ -1324,26 +1366,50 @@ class RenderFrame
 			// camera independent list, not this view's culled draw list, since an off camera
 			// caster can shadow what the view sees; but one whose shadow, swept along the light as
 			// far as a cascade carries it, misses everything the view receives shadows on is
-			// dropped here, once for all four cascades. The per cascade cull then keeps each one
-			// left to about one cascade.
-			let kept = mViewCasters[i];
-			let keptBounds = mViewCasterBounds[i];
+			// dropped here. Each cascade then draws only the casters whose shadow lands on what it
+			// shades: its slice of the view and the blend band before it (CascadeReceiverDepths).
+			// Without this every cascade whose box holds a forest draws all of it, four times over.
 			using (ProfileScope("shadow.viewCull"))
 			{
 				let receivers = ShadowMath.ShadowReceiverFrustum(view.Camera, distance);
 				let lightDir = Normalized(lightDirection);
-				kept.Clear();
-				keptBounds.Clear();
+				// A shadow lookup reaches past its texel (the PCF kernel, the normal offset): the
+				// caster's sphere is widened by that much in the cascade's texels.
+				BoundingFrustum[ShadowCascades.Count] slices = default;
+				float[ShadowCascades.Count] margins = default;
+				for (uint32 c = 0; c < cascadeCount; c++)
+				{
+					ShadowMath.CascadeReceiverDepths(cascades, view.Camera.NearPlane, (int)c, let nearDepth, let farDepth);
+					slices[c] = ShadowMath.ShadowSliceFrustum(view.Camera, nearDepth, farDepth);
+					margins[c] = cascades.TexelWorldSize[c] * (2.0f + cascades.NormalBias);
+					mCascadeCasters[i * ShadowCascades.Count + (int)c].Clear();
+					mCascadeCasterBounds[i * ShadowCascades.Count + (int)c].Clear();
+				}
+				uint32 reaching = 0;
 				for (int k < context.Casters.Count)
 				{
 					let casterBounds = context.CasterBounds[k];
-					if (ShadowMath.CasterShadowReachesView(receivers, lightDir, cascades.CasterReach, casterBounds))
+					// Its shadow runs along the light no further than the scene's bounds: past
+					// them there is nothing to land on (a tree's shadow ends at the ground).
+					let sweep = ShadowMath.ShadowSweepLength(casterBounds, lightDir, cascades.CasterReach, context.ReceiverBounds);
+					if (!ShadowMath.CasterShadowReachesView(receivers, lightDir, sweep, casterBounds))
+						continue;
+					reaching++;
+					for (uint32 c = 0; c < cascadeCount; c++)
 					{
-						kept.Add(context.Casters[k]);
-						keptBounds.Add(casterBounds);
+						let widened = Float4(casterBounds.X, casterBounds.Y, casterBounds.Z, casterBounds.W + margins[c]);
+						if (cascades.HasReceivers[c]
+							&& ShadowMath.CasterShadowReachesView(slices[c], lightDir, sweep + margins[c], widened))
+						{
+							mCascadeCasters[i * ShadowCascades.Count + (int)c].Add(context.Casters[k]);
+							mCascadeCasterBounds[i * ShadowCascades.Count + (int)c].Add(casterBounds);
+						}
 					}
 				}
-				mViewShadowDebug[i].DirectionalCasters = (uint32)kept.Count;
+				mViewShadowDebug[i].DirectionalCasters = reaching;
+				for (uint32 c = 0; c < cascadeCount; c++)
+					mViewShadowDebug[i].CascadeCasters[c] = (uint32)mCascadeCasters[i * ShadowCascades.Count + (int)c].Count;
+				CountShadowCasters(reaching, i, cascadeCount);
 			}
 
 			for (uint32 c = 0; c < cascadeCount; c++)
@@ -1352,6 +1418,8 @@ class RenderFrame
 				let layer = layerBase + c;
 				// Still cleared when it has nothing to shadow, so its layer never holds an old frame.
 				let draws = cascades.HasReceivers[c];
+				let kept = mCascadeCasters[i * ShadowCascades.Count + (int)c];
+				let keptBounds = mCascadeCasterBounds[i * ShadowCascades.Count + (int)c];
 
 				mGraph.AddRenderPass("shadow.cascade", scope (builder) =>
 					{

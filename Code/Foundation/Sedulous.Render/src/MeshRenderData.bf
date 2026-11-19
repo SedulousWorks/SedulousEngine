@@ -88,6 +88,7 @@ class MeshRenderData : RenderData
 		Kind = other.Kind;
 		WorldCenter = other.WorldCenter;
 		WorldRadius = other.WorldRadius;
+		WorldBounds = other.WorldBounds;
 		SortBatchKey = other.SortBatchKey;
 		CastShadows = other.CastShadows;
 		EntityId = other.EntityId;

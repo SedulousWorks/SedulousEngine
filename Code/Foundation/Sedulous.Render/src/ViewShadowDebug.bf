@@ -13,6 +13,8 @@ struct ViewShadowDebug
 	/// Of the scene's casters, those whose shadow can reach this view
 	/// (ShadowMath.CasterShadowReachesView): what its cascades draw from.
 	public uint32 DirectionalCasters = 0;
+	/// Of those, the ones each cascade draws: whose shadow can land on what it shades.
+	public uint32[ShadowCascades.Count] CascadeCasters = .(0, 0, 0, 0);
 	/// Of its cascades, those whose slice holds anything the scene draws (the others draw no
 	/// casters).
 	public uint32 CascadesWithReceivers = 0;

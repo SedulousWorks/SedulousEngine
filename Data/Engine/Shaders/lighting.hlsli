@@ -94,7 +94,7 @@ float SampleCSM(float3 worldPos, float3 N, float NdotL, float viewDepth) {
 
     float splitFar  = CascadeSplitFar[cascade];
     float splitNear = (cascade == 0) ? 0.0 : CascadeSplitFar[cascade - 1];
-    float blendBand = (splitFar - splitNear) * 0.15;
+    float blendBand = (splitFar - splitNear) * 0.15; // ShadowMath.CascadeBlendBand: its culling counts on it
     if (cascade < count - 1 && viewDepth > splitFar - blendBand) {
         float t = saturate((viewDepth - (splitFar - blendBand)) / max(blendBand, 1e-4));
         shadow = lerp(shadow, SampleCascade(cascade + 1, worldPos, N, NdotL), t);

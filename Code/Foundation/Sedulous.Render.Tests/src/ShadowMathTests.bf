@@ -544,4 +544,51 @@ class ShadowMathTests
 			Test.Assert(Near(none.TexelWorldSize[c], slices.TexelWorldSize[c], 0.0001f));
 		}
 	}
+
+	/// A cascade shades its slice and the blend band before it, where SampleCSM blends into it.
+	[Test]
+	public static void ACascadeShadesItsSliceAndTheBlendBandBeforeIt()
+	{
+		var cascades = ShadowCascades();
+		cascades.SplitFar = .(10.0f, 30.0f, 60.0f, 100.0f);
+		ShadowMath.CascadeReceiverDepths(cascades, 0.1f, 0, var nearDepth, var farDepth);
+		Test.Assert(Near(nearDepth, 0.1f, 0.0001f), "the first starts at the view's near plane");
+		Test.Assert(Near(farDepth, 10.0f, 0.0001f));
+		ShadowMath.CascadeReceiverDepths(cascades, 0.1f, 1, out nearDepth, out farDepth);
+		Test.Assert(Near(nearDepth, 10.0f - 10.0f * ShadowMath.CascadeBlendBand, 0.0001f));
+		Test.Assert(Near(farDepth, 30.0f, 0.0001f));
+		ShadowMath.CascadeReceiverDepths(cascades, 0.1f, 3, out nearDepth, out farDepth);
+		Test.Assert(Near(nearDepth, 60.0f - 30.0f * ShadowMath.CascadeBlendBand, 0.0001f));
+		Test.Assert(Near(farDepth, 100.0f, 0.0001f));
+
+		// A slice of the view: a point between its depths is inside, one nearer or further is not.
+		var camera = ViewCamera();
+		camera.View = Float4x4.LookAtRH(.(0, 0, 0), .(0, 0, -1), .(0, 1, 0));
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, 1.0f, 0.1f, 250.0f);
+		let slice = ShadowMath.ShadowSliceFrustum(camera, 30.0f, 60.0f);
+		Test.Assert(slice.Contains(.(0, 0, -45)) != .Disjoint);
+		Test.Assert(slice.Contains(.(0, 0, -20)) == .Disjoint);
+		Test.Assert(slice.Contains(.(0, 0, -70)) == .Disjoint);
+	}
+
+	/// A shadow runs along the light no further than the scene's bounds.
+	[Test]
+	public static void AShadowRunsAlongTheLightNoFurtherThanTheScenesBounds()
+	{
+		// A forest 200 m across, from the ground (0) to the treetops (20 m).
+		let scene = AABB(.(-100.0f, 0.0f, -100.0f), .(100.0f, 20.0f, 100.0f));
+		let reach = 480.0f; // what the cascades alone would allow
+		// Straight down from 10 m up (radius 1): to the ground, and its own radius past it.
+		Test.Assert(Near(ShadowMath.ShadowSweepLength(.(0, 10, 0, 1), .(0, -1, 0), reach, scene), 11.0f, 0.001f));
+		// Sideways from the middle: to the far side of the scene, not the cascades' whole reach.
+		Test.Assert(Near(ShadowMath.ShadowSweepLength(.(0, 10, 0, 1), .(1, 0, 0), reach, scene), 101.0f, 0.001f));
+		// A low sun: whichever bound the sweep meets first.
+		let low = Normalized(Float3(1.0f, -0.5f, 0.0f));
+		let expected = 11.0f / 0.5f * Length(Float3(1.0f, -0.5f, 0.0f));
+		Test.Assert(Near(ShadowMath.ShadowSweepLength(.(0, 10, 0, 1), low, reach, scene), expected, expected * 0.001f));
+		// Already past the scene along the light: nothing left for its shadow to land on.
+		Test.Assert(Near(ShadowMath.ShadowSweepLength(.(0, -50, 0, 1), .(0, -1, 0), reach, scene), 0.0f, 0.0001f));
+		// A scene with no bounds leaves the cascades' reach.
+		Test.Assert(Near(ShadowMath.ShadowSweepLength(.(0, 10, 0, 1), .(0, -1, 0), reach, AABB.Empty()), reach, 0.0001f));
+	}
 }
