@@ -361,9 +361,16 @@ class EditorSession
 		let cooked = mProject.CookedDb;
 		bool Ready(Guid id) => id.IsSet && (cooked.GetInstance(id) != null);
 		let fontId = mProject.Settings.DefaultUiFontId;
+		// A hold per font bound: the GUI's font service points into each product.
+		let owners = scope List<SharedObject>();
+		defer { for (let owner in owners) owner.Release(); }
 		Font defaultFont = null;
 		if (Ready(fontId))
-			defaultFont = mResources.Bind<Font>(fontId).Get;
+		{
+			let proxy = mResources.Bind<Font>(fontId);
+			owners.Add(new ResourceHold(proxy.Handle));
+			defaultFont = proxy.Get;
+		}
 		// The other UI fonts, each a family beside the default; always set, so one taken off the
 		// list leaves the game GUI too.
 		let extras = scope List<Font>();
@@ -371,14 +378,18 @@ class EditorSession
 		{
 			if (!Ready(id))
 				continue;
-			if (let font = mResources.Bind<Font>(id).Get)
+			let proxy = mResources.Bind<Font>(id);
+			if (let font = proxy.Get)
+			{
 				extras.Add(font);
+				owners.Add(new ResourceHold(proxy.Handle));
+			}
 		}
 		// The engine GUI takes the fonts, and the project's sheets in order (a sheet not
 		// cooked yet resolves once it is: the cook finished callback lands here again).
 		if (app.Gui != null)
 		{
-			app.Gui.SetFonts(defaultFont, extras);
+			app.Gui.SetFonts(defaultFont, extras, owners);
 			app.Gui.SetStyleSheets(mProject.Settings.GuiStyleSheetIds);
 		}
 	}

@@ -271,6 +271,36 @@ class GuiSubsystemTests
 		Test.Assert(engine.Gui.Fonts.GetDefaultFontFamily(.. scope String()) == "Heading", "the new service's");
 	}
 
+	/// A stand-in for a font's ResourceHold: counts the references the GUI keeps.
+	private class CountedOwner : SharedObject
+	{
+	}
+
+	/// The owners given with the fonts are held by the service made from them, still held once it
+	/// is retired (labels may hold its fonts), and let go when the GUI goes.
+	[Test]
+	public static void TheFontServiceHoldsTheFontsOwnersWhileItLives()
+	{
+		let body = scope Font();
+		MakeFontProduct(body, "Body");
+		let heading = scope Font();
+		MakeFontProduct(heading, "Heading");
+		let first = new CountedOwner();
+		let second = new CountedOwner();
+		defer { first.Release(); second.Release(); }
+		{
+			let engine = scope GuiTestEngine();
+			SharedObject[1] firstOwners = .(first);
+			engine.Gui.SetFonts(body, .(), firstOwners);
+			Test.Assert(first.RefCount == 2, "the service holds it");
+			SharedObject[1] secondOwners = .(second);
+			engine.Gui.SetFonts(heading, .(), secondOwners);
+			Test.Assert(second.RefCount == 2);
+			Test.Assert(first.RefCount == 2, "the retired service still holds it");
+		}
+		Test.Assert((first.RefCount == 1) && (second.RefCount == 1), "let go with the GUI");
+	}
+
 	/// A window drawn pre-rotated (a phone held landscape, its display presenting a quarter turn):
 	/// the screen is placed in the window's space, where the pointer is, and drawn onto the target
 	/// turned with the window, so it lands where the display shows it upright.

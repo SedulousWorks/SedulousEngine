@@ -17,6 +17,7 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
 using Sedulous.Fonts.Resource;
 using Sedulous.Input.Resource;
+using Sedulous.Resource;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
@@ -472,10 +473,15 @@ class PlayerApplication : DefaultApplication
 		if ((Gui == null) || (Resources == null))
 			return;
 
+		// A hold per font bound: the GUI's font service points into each product.
+		let owners = scope List<SharedObject>();
+		defer { for (let owner in owners) owner.Release(); }
 		Font defaultFont = null;
 		if (mSettings.DefaultUiFontId != Guid())
 		{
-			defaultFont = Resources.Bind<Font>(mSettings.DefaultUiFontId).Get;
+			let proxy = Resources.Bind<Font>(mSettings.DefaultUiFontId);
+			owners.Add(new ResourceHold(proxy.Handle));
+			defaultFont = proxy.Get;
 			if (defaultFont != null)
 				GlobalLog(.Information, "Player: default UI font bound");
 			else
@@ -486,12 +492,16 @@ class PlayerApplication : DefaultApplication
 		let others = scope List<Font>();
 		for (let id in mSettings.UiFontIds)
 		{
-			if (let font = Resources.Bind<Font>(id).Get)
+			let proxy = Resources.Bind<Font>(id);
+			if (let font = proxy.Get)
+			{
 				others.Add(font);
+				owners.Add(new ResourceHold(proxy.Handle));
+			}
 			else
 				GlobalLog(.Warning, "Player: UI font {} did not resolve", id);
 		}
-		Gui.SetFonts(defaultFont, others);
+		Gui.SetFonts(defaultFont, others, owners);
 		Gui.SetStyleSheets(mSettings.GuiStyleSheetIds);
 	}
 

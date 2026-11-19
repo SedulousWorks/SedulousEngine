@@ -20,10 +20,26 @@ class ResourceFontService : IFontService
 {
 	private List<ServiceEntry> mEntries = new .() ~ delete _;
 	private String mDefaultFamily = new .() ~ delete _;
+	/// What keeps the fonts' products loaded while this service points into them (Hold), a
+	/// reference of ours each.
+	private List<SharedObject> mHolds = new .() ~ delete _;
 
 	public ~this()
 	{
 		Clear();
+		for (let hold in mHolds)
+			hold.Release();
+	}
+
+	/// Keeps `owner` (a font product's ResourceHold) for as long as this service lives: its entries
+	/// point into the product's tables, and a service retired while labels still hold its fonts
+	/// lives on. A reference of its own is taken.
+	public void Hold(SharedObject owner)
+	{
+		if (owner == null)
+			return;
+		owner.AddRef();
+		mHolds.Add(owner);
 	}
 
 	public void Clear()

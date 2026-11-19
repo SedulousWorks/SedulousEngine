@@ -180,9 +180,10 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 
 	/// The project's fonts (defaultUiFontId, uiFontIds): the
 	/// default and the others, each a family a label picks by `font-family`. Without a default the
-	/// built-in font serves (the others wait for one). The products are BORROWED: the resource
-	/// manager's cache keeps them alive.
-	public void SetFonts(Font defaultFont, Span<Font> others)
+	/// built-in font serves (the others wait for one). The products are BORROWED; `owners` keep
+	/// them loaded (each a ResourceHold the caller made from the font's handle), the service made
+	/// from them taking a reference to each for as long as it lives.
+	public void SetFonts(Font defaultFont, Span<Font> others, Span<SharedObject> owners = default)
 	{
 		// The same fonts again (the editor sets them after every cook): nothing to change.
 		if ((defaultFont == mDefaultFont) && SameFonts(others))
@@ -199,6 +200,8 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 		if (mDefaultFont != null)
 		{
 			mProjectFonts = new ResourceFontService();
+			for (let owner in owners)
+				mProjectFonts.Hold(owner);
 			mProjectFonts.AddFont(mDefaultFont);
 			mProjectFonts.SetDefaultFamily(mDefaultFont.Family);
 			for (let font in mOtherFonts)
