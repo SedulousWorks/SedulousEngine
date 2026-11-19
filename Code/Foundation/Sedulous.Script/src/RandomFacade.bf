@@ -7,7 +7,7 @@ namespace Sedulous.Script;
 /// run replays from a seed whatever else is drawing numbers in the process, which is the
 /// determinism seam a replay or a test wants.
 [Scriptable, ScriptService, DisplayName("Random")]
-class ScriptRandom
+class RandomFacade
 {
 	private Sedulous.Core.Random mRandom = .();
 

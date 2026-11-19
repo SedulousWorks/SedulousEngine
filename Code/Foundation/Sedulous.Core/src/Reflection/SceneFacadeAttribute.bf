@@ -8,7 +8,8 @@ namespace Sedulous.Core;
 /// so the script API is a layer of its own over the engine's: stable while the engine
 /// refactors, shaped for a script, and the owner of verbs that touch two systems.
 ///
-/// The class derives SceneFacade and is [Scriptable].
+/// The class derives SceneFacade and is [Scriptable]. Its name ends in Facade (PhysicsFacade);
+/// scripts see the attribute's name, so the class never reads like the engine type it wraps.
 [AttributeUsage(.Class, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct SceneFacadeAttribute : Attribute
 {
@@ -22,7 +23,8 @@ struct SceneFacadeAttribute : Attribute
 
 /// A script facade over the run: a Service role object reached by a global handle of
 /// this name, installed on the run's runtime by the application, which knows what it
-/// wraps. `[ScriptService, DisplayName("Audio")]` said the same in two attributes.
+/// wraps. `[ScriptService, DisplayName("Audio")]` said the same in two attributes. The class's
+/// name ends in Facade (AudioFacade), as a scene facade's does.
 [AttributeUsage(.Class, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct ServiceFacadeAttribute : Attribute
 {

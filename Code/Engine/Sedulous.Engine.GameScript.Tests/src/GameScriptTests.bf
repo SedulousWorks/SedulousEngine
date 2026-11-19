@@ -909,7 +909,7 @@ static class GameScriptTests
 		let surface = run.Surface;
 		let idleInput = scope InputFacade(null);
 		let idleSave = scope SaveFacade(null);
-		let appOnly = scope ScriptRandom();
+		let appOnly = scope RandomFacade();
 		// What the subsystems do: offer the idle services on the application's.
 		let application = scope SubsystemManager();
 		application.RegisterService(idleInput);
@@ -931,7 +931,7 @@ static class GameScriptTests
 		Test.Assert(context.FindService(typeof(InputFacade)) === run.Instance.[Friend]mInputFacade, "the run's Input");
 		Test.Assert(context.FindService(typeof(SaveFacade)) === run.Instance.[Friend]mSaveFacade, "the run's Save");
 		Test.Assert(context.FindService(typeof(ApplicationRun)) === run.Instance, "and Run");
-		Test.Assert(context.FindService(typeof(ScriptRandom)) === run.Instance.RunHost.Random, "the context's own first");
+		Test.Assert(context.FindService(typeof(RandomFacade)) === run.Instance.RunHost.Random, "the context's own first");
 
 		// The run gone (disposed: its services with it), its scripts find the application's.
 		run.Instance.Dispose();

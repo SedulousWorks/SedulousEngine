@@ -29,7 +29,7 @@ class ScriptRunHost
 
 	private ScriptRuntime mRuntime = null ~ delete _;
 	/// OWNED: this run's random numbers, `Random` to a script; seedable by the owner.
-	private ScriptRandom mRandom = new .() ~ delete _;
+	private RandomFacade mRandom = new .() ~ delete _;
 	/// BORROWED: the services the owner installed on this host, by exact type, which its scripts
 	/// find first (FindService).
 	private List<(Type type, Object service)> mServices = new .() ~ delete _;
@@ -109,7 +109,7 @@ class ScriptRunHost
 	private bool mWarnedLanguage = false;
 
 	public ScriptRuntime Runtime => mRuntime;
-	public ScriptRandom Random => mRandom;
+	public RandomFacade Random => mRandom;
 
 	/// A game script running on this host pins it: no teardown while it lives. Set by the
 	/// application run that launched it.
