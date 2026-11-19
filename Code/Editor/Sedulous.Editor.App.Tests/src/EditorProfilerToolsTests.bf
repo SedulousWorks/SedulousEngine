@@ -51,14 +51,26 @@ class EditorProfilerToolsTests
 		return seams;
 	}
 
-	/// One frame of the host: a scope, a counter, the frame's end and the recorder advanced.
-	private static void RunFrame(Sedulous.Profiler.Profiler profiler, CaptureRecorder recorder, uint32 counter, double value)
+	/// One frame of the host: a scope, a counter, the frame's end and the recorder advanced;
+	/// with `gpu`, a "shadow.cascade" GPU pass whose pipeline statistics are 1000 triangles, 1500
+	/// vertex shader runs and 4096 pixel shader runs.
+	private static void RunFrame(Sedulous.Profiler.Profiler profiler, CaptureRecorder recorder, uint32 counter, double value, bool gpu = false)
 	{
 		profiler.BeginFrame();
+		let frame = profiler.CurrentFrameNumber;
 		if (profiler.BeginScope("Work"))
 			profiler.EndScope();
 		profiler.SetCounter(counter, value);
 		profiler.EndFrame();
+		if (gpu)
+		{
+			var pass = GpuPassEvent(profiler.InternName("shadow.cascade"), 0, 0, 100, 200);
+			pass.HasCounts = true;
+			pass.Counts.InputPrimitives = 1000;
+			pass.Counts.VertexInvocations = 1500;
+			pass.Counts.FragmentInvocations = 4096;
+			profiler.SubmitGpuPasses(frame, .(&pass, 1));
+		}
 		recorder.OnFrameEnd(profiler);
 	}
 
@@ -160,5 +172,43 @@ class EditorProfilerToolsTests
 		defer delete failed;
 		Test.Assert(!failed.Ok);
 		Test.Assert(failed.Error.Contains("could not be written", true), failed.Error);
+	}
+
+	/// What tells a GPU pass limited by its triangles from one limited by its pixels: summed
+	/// over the capture, beside its time.
+	[Test]
+	public static void AGpuPassCarriesTheTrianglesAndShaderRunsItTook()
+	{
+		let profiler = scope Sedulous.Profiler.Profiler();
+		let recorder = scope CaptureRecorder();
+		recorder.SetApplication("ToolProbe");
+		let draws = profiler.RegisterCounter("Draws", .Count);
+		let server = scope McpServer();
+		EditorProfilerTools.Register(server, SeamsFor(profiler, recorder, "scratch_profiler_tool_gpu"));
+
+		let args = "{\"seconds\":0}";
+		Test.Assert(Pump(server, args, let first) == .NotFinished);
+		delete first;
+		Answer got = null;
+		var state = LineState.NotFinished;
+		for (uint32 frame < 20)
+		{
+			RunFrame(profiler, recorder, draws, 10.0, true);
+			state = Pump(server, args, out got);
+			if (state != .NotFinished)
+				break;
+		}
+		Test.Assert(state == .Answered);
+		defer delete got;
+		Test.Assert(got.Ok, got.Error);
+		let passes = got.Payload.Get("topGpuPasses");
+		Test.Assert(passes.Count == 1);
+		let cascade = passes.At(0);
+		Test.Assert(cascade.Get("name").AsString() == "shadow.cascade");
+		let count = cascade.Get("count").AsNumber();
+		Test.Assert(count >= 1.0);
+		Test.Assert(cascade.Get("triangles").AsNumber() == 1000.0 * count);
+		Test.Assert(cascade.Get("vertexShaderRuns").AsNumber() == 1500.0 * count);
+		Test.Assert(cascade.Get("pixelShaderRuns").AsNumber() == 4096.0 * count);
 	}
 }

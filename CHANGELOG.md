@@ -9,6 +9,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- MCP `profiler_capture` gives each GPU pass the triangles, vertex shader runs and pixel shader runs
+  it took over the capture, where the device counts them: a pass whose time follows its triangles
+  and not its pixels is bound by its geometry, and a lower resolution will not speed it up.
 - Editor: Preferences, Code chooses where code opens: the built-in editor (the default), VS Code, or
   a command of your own with `{file}`, `{line}`, `{column}` and `{folder}`. Opening a script from the
   Assets panel follows it; its menu's Open in Built-in Editor always opens the editor's own page.

@@ -46,6 +46,12 @@ static class EditorProfilerTools
 		public String Name = new .() ~ delete _;
 		public double Ms;
 		public int Count;
+		/// A GPU pass's pipeline statistics, summed over the capture, where the device counts
+		/// them: what tells a pass limited by its triangles from one limited by its pixels.
+		public bool HasCounts;
+		public uint64 Triangles;
+		public uint64 VertexShaderRuns;
+		public uint64 PixelShaderRuns;
 	}
 
 	private static void Add(List<Total> totals, StringView name, double ms)
@@ -66,6 +72,24 @@ static class EditorProfilerTools
 		totals.Add(total);
 	}
 
+	private static void AddPass(List<Total> totals, StringView name, double ms, GpuPassEvent pass)
+	{
+		Add(totals, name, ms);
+		if (!pass.HasCounts)
+			return;
+		for (let total in totals)
+		{
+			if (total.Name == name)
+			{
+				total.HasCounts = true;
+				total.Triangles += pass.Counts.InputPrimitives;
+				total.VertexShaderRuns += pass.Counts.VertexInvocations;
+				total.PixelShaderRuns += pass.Counts.FragmentInvocations;
+				return;
+			}
+		}
+	}
+
 	/// The longest by total first, the first cTopCount of them.
 	private static JsonValue Top(List<Total> totals)
 	{
@@ -77,6 +101,12 @@ static class EditorProfilerTools
 			row.Set("name", JsonValue.MakeString(totals[i].Name));
 			row.Set("totalMs", JsonValue.MakeNumber(totals[i].Ms));
 			row.Set("count", JsonValue.MakeNumber(totals[i].Count));
+			if (totals[i].HasCounts)
+			{
+				row.Set("triangles", JsonValue.MakeNumber((double)totals[i].Triangles));
+				row.Set("vertexShaderRuns", JsonValue.MakeNumber((double)totals[i].VertexShaderRuns));
+				row.Set("pixelShaderRuns", JsonValue.MakeNumber((double)totals[i].PixelShaderRuns));
+			}
 			output.Add(row);
 		}
 		return output;
@@ -115,7 +145,7 @@ static class EditorProfilerTools
 					Add(scopes, capture.NameOf(scopeEvent.Name), (double)(scopeEvent.EndTick - scopeEvent.BeginTick) * toMs);
 			}
 			for (let pass in frame.Gpu)
-				Add(passes, capture.NameOf(pass.Name), (double)(pass.EndTick - pass.BeginTick) * toMs);
+				AddPass(passes, capture.NameOf(pass.Name), (double)(pass.EndTick - pass.BeginTick) * toMs, pass);
 			for (let value in frame.Counters)
 			{
 				if (value.Counter < (uint32)counters.Length)
@@ -160,7 +190,7 @@ static class EditorProfilerTools
 		let schema = scope SchemaBuilder();
 		schema.Number("seconds", "How long to capture (default 3, at most 30).");
 		server.RegisterTool("profiler_capture",
-			"Capture the next few seconds of the running editor (its pages and any Play-in-editor game) with the profiler, and answer a summary: frame times (min, median, max), the CPU scopes and GPU passes that took longest over the capture, and each counter's average (draws, passes, GPU memory). The capture is written as a .aeprofile (the profile stream) and Chrome trace JSON beside it (Perfetto, chrome://tracing); both paths are in the answer. The call lasts the capture plus a few frames.",
+			"Capture the next few seconds of the running editor (its pages and any Play-in-editor game) with the profiler, and answer a summary: frame times (min, median, max), the CPU scopes and GPU passes that took longest over the capture (each GPU pass with the triangles, vertex and pixel shader runs it took over the capture, where the device counts them), and each counter's average (draws, passes, GPU memory). The capture is written as a .aeprofile (the profile stream) and Chrome trace JSON beside it (Perfetto, chrome://tracing); both paths are in the answer. The call lasts the capture plus a few frames.",
 			schema.Build(), .ReadOnly,
 			new (call, arguments, outResult, outError) => CaptureCall(seams, call, arguments, outResult, outError), seams);
 	}

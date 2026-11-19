@@ -465,7 +465,10 @@ records the editor's next frames, its pages and a running PIE game alike since t
 process, and answers a summary: `frameMs` (min, median, max), `topScopes` (CPU scopes by total
 time over the capture, nested ones counted inside their parents too) and `topGpuPasses` (render
 graph passes on the GPU), each with its count, and `counterAverages` (draws, passes, pipeline
-and bind group binds, GPU memory held and the budget). Set up what to measure first (`pie_start`
+and bind group binds, GPU memory held and the budget). Where the device counts them, each GPU pass
+also has `triangles`, `vertexShaderRuns` and `pixelShaderRuns` over the capture: a pass whose time
+follows its triangles and not its pixels (a shadow cascade drawing a forest) is geometry-bound, and
+a lower resolution will not help it. Set up what to measure first (`pie_start`
 and play to the moment, or `viewport_camera_set` on a heavy view), capture, and compare two
 captures rather than reading one number in isolation. The files stay: `path` is the
 `.aeprofile` profile stream (`<user-data>/profiles/Editor-<ticks>.aeprofile`), `chromeTrace`
