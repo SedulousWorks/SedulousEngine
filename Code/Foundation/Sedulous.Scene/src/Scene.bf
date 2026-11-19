@@ -4,6 +4,7 @@ using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Messaging;
+using Sedulous.Resource;
 using Sedulous.Run;
 
 namespace Sedulous.Scene;
@@ -133,6 +134,13 @@ class Scene : IScriptWeaklyHeld
 			scenes.AddRange(sLive);
 		for (let scene in scenes)
 			scene.CollectResourceIds(outIds);
+	}
+
+	/// Makes the live scenes a holder of `manager`'s resources (CollectLiveResourceIds), so what a
+	/// loaded scene references is never released from under it. The id removes it.
+	public static uint64 HoldResources(ResourceManager manager)
+	{
+		return manager.AddHolder(new (outHeld) => CollectLiveResourceIds(outHeld));
 	}
 
 	[Scriptable]

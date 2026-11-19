@@ -619,6 +619,9 @@ class DefaultApplication : IApplication, ISceneObserver
 			// The host's task pool, so a factory that supports it decodes off the main thread
 			// without holding the frame's workers; with none, loads are synchronous.
 			mOwnedResources = new ResourceManager(mContentDatabase, host.Tasks);
+			// What nothing has held for a while is released; the scenes say what they use.
+			mOwnedResources.SetUnusedFrames(ResourceManager.cApplicationUnusedFrames);
+			Sedulous.Scene.Scene.HoldResources(mOwnedResources);
 			if (let layered = mContentDatabase as LayeredContentDatabase)
 			{
 				let resources = mOwnedResources;
@@ -695,7 +698,12 @@ class DefaultApplication : IApplication, ISceneObserver
 		// host it borrows one, and that host pumps it, so pumping here as well would double
 		// pump it.
 		if (mOwnedResources != null)
+		{
 			mOwnedResources.Pump();
+			// Once a frame, as the editor does for its own: products a reload replaced, and those
+			// nothing has held for a while, go.
+			mOwnedResources.CollectGarbage();
+		}
 
 		let contextScale = host.Subsystems.TimeScale;
 

@@ -170,6 +170,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Resources: assets nothing uses any more are unloaded after about ten seconds, rather than kept
+  for the whole run; a game that moves between levels no longer keeps every level's assets.
 - Editor: a game's mouse look in the Game tab keeps turning however far the mouse moves; it stopped
   once the hidden pointer drifted past the tab's edge.
 - The code editor's Replace All replaces every match, not only the first 100,000, and many matches

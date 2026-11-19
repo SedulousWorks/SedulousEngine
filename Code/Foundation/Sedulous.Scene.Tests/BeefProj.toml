@@ -7,11 +7,13 @@ StartupObject = "Sedulous.Scene.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Run" = "*"
 "Sedulous.Messaging" = "*"
 "Sedulous.Resource" = "*"
 "Sedulous.Scene" = "*"
+"Sedulous.VFS" = "*"
 
 [Configs.Test."aarch64-linux-android33"]
 BuildKind = "Test"

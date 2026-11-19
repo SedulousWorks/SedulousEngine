@@ -469,6 +469,10 @@ class EditorSession
 	{
 		let view = mProject.ResourceDb;
 		mResources = new ResourceManager(view, mServices.Context.Tasks);
+		// What nothing has held for a while is released; the scenes (every page's and a run's) say
+		// what they use, and a page holds what it shows directly.
+		mResources.SetUnusedFrames(ResourceManager.cApplicationUnusedFrames);
+		Sedulous.Scene.Scene.HoldResources(mResources);
 		let resources = mResources;
 		view.SetFallthrough(new [=resources] (storedTypeName) => resources.ReadsAuthoredRecord(storedTypeName));
 		// An asset with a source and no product yet (an uncooked project's first open) waits for

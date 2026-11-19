@@ -428,6 +428,9 @@ class ResourceManager
 	/// (0: never). A spawn by id that holds nothing between spawns finds it still loaded; one
 	/// left alone this long is unloaded, and a later bind builds it again.
 	public void SetUnusedFrames(uint32 frames) => mUnusedFrames = frames;
+	/// What an application releases after: about ten seconds at sixty frames, so a spawn by id
+	/// that holds nothing between spawns still finds it loaded.
+	public const uint32 cApplicationUnusedFrames = 600;
 	public uint32 UnusedFrames => mUnusedFrames;
 
 	/// How many resources have a product now.
