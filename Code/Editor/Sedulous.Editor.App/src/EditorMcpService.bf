@@ -52,6 +52,8 @@ class EditorMcpServiceServices
 	/// The pages, over the paths the tabs take. Owned, both.
 	public delegate EditorPage(Guid id) OpenPage ~ delete _;
 	public delegate void(EditorPage page) ClosePage ~ delete _;
+	/// Opens code where the Code Editor preference says (code_open).
+	public delegate bool(StringView file, uint32 line, uint32 column) OpenCode ~ delete _;
 	/// The windows' screenshots, over the application's capture (WindowToolSeams). Owned, all.
 	public delegate void(List<uint32> outWindows) Windows ~ delete _;
 	public delegate void(Span<WindowShotRequest> requests) RequestShots ~ delete _;
@@ -229,6 +231,7 @@ class EditorMcpService
 					mServices.ClosePage(page);
 			};
 		pages.HasProject = new () => mSession.Project != null;
+		pages.OpenCode = new (file, line, column) => (mServices.OpenCode != null) && mServices.OpenCode(file, line, column);
 		EditorPageTools.Register(mHost.Server, pages);
 		// editor_screenshot, over the same capture as View > Screenshot.
 		let windows = new WindowToolSeams();

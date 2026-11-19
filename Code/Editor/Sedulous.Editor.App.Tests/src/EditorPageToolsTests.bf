@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Content;
@@ -7,6 +8,9 @@ using Sedulous.Mcp;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
+
+// A test asset given a source path, as a scan or a write gives one.
+using internal Sedulous.Content;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -243,5 +247,101 @@ class EditorPageToolsTests
 			Test.Assert(!reload.Ok);
 			Test.Assert(reload.Error.StartsWith("no open page for guid"), reload.Error);
 		}
+	}
+
+	/// code_open hands a code asset, a Code/ file or the Code folder to the code opener at the
+	/// line asked, and refuses what is not the project's code.
+	[Test]
+	public static void CodeOpenHandsCodeToTheOpenerAndRefusesWhatIsNotTheProjectsCode()
+	{
+		RemoveDirectoryRecursive("mcp_code_open_project");
+		defer RemoveDirectoryRecursive("mcp_code_open_project");
+		Test.Assert(EditorProject.Create("mcp_code_open_project", "Code") case .Ok);
+		let project = EditorProject.Open("mcp_code_open_project");
+		Test.Assert(project != null);
+		defer delete project;
+		let pagedType = typeof(PagedAsset).GetFullName(.. scope .());
+		let script = project.SourceDb.RootGroup.CreateInstance("Player", pagedType);
+		let level = project.SourceDb.RootGroup.CreateInstance("Level", pagedType);
+		Test.Assert((script != null) && (level != null));
+		script.SetSourceName("Code/Scripts/Player.as");
+		level.SetSourceName("Levels/Level.scene");
+		let file = project.SourceFile("Code/Scripts/Player.as", .. scope .());
+		CreateDirectory(PathParent(file, .. scope .()));
+		let text = "void Main() {}";
+		Test.Assert(WriteFile(file, .((uint8*)text.Ptr, text.Length)) case .Ok);
+		// A file beside the Code folder, which a path up from it would reach.
+		let escape = project.SourceFile("Code/../escape.as", .. scope .());
+		Test.Assert(WriteFile(escape, .((uint8*)text.Ptr, text.Length)) case .Ok);
+		Test.Assert(FileExists(escape));
+
+		let openedFiles = scope List<String>();
+		defer { ClearAndDeleteItems(openedFiles); }
+		let openedAt = scope List<(uint32 Line, uint32 Column)>();
+		let context = scope EditorContext();
+		let seams = new PageToolSeams();
+		seams.Context = context;
+		seams.OpenCode = new [&] (path, line, column) =>
+			{
+				openedFiles.Add(new String(path));
+				openedAt.Add((line, column));
+				return true;
+			};
+		let server = scope McpServer();
+		EditorPageTools.Register(server, seams);
+
+		// With no project in the editor, nothing opens.
+		{
+			let answer = Call(server, "code_open", "{}");
+			defer delete answer;
+			Test.Assert(!answer.Ok);
+		}
+		context.SetProject(project);
+		defer context.SetProject(null); // before the project goes
+
+		// A code asset at a line and column: the opener gets its file on disk.
+		{
+			let answer = Call(server, "code_open", scope String()..AppendF("{{\"guid\":\"{}\",\"line\":12,\"column\":3}}", script.Id));
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			Test.Assert(answer.Payload.Get("file").AsString() == "Code/Scripts/Player.as");
+			Test.Assert(openedFiles.Count == 1);
+			Test.Assert(openedFiles[0] == file);
+			Test.Assert((openedAt[0].Line == 12) && (openedAt[0].Column == 3));
+		}
+		// The same file by its path, at the start.
+		{
+			let answer = Call(server, "code_open", "{\"path\":\"Code/Scripts/Player.as\"}");
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			Test.Assert((openedFiles.Count == 2) && (openedFiles[1] == file) && (openedAt[1].Line == 0));
+		}
+		// Neither: the Code folder, as an empty file.
+		{
+			let answer = Call(server, "code_open", "{}");
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			Test.Assert(answer.Payload.Get("file").AsString() == "Code");
+			Test.Assert((openedFiles.Count == 3) && openedFiles[2].IsEmpty);
+		}
+
+		// Refused, nothing opened: an asset that is not code, a path out of the Code folder or
+		// up from it, a file not there, an unknown guid, both at once, a negative line.
+		let refused = scope List<String>();
+		defer { ClearAndDeleteItems(refused); }
+		refused.Add(new String()..AppendF("{{\"guid\":\"{}\"}}", level.Id));
+		refused.Add(new String("{\"path\":\"Levels/Level.scene\"}"));
+		refused.Add(new String("{\"path\":\"Code/../escape.as\"}"));
+		refused.Add(new String("{\"path\":\"Code/Missing.as\"}"));
+		refused.Add(new String("{\"guid\":\"00000000-0000-0000-0000-00000000c0de\"}"));
+		refused.Add(new String()..AppendF("{{\"guid\":\"{}\",\"path\":\"Code/Scripts/Player.as\"}}", script.Id));
+		refused.Add(new String("{\"path\":\"Code/Scripts/Player.as\",\"line\":-1}"));
+		for (let arguments in refused)
+		{
+			let answer = Call(server, "code_open", arguments);
+			defer delete answer;
+			Test.Assert(!answer.Ok, arguments);
+		}
+		Test.Assert(openedFiles.Count == 3);
 	}
 }

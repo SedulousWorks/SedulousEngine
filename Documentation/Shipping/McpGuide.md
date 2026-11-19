@@ -27,7 +27,10 @@ before a release carries samples: `python3 Code/Tools/pack-samples.py <folder>`,
 `project_create` and `project_open` (the editor's project is the editor's), and the editor's
 long tools (a cook) keep the call open until the editor's own background service finishes:
 give the client a generous timeout rather than polling. The editor adds the page tools
-(`page_list`, `page_open`, `page_reload`, `page_close`), the layout tools (`layout_get`, the
+(`page_list`, `page_open`, `page_reload`, `page_close`), `code_open` (opens a code asset by
+`guid`, or a file by `path` in the project's Code folder, at a `line` and `column`, where the user's
+Code Editor preference says: VS Code or another outside editor, or the built-in code page; with
+neither, the Code folder; `page_open` always shows the built-in page), the layout tools (`layout_get`, the
 dock's tree: a split is `{split, children, weights}` with any number of children, each weight its
 child's share, and a stack is `{tabs, active}`, every panel by id: a page's asset guid, a Game
 tab's PIE id, `welcome` for Project, `assets`, `console`, `mcp`, `profiler`, with the `floating` and

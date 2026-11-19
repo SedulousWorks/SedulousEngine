@@ -721,6 +721,7 @@ class EditorApplication : IApplication
 		// The pages, over the paths the tabs take (a close at the next frame).
 		mcpServices.OpenPage = new (id) => mPages.Open(id);
 		mcpServices.ClosePage = new (page) => { mPages.Close(page); };
+		mcpServices.OpenCode = new (file, line, column) => (mCodeOpener != null) && mCodeOpener.Open(file, line, column);
 		// An agent's delete is the browser's own: its pages closed, the default scene let go.
 		mcpServices.DeleteAsset = new (id) => mAssetOps.DeleteOne(id);
 		// The windows' screenshots, over the same capture as View > Screenshot.

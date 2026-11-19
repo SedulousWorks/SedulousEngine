@@ -9,6 +9,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- MCP: `code_open` on the editor host opens a script, or a file in the project's `Code/` folder, at a
+  line and column where your Code Editor preference says, or the `Code/` folder itself.
 - MCP `profiler_capture` gives each GPU pass the triangles, vertex shader runs and pixel shader runs
   it took over the capture, where the device counts them: a pass whose time follows its triangles
   and not its pixels is bound by its geometry, and a lower resolution will not speed it up.

@@ -1,8 +1,10 @@
 using System;
+using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Mcp;
+using Sedulous.VFS;
 
 namespace Sedulous.Editor.App;
 
@@ -18,18 +20,23 @@ class PageToolSeams
 	public delegate void(EditorPage page) ClosePage ~ delete _;
 	/// Whether a project is open (null: one is); page_open refuses without one. Owned.
 	public delegate bool() HasProject ~ delete _;
+	/// Opens a file on disk at a line and column (1-based; 0 the start) where the Code Editor
+	/// preference says, the project's Code folder when the file is empty. False when nothing
+	/// opened. Owned.
+	public delegate bool(StringView file, uint32 line, uint32 column) OpenCode ~ delete _;
 }
 
 /// The MCP tools over the editor's open PAGES, what only the editor host can serve: page_list,
 /// page_open, page_reload and page_close, over the context's page list and the two actions
-/// the application owns (opening a source asset's page, closing a page with its panel). Reload
+/// the application owns (opening a source asset's page, closing a page with its panel); and
+/// code_open, which opens code where the user's Code Editor preference says. Reload
 /// and close are refused while the page has unsaved changes unless the agent says so
 /// explicitly (force, discard): a tool never waits for a human, so the destructive decision
 /// is an argument, and the refusal tells the agent to ask the user.
 static class EditorPageTools
 {
 	/// How many tools Register registers; a tripwire like EngineTools.cEngineToolCount.
-	public const int cPageToolCount = 4;
+	public const int cPageToolCount = 5;
 
 	/// OWNERSHIP of the seams transfers; the first tool holds them for all four.
 	public static void Register(McpServer server, PageToolSeams seams)
@@ -143,6 +150,81 @@ static class EditorPageTools
 				seams.ClosePage(page);
 				outResult.Set("closed", JsonValue.MakeBool(true));
 				outResult.Set("guid", JsonValue.MakeString(text));
+				return true;
+			});
+
+		let codeSchema = scope SchemaBuilder();
+		codeSchema.Str("guid", "a code asset");
+		codeSchema.Str("path", "a file in the project's Code folder, as Code/...");
+		codeSchema.Integer("line", "the line to open at, 1-based");
+		codeSchema.Integer("column", "the column to open at, 1-based");
+		server.RegisterTool("code_open",
+			"Open code where the user's Code Editor preference says (an outside editor such as VS Code, or the built-in code page), as the Assets panel's Open does: a code asset by `guid`, or a file by `path` in the project's Code folder (as `Code/...`), at `line` and `column` (1-based; omitted: the start). With neither, opens the Code folder. Use page_open to look at a script's page yourself. Returns {opened, file}.",
+			codeSchema.Build(), .Adjusts,
+			new (arguments, outResult, outError) =>
+			{
+				let project = seams.Context.Project;
+				if (project == null)
+				{
+					outError.Append(McpTools.cNoProject);
+					return false;
+				}
+				let guidText = McpTools.ArgString(arguments, "guid", .. scope .());
+				let source = McpTools.ArgString(arguments, "path", .. scope .());
+				let byGuid = !guidText.IsEmpty;
+				let byPath = !source.IsEmpty;
+				if (byGuid && byPath)
+				{
+					outError.Append("give guid or path, not both");
+					return false;
+				}
+				let line = (int64)McpTools.ArgNumber(arguments, "line");
+				let column = (int64)McpTools.ArgNumber(arguments, "column");
+				if ((line < 0) || (column < 0))
+				{
+					outError.Append("line and column are 1-based");
+					return false;
+				}
+				// The source path (Code/...) the file has, which must be in the Code folder.
+				if (byGuid)
+				{
+					Guid id;
+					if (!McpTools.ParseGuid(guidText, outError, out id))
+						return false;
+					let instance = project.SourceDb.GetInstance(id);
+					if (instance == null)
+					{
+						outError.AppendF("no asset with guid '{}'", guidText);
+						return false;
+					}
+					source.Set(instance.SourceName);
+				}
+				else if (byPath)
+				{
+					source.Replace('\\', '/');
+				}
+				let file = scope String();
+				if (byGuid || byPath)
+				{
+					if (!SourcePath.AfterFolder(source, SourcePath.CodeFolder, let rest) || rest.IsEmpty || source.Contains(".."))
+					{
+						outError.AppendF("'{}' is not in the project's Code folder", source);
+						return false;
+					}
+					project.SourceFile(source, file);
+					if (!FileExists(file))
+					{
+						outError.AppendF("no file '{}'", source);
+						return false;
+					}
+				}
+				if ((seams.OpenCode == null) || !seams.OpenCode(file, (uint32)line, (uint32)column))
+				{
+					outError.Append("nothing opened (see log_read, category Editor)");
+					return false;
+				}
+				outResult.Set("opened", JsonValue.MakeBool(true));
+				outResult.Set("file", JsonValue.MakeString((byGuid || byPath) ? StringView(source) : SourcePath.CodeFolder));
 				return true;
 			});
 	}

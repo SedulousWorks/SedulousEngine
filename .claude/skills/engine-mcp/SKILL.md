@@ -57,7 +57,8 @@ port is 7405; the token is minted on first enable and written to `<user-data>/mc
   `newInstance`, then `panel_dock {panel: "game-page-1", position: "right", relativeTo:
   "game-page"}`; `pie_resolution` sets each tab's resolution dropdown (`1280x720`, a label or a
   key) and Phone toggle.
-- The page tools (`page_list`, `page_open`, `page_reload`, `page_close`) are the editor host's
+- The page tools (`page_list`, `page_open`, `page_reload`, `page_close`, and `code_open`, which
+  opens code where the user's Code Editor preference says) are the editor host's
   alone, and so are the scene page's live tools (`selection_get`, `selection_set`,
   `simulate_start`, `simulate_stop`, `entity_inspect`, `component_set`, each addressed by the
   page's asset guid). `entity_inspect` is the inspector's view of one entity (hierarchy,
