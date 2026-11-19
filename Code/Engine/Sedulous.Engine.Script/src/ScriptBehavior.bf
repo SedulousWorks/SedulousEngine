@@ -31,6 +31,8 @@ class ScriptBehavior : ISerializable
 	/// The product the instance was built from, BORROWED: a reload swaps the product and
 	/// the instance is rebuilt.
 	public ScriptClass BoundClass = null;
+	/// Keeps BoundClass's resource loaded while the instance lives; null with no instance.
+	public ResourceHold BoundHold = null ~ _?.Release();
 	/// onStart delivered.
 	public bool Started = false;
 	/// The last delivered enable state: the onEnable/onDisable edges.

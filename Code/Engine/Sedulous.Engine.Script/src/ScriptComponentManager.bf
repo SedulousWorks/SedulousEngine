@@ -46,6 +46,31 @@ class ScriptComponentManager : ResourceBindingComponentManager<ScriptComponent>,
 		});
 	}
 
+	/// Every behaviour's class, and the assets its overrides name: the behaviours are a list the
+	/// reflection walk does not follow, so they are reported here. An asset an override names
+	/// stays loaded while the scene is, so a script that binds it when it uses it finds it so.
+	public override void CollectResourceIds(HashSet<Guid> outIds)
+	{
+		base.CollectResourceIds(outIds);
+		let assets = scope List<Guid>();
+		ForEach(scope (component, owner) =>
+		{
+			if (component.Behaviors == null)
+				return;
+			for (let behavior in component.Behaviors)
+			{
+				if (!behavior.Script.Id.IsNil)
+					outIds.Add(behavior.Script.Id);
+				ScriptPropertyOverride.CollectAssetIds(behavior.Overrides, assets);
+			}
+		});
+		for (let id in assets)
+		{
+			if (!id.IsNil)
+				outIds.Add(id);
+		}
+	}
+
 	/// Adds a behaviour to the entity's component, adding the component when it has none.
 	/// The behaviour's class is bound through the manager the scene was resolved with.
 	public bool AddBehavior(EntityHandle entity, Guid scriptClass)

@@ -63,6 +63,8 @@ class ScriptSceneSystem : SceneSystem
 	private SceneScriptSettings mSettings = new .() ~ delete _;
 	private ScriptObject mLevel = null;
 	private ScriptClass mLevelClass = null;
+	/// Keeps mLevelClass's resource loaded while the Level lives; null with none.
+	private ResourceHold mLevelHold = null ~ _?.Release();
 	private bool mLevelStarted = false;
 	private bool mLevelFaulted = false;
 
@@ -124,6 +126,20 @@ class ScriptSceneSystem : SceneSystem
 	public override void CollectUnboundReferences(List<Guid> outIds)
 	{
 		ScriptPropertyOverride.CollectAssetIds(mSettings.Overrides, outIds);
+	}
+
+	/// The Level's class (the settings' reference) and the assets its overrides name, which a
+	/// script binds when it uses them: held while the scene is loaded.
+	public override void CollectResourceIds(HashSet<Guid> outIds)
+	{
+		base.CollectResourceIds(outIds);
+		let assets = scope List<Guid>();
+		ScriptPropertyOverride.CollectAssetIds(mSettings.Overrides, assets);
+		for (let id in assets)
+		{
+			if (!id.IsNil)
+				outIds.Add(id);
+		}
 	}
 
 	// ---- the script surface ----
@@ -428,6 +444,9 @@ class ScriptSceneSystem : SceneSystem
 
 	private void InstantiateBehavior(ScriptBehavior behavior, EntityHandle entity, ScriptClass scriptClass)
 	{
+		// The class stays loaded while what was built from it lives, whatever the reference
+		// names meanwhile.
+		HoldBound(behavior);
 		if (scriptClass.IsModule)
 		{
 			// A utility module: nothing to instantiate, not an error.
@@ -487,6 +506,20 @@ class ScriptSceneSystem : SceneSystem
 		return false;
 	}
 
+	/// Whether `bound` is no longer the product of the resource `hold` keeps: reloaded or released
+	/// since. A class set directly, with no resource, is never stale.
+	private static bool IsStale(ResourceHold hold, ScriptClass bound)
+	{
+		let handle = (hold != null) ? hold.Handle : null;
+		return (handle != null) && (bound != null) && (handle.Product !== bound);
+	}
+
+	/// A hold on the resource `behavior` names, replacing the one it had.
+	private static void HoldBound(ScriptBehavior behavior)
+	{
+		ResourceHold.Replace(ref behavior.BoundHold, behavior.Script.Handle);
+	}
+
 	private void CancelCoroutines(ScriptBehavior behavior)
 	{
 		if ((behavior.Instance == null) || (behavior.BoundClass == null) || !behavior.BoundClass.UsesCoroutines)
@@ -496,15 +529,22 @@ class ScriptSceneSystem : SceneSystem
 
 	private void StopBehavior(ScriptBehavior behavior, EntityHandle entity, bool invokeDestroy)
 	{
+		// A class its resource no longer has (reloaded since the instance was built, while the
+		// entity was frozen or play paused) is no longer read: that product may be gone.
+		if (IsStale(behavior.BoundHold, behavior.BoundClass))
+			behavior.BoundClass = null;
 		if ((behavior.Instance != null) && invokeDestroy && behavior.Started && (behavior.BoundClass != null) && !behavior.Faulted)
 			Invoke(behavior, entity, cOnDestroy, default);
-		CancelCoroutines(behavior);
 		if (behavior.Instance != null)
 		{
+			// Every coroutine of an instance whose class is not known any more.
+			if ((behavior.BoundClass == null) || behavior.BoundClass.UsesCoroutines)
+				mHost.Runtime.CancelCoroutinesFor(behavior.Instance);
 			mHost.Runtime.Release(behavior.Instance);
 			behavior.Instance = null;
 		}
 		behavior.BoundClass = null;
+		ResourceHold.Drop(ref behavior.BoundHold);
 		behavior.Started = false;
 		behavior.Active = false;
 	}
@@ -706,6 +746,7 @@ class ScriptSceneSystem : SceneSystem
 		{
 			mLevel = mHost.Instantiate(levelClass);
 			mLevelClass = levelClass;
+			ResourceHold.Replace(ref mLevelHold, mSettings.Script.Handle);
 			mLevelStarted = false;
 			if (mLevel == null)
 			{
@@ -748,13 +789,17 @@ class ScriptSceneSystem : SceneSystem
 	{
 		if (mLevel == null)
 			return;
+		// A class its resource no longer has (reloaded while play was paused) is no longer read.
+		if (IsStale(mLevelHold, mLevelClass))
+			mLevelClass = null;
 		if (invokeStop && mLevelStarted && !mLevelFaulted)
 			InvokeLevel(cOnStop, default);
-		if (mLevelClass?.UsesCoroutines == true)
+		if ((mLevelClass == null) || mLevelClass.UsesCoroutines)
 			mHost.Runtime.CancelCoroutinesFor(mLevel);
 		mHost.Runtime.Release(mLevel);
 		mLevel = null;
 		mLevelClass = null;
+		ResourceHold.Drop(ref mLevelHold);
 		mLevelStarted = false;
 	}
 
