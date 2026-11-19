@@ -582,10 +582,12 @@ class ModelFileImporter : IFileImporter
 		claimed.Add(new String(stem));
 
 		let textureGuids = scope List<Guid>();
+		// A base colour's copies for its other cutoffs (ModelImportTextures.Import).
+		let alphaCopies = scope Dictionary<uint64, Guid>();
 		if (opt.ImportTextures)
 		{
 			ModelImportTextures.Import(model, placed, sidecarsCopied, modelGroup, opt,
-				textureGuids, claimed, deferredWrites);
+				textureGuids, alphaCopies, claimed, deferredWrites);
 		}
 		else
 		{
@@ -597,7 +599,7 @@ class ModelFileImporter : IFileImporter
 
 		if (opt.ImportMaterials)
 		{
-			ModelImportMaterials.Import(model, modelGroup, textureGuids, manifest, claimed,
+			ModelImportMaterials.Import(model, modelGroup, textureGuids, alphaCopies, manifest, claimed,
 				deferredWrites, opt);
 		}
 		if (opt.ImportAnimations)

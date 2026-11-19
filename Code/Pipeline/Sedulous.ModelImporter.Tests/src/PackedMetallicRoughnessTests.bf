@@ -65,37 +65,53 @@ class PackedMetallicRoughnessTests
 		Test.Assert(linear[1]);
 	}
 
-	/// Leaves: an alpha tested (Mask) material's base colour keeps its cutoff's coverage in its
-	/// mipmaps; an opaque or blended material's texture, and every other slot, keep none.
+	/// A base colour's alpha uses are each cutoff its materials test at, and whether one blends.
+	/// Leaves tested at two cutoffs (the same cutoff twice counts once), a veil blending with the
+	/// same texture, glass (transmissive, drawn blended) with another; an opaque material reads no
+	/// alpha, and a normal map is no base colour.
 	[Test]
-	public static void AMaskedMaterialsBaseColourKeepsItsCutoffsCoverage()
+	public static void ABaseColoursAlphaUsesAreEachCutoffAndWhetherOneBlends()
 	{
 		let model = scope Model();
 		let leaves = model.AddTexture(MeshFixture.Gray(255));
 		let leavesNormal = model.AddTexture(MeshFixture.Gray(255));
 		let bark = model.AddTexture(MeshFixture.Gray(255));
-		let glass = model.AddTexture(MeshFixture.Gray(255));
+		let glassTexture = model.AddTexture(MeshFixture.Gray(255));
+		let grass = model.AddTexture(MeshFixture.Gray(255));
+		ModelMaterial Material(AlphaMode mode, float cutoff, int32 baseColour)
+		{
+			let material = new ModelMaterial();
+			material.AlphaMode = mode;
+			material.AlphaCutoff = cutoff;
+			material.BaseColorTextureIndex = baseColour;
+			model.AddMaterial(material);
+			return material;
+		}
+		Material(.Mask, 0.5f, leaves).NormalTextureIndex = leavesNormal;
+		Material(.Mask, 0.3f, leaves);
+		Material(.Mask, 0.5f, leaves);
+		Material(.Blend, 0.5f, leaves);
+		Material(.Opaque, 0.5f, bark);
+		Material(.Opaque, 0.5f, glassTexture).Transmission = 1.0f;
+		Material(.Mask, 0.45f, grass);
+		Material(.Opaque, 0.5f, grass); // reads no alpha: grass keeps its cutoff's copy
 
-		let masked = new ModelMaterial();
-		masked.AlphaMode = .Mask;
-		masked.AlphaCutoff = 0.45f;
-		masked.BaseColorTextureIndex = leaves;
-		masked.NormalTextureIndex = leavesNormal;
-		model.AddMaterial(masked);
-		let opaque = new ModelMaterial();
-		opaque.BaseColorTextureIndex = bark;
-		model.AddMaterial(opaque);
-		let blended = new ModelMaterial();
-		blended.AlphaMode = .Blend;
-		blended.BaseColorTextureIndex = glass;
-		model.AddMaterial(blended);
-
-		let cutoff = scope List<float>();
-		ModelTextureClassify.AlphaTestedTextures(model, cutoff);
-		Test.Assert(cutoff.Count == 4);
-		Test.Assert(Math.Abs(cutoff[leaves] - 0.45f) < 0.0001f);
-		Test.Assert(cutoff[leavesNormal] == 0.0f);
-		Test.Assert(cutoff[bark] == 0.0f);
-		Test.Assert(cutoff[glass] == 0.0f);
+		let uses = scope List<TextureAlphaUses>();
+		defer { ClearAndDeleteItems(uses); }
+		ModelTextureClassify.ClassifyBaseColorAlpha(model, uses);
+		Test.Assert(uses.Count == 5);
+		let leafUses = uses[leaves];
+		Test.Assert(leafUses.Cutoffs.Count == 2);
+		Test.Assert(leafUses.Cutoffs[0] == ModelTextureClassify.AlphaCutoffStep(0.3f), "ascending, once each");
+		Test.Assert(leafUses.Cutoffs[1] == ModelTextureClassify.AlphaCutoffStep(0.5f));
+		Test.Assert(leafUses.Blended);
+		Test.Assert(leafUses.OwnCutoff == 0, "the veil blends with it: its own asset stays plain");
+		Test.Assert(uses[leavesNormal].Cutoffs.IsEmpty);
+		Test.Assert(uses[bark].Cutoffs.IsEmpty);
+		Test.Assert(!uses[bark].Blended);
+		Test.Assert(uses[glassTexture].Blended);
+		Test.Assert(uses[grass].OwnCutoff == ModelTextureClassify.AlphaCutoffStep(0.45f), "its own asset keeps the cutoff");
+		Test.Assert(ModelTextureClassify.AlphaCopySuffix(ModelTextureClassify.AlphaCutoffStep(0.5f), .. scope .())
+			!= ModelTextureClassify.AlphaCopySuffix(ModelTextureClassify.AlphaCutoffStep(0.3f), .. scope .()));
 	}
 }

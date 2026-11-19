@@ -69,7 +69,7 @@ class ModelDdsImportTests
 
 	/// A one triangle glTF whose material binds a BC1 sRGB albedo with three levels in the
 	/// base colour slot and a BC5 normal with one level in the normal slot.
-	private static void WriteDdsTriangle(ImportFixture fixture, String outDropped)
+	private static void WriteDdsTriangle(ImportFixture fixture, String outDropped, StringView document = cDocument)
 	{
 		let bin = scope List<uint8>();
 		float[9] positions = .(0, 0, 0, 1, 0, 0, 0, 1, 0);
@@ -86,7 +86,7 @@ class ModelDdsImportTests
 		PutU16(bin, 2);
 		Test.Assert(bin.Count == 102);
 
-		fixture.WriteDroppedFile("tri.gltf", cDocument, outDropped);
+		fixture.WriteDroppedFile("tri.gltf", document, outDropped);
 		let binPath = scope String();
 		fixture.SubPath("tri.bin", binPath);
 		Test.Assert(WriteFile(binPath, bin) case .Ok);
@@ -263,5 +263,45 @@ class ModelDdsImportTests
 		let missing = scope String();
 		fixture.SubPath("Sources/tri/tex/albedo.png", missing);
 		Test.Assert(!FileExists(missing));
+	}
+
+	/// The triangle's albedo as the base colour of leaves tested at 0.5 and at 0.3.
+	private const String cTwoCutoffs = """
+{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0,"name":"Tri"}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3,"material":0},{"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3,"material":1}]}],"extensionsUsed":["MSFT_texture_dds"],"materials":[{"name":"Half","alphaMode":"MASK","alphaCutoff":0.5,"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}},{"name":"Low","alphaMode":"MASK","alphaCutoff":0.3,"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}],"textures":[{"source":1,"extensions":{"MSFT_texture_dds":{"source":0}}}],"images":[{"uri":"tex/albedo.dds"},{"uri":"tex/albedo.png"}],"buffers":[{"uri":"tri.bin","byteLength":102}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},{"buffer":0,"byteOffset":36,"byteLength":36},{"buffer":0,"byteOffset":72,"byteLength":24},{"buffer":0,"byteOffset":96,"byteLength":6}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,0]},{"bufferView":1,"componentType":5126,"count":3,"type":"VEC3"},{"bufferView":2,"componentType":5126,"count":3,"type":"VEC2"},{"bufferView":3,"componentType":5123,"count":3,"type":"SCALAR"}]}
+""";
+
+	/// A file backed base colour tested at two cutoffs is an asset per cutoff over one file: the
+	/// texture's own asset keeps the lower cutoff's coverage, a copy the higher's, and each
+	/// material reads the one for its cutoff.
+	[Test]
+	public static void AFileBackedBaseColourTestedAtTwoCutoffsIsAnAssetPerCutoffOverOneFile()
+	{
+		let fixture = scope ImportFixture("scratch_dds_cutoffs");
+		let dropped = scope String();
+		WriteDdsTriangle(fixture, dropped, cTwoCutoffs);
+		let importer = scope ModelFileImporter();
+		let imported = importer.Import(dropped, fixture.Context, fixture.RootGroup, null, null, null);
+		Test.Assert(imported case .Ok(let instance));
+		let manifest = ImportFixture.ReadManifest(instance);
+		defer delete manifest;
+		Test.Assert(manifest.Manifest.MaterialAlbedo.Count == 2);
+		let halfId = manifest.Manifest.MaterialAlbedo[0];
+		let lowId = manifest.Manifest.MaterialAlbedo[1];
+		Test.Assert(halfId != lowId);
+		void Read(Guid id, float reference)
+		{
+			let texture = fixture.Db.GetInstance(id);
+			Test.Assert(texture != null);
+			let asset = ReadTextureAsset(texture);
+			defer delete asset;
+			Test.Assert(asset.FileName.Value == "tri/tex/albedo.dds", "the one file");
+			Test.Assert(asset.PreserveAlphaCoverage);
+			Test.Assert(Math.Abs(asset.AlphaCoverageReference - reference) < 0.01f);
+		}
+		Read(halfId, 0.5f);
+		Read(lowId, 0.3f);
+		let copied = scope String();
+		fixture.SubPath("Sources/tri/tex/albedo.dds", copied);
+		Test.Assert(FileExists(copied));
 	}
 }

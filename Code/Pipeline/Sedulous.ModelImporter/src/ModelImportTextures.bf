@@ -26,9 +26,14 @@ static class ModelImportTextures
 	///
 	/// The list stays parallel to the model's own, index for index, because a material names
 	/// its textures by that index and a hole in the list would shift every later one.
+	///
+	/// A base colour that materials test at more than one cutoff, or that one blends with, also
+	/// gets a copy per other cutoff keeping that cutoff's coverage (`outAlphaCopies`, by
+	/// ModelTextureClassify.AlphaCopyKey): a masked material reads the copy for its cutoff, the
+	/// rest the texture's own asset.
 	public static void Import(Model model, ImportContext context, bool sidecarsCopied,
-		Group group, ImportOptions options, List<Guid> outGuids, List<String> claimed,
-		List<DeferredImportWrite> deferredWrites)
+		Group group, ImportOptions options, List<Guid> outGuids, Dictionary<uint64, Guid> outAlphaCopies,
+		List<String> claimed, List<DeferredImportWrite> deferredWrites)
 	{
 		// Colour space follows USAGE: a data map stays linear, since sRGB decoding one
 		// corrupts its values, and a flat normal would arrive bent.
@@ -36,14 +41,19 @@ static class ModelImportTextures
 		ModelTextureClassify.LinearTextures(model, linear);
 		let normal = scope List<bool>();
 		ModelTextureClassify.NormalTextures(model, normal);
-		// A masked material's base colour: its alpha cutoff, which its mipmaps keep.
-		let cutoff = scope List<float>();
-		ModelTextureClassify.AlphaTestedTextures(model, cutoff);
+		// What the base colour's materials need of its alpha.
+		let alpha = scope List<TextureAlphaUses>();
+		defer { ClearAndDeleteItems(alpha); }
+		ModelTextureClassify.ClassifyBaseColorAlpha(model, alpha);
 
 		let textures = model.Textures;
 		for (int i < textures.Length)
 		{
 			let texture = textures[i];
+			let uses = (i < alpha.Count) ? alpha[i] : null;
+			let ownCutoff = (uses != null) ? uses.OwnCutoff : 0;
+			let isNormal = (i < normal.Count) && normal[i];
+			let isLinear = (i < linear.Count) && linear[i];
 			let usable = (texture != null) && !texture.Data.IsEmpty && (texture.Width > 0)
 				&& (texture.Height > 0)
 				&& (texture.DataSize == (int)texture.Width * (int)texture.Height * 4);
@@ -52,12 +62,22 @@ static class ModelImportTextures
 				// A texture the loader left ON DISK becomes a file backed asset; anything
 				// else was simply unusable, so dependents wire nothing.
 				let fileBacked = ((texture != null) && !texture.SourceFile.IsEmpty)
-					? ImportFileBacked(texture, i, (i < normal.Count) && normal[i],
-						(i < linear.Count) && linear[i], (i < cutoff.Count) ? cutoff[i] : 0.0f,
-						context, sidecarsCopied, group, options,
-						claimed, deferredWrites)
+					? ImportFileBacked(texture, i, isNormal, isLinear, ownCutoff, "", context,
+						sidecarsCopied, group, options, claimed, deferredWrites)
 					: null;
 				outGuids.Add((fileBacked != null) ? fileBacked.Id : Guid.Empty);
+				if ((fileBacked != null) && (uses != null))
+				{
+					for (let cutoff in uses.Cutoffs)
+					{
+						if (cutoff == ownCutoff)
+							continue;
+						let suffix = ModelTextureClassify.AlphaCopySuffix(cutoff, .. scope .());
+						if (let copy = ImportFileBacked(texture, i, isNormal, isLinear, cutoff, suffix, context,
+							sidecarsCopied, group, options, claimed, deferredWrites))
+							outAlphaCopies[ModelTextureClassify.AlphaCopyKey(i, cutoff)] = copy.Id;
+					}
+				}
 				continue;
 			}
 
@@ -69,46 +89,59 @@ static class ModelImportTextures
 				continue;
 			}
 
-			let asset = scope TextureAsset();
-			asset.EmbeddedWidth = (uint32)texture.Width;
-			asset.EmbeddedHeight = (uint32)texture.Height;
-			asset.ColorSpace = ((i < linear.Count) && linear[i]) ? .Linear : .Srgb;
-			asset.GenerateMipmaps = true;
-			// A masked material's base colour: its mipmaps keep the cutoff's coverage.
-			if ((i < cutoff.Count) && (cutoff[i] > 0.0f))
+			// The texture's own asset (keeping `ownCutoff`'s coverage, or none), then a copy per
+			// other cutoff its materials test at.
+			Guid ImportEmbedded(uint8 cutoff, StringView suffix)
 			{
-				asset.PreserveAlphaCoverage = true;
-				asset.AlphaCoverageReference = cutoff[i];
-			}
-			// Provenance for the texture page, and DISPLAY ONLY: the asset's name prefers the
-			// file stem, so a rename or an embedded image can leave the two disagreeing, and
-			// nothing may load from this.
-			asset.SourceHint.Set(texture.Uri);
+				let asset = scope TextureAsset();
+				asset.EmbeddedWidth = (uint32)texture.Width;
+				asset.EmbeddedHeight = (uint32)texture.Height;
+				asset.ColorSpace = isLinear ? .Linear : .Srgb;
+				asset.GenerateMipmaps = true;
+				// A masked material's base colour: its mipmaps keep the cutoff's coverage.
+				if (cutoff > 0)
+				{
+					asset.PreserveAlphaCoverage = true;
+					asset.AlphaCoverageReference = (float)cutoff / 255.0f;
+				}
+				// Provenance for the texture page, and DISPLAY ONLY: the asset's name prefers the
+				// file stem, so a rename or an embedded image can leave the two disagreeing, and
+				// nothing may load from this.
+				asset.SourceHint.Set(texture.Uri);
 
-			let instance = ClaimedInstances.Claim(group,
-				options.SelectionName(.Texture, textureName), cAssetType, claimed);
-			if ((instance == null) || (instance.WriteObject(asset) case .Err))
+				let name = scope String(options.SelectionName(.Texture, textureName))..Append(suffix);
+				let instance = ClaimedInstances.Claim(group, name, cAssetType, claimed);
+				if ((instance == null) || (instance.WriteObject(asset) case .Err))
+					return .Empty;
+
+				if (deferredWrites != null)
+				{
+					// Decoded pixels are the bulk of an import, hundreds of megabytes for a big
+					// model, so they are parked for the worker flush. The view BORROWS from the
+					// prepared model, which the caller keeps alive until the flush is done.
+					let write = new DeferredImportWrite();
+					write.Instance = instance;
+					write.StreamName.Set(TextureAssetBuilder.cEmbeddedStreamName);
+					write.View = texture.Data;
+					deferredWrites.Add(write);
+					return instance.Id;
+				}
+				let wrote = instance.WriteData(TextureAssetBuilder.cEmbeddedStreamName, texture.Data);
+				return (wrote case .Ok) ? instance.Id : .Empty;
+			}
+
+			outGuids.Add(ImportEmbedded(ownCutoff, ""));
+			if (uses != null)
 			{
-				outGuids.Add(.Empty);
-				continue;
+				for (let cutoff in uses.Cutoffs)
+				{
+					if (cutoff == ownCutoff)
+						continue;
+					let copy = ImportEmbedded(cutoff, ModelTextureClassify.AlphaCopySuffix(cutoff, .. scope .()));
+					if (copy != .Empty)
+						outAlphaCopies[ModelTextureClassify.AlphaCopyKey(i, cutoff)] = copy;
+				}
 			}
-
-			if (deferredWrites != null)
-			{
-				// Decoded pixels are the bulk of an import, hundreds of megabytes for a big
-				// model, so they are parked for the worker flush. The view BORROWS from the
-				// prepared model, which the caller keeps alive until the flush is done.
-				let write = new DeferredImportWrite();
-				write.Instance = instance;
-				write.StreamName.Set(TextureAssetBuilder.cEmbeddedStreamName);
-				write.View = texture.Data;
-				deferredWrites.Add(write);
-				outGuids.Add(instance.Id);
-				continue;
-			}
-
-			let wrote = instance.WriteData(TextureAssetBuilder.cEmbeddedStreamName, texture.Data);
-			outGuids.Add((wrote case .Ok) ? instance.Id : Guid.Empty);
 		}
 	}
 
@@ -138,8 +171,13 @@ static class ModelImportTextures
 	/// The usage comes from the material SLOT, which knows what the map is for, and the rest
 	/// from the file's own header facts. Null means deselected, or that it could not be
 	/// copied.
+	///
+	/// `coverageCutoff` (ModelTextureClassify.AlphaCutoffStep, 0 for none) is the cutoff whose
+	/// coverage its mipmaps keep. A copy of a texture (another cutoff's, its suffix in
+	/// `nameSuffix`) names itself after the texture with the suffix, follows the texture's
+	/// selection, and does not copy the source file again.
 	private static Instance ImportFileBacked(ModelTexture texture, int index, bool normalSlot,
-		bool linear, float alphaCutoff, ImportContext context, bool sidecarsCopied, Group group,
+		bool linear, uint8 coverageCutoff, StringView nameSuffix, ImportContext context, bool sidecarsCopied, Group group,
 		ImportOptions options, List<String> claimed, List<DeferredImportWrite> deferredWrites)
 	{
 		let relative = IsModelRelativeUri(texture.Uri);
@@ -160,7 +198,9 @@ static class ModelImportTextures
 		// The glTF sidecar pass already copies every relative uri, the same bytes to the same
 		// place, so copying again here would double a large package. Only what it did not
 		// cover is copied: an absolute reference, or a container with no sidecar pass.
-		if (!(relative && sidecarsCopied))
+		// A copy's file came in with the texture's own asset.
+		let copyFile = nameSuffix.IsEmpty;
+		if (copyFile && !(relative && sidecarsCopied))
 		{
 			if (deferredWrites != null)
 			{
@@ -196,14 +236,14 @@ static class ModelImportTextures
 		else if (linear)
 			asset.SetupForDataMask();
 		// A masked material's base colour: its mipmaps keep the cutoff's coverage.
-		if (alphaCutoff > 0.0f)
+		if (coverageCutoff > 0)
 		{
 			asset.PreserveAlphaCoverage = true;
-			asset.AlphaCoverageReference = alphaCutoff;
+			asset.AlphaCoverageReference = (float)coverageCutoff / 255.0f;
 		}
 
-		let instance = ClaimedInstances.Claim(group,
-			options.SelectionName(.Texture, textureName), cAssetType, claimed);
+		let name = scope String(options.SelectionName(.Texture, textureName))..Append(nameSuffix);
+		let instance = ClaimedInstances.Claim(group, name, cAssetType, claimed);
 		if ((instance == null) || (instance.WriteObject(asset) case .Err))
 			return null;
 		return instance;

@@ -28,7 +28,7 @@ static class ModelMaterialBuild
 		// A transmissive surface (glass) that is otherwise opaque: the engine does not refract,
 		// so it draws blended, as see-through as it transmits (down to cTransmissiveMinOpacity),
 		// its base colour's alpha carrying the opacity.
-		let transmissive = (material.Transmission > 0.0f) && (material.AlphaMode == .Opaque) && (material.Shading == .Pbr);
+		let transmissive = ModelTextureClassify.DrawsTransmissive(material);
 		var baseColor = material.BaseColorFactor;
 		if (transmissive)
 			baseColor.W *= 1.0f - Math.Clamp(material.Transmission, 0.0f, 1.0f) * (1.0f - cTransmissiveMinOpacity);

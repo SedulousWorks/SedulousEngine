@@ -2,9 +2,11 @@ using System;
 using System.Collections;
 using Sedulous.Content;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Materials.Pipeline;
 using Sedulous.Materials.Resource;
 using Sedulous.Model;
+using Sedulous.Texture.Pipeline;
 
 namespace Sedulous.ModelImporter.Tests;
 
@@ -257,5 +259,73 @@ class ModelMaterialWiringTests
 		ModelMaterialBuild.Build(model, glass, "m", textures, packed, maskedGlass);
 		Test.Assert(maskedGlass.Source.BlendMode == .Masked);
 		Test.Assert(Math.Abs(Uniform(maskedGlass, "BaseColor").W - 1.0f) < 1e-5f);
+	}
+
+	/// One texture, as the base colour of leaves tested at 0.5, leaves tested at 0.3, and a veil
+	/// blending with it.
+	private const String cShrub = """
+{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"material":0},{"attributes":{"POSITION":0,"TEXCOORD_0":1},"material":1},{"attributes":{"POSITION":0,"TEXCOORD_0":1},"material":2}]}],"materials":[{"name":"LeavesHalf","alphaMode":"MASK","alphaCutoff":0.5,"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}},{"name":"LeavesLow","alphaMode":"MASK","alphaCutoff":0.3,"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}},{"name":"Veil","alphaMode":"BLEND","pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}],"textures":[{"source":0}],"images":[{"name":"leaf","uri":"leaf.png"}],"buffers":[{"byteLength":60,"uri":"data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},{"buffer":0,"byteOffset":36,"byteLength":24}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,0]},{"bufferView":1,"componentType":5126,"count":3,"type":"VEC2"}]}
+""";
+
+	/// A base colour shared by materials with different alpha uses is an asset per use: each
+	/// tested material reads a copy keeping its own cutoff's coverage, the veil the alpha as
+	/// authored.
+	[Test]
+	public static void ABaseColourSharedByMaterialsWithDifferentAlphaUsesIsAnAssetPerUse()
+	{
+		let fixture = scope ImportFixture("scratch_gltf_alphauses");
+		let dropped = scope String();
+		fixture.WriteDroppedFile("Shrub.gltf", cShrub, dropped);
+		// A 2 x 2 RGBA image, two texels opaque and two clear, beside the model.
+		uint8[?] leaf = .(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x08, 0x06, 0x00, 0x00, 0x00, 0x72, 0xb6, 0x0d, 0x24, 0x00, 0x00, 0x00, 0x11, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0x0f, 0x01, 0x0c, 0x0c, 0x20, 0x02, 0xc4, 0x02, 0x00, 0x80, 0x91, 0x0d, 0xf3, 0x7e, 0xc1, 0xff, 0xde, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82);
+		let leafPath = scope String();
+		fixture.SubPath("leaf.png", leafPath);
+		Test.Assert(WriteFile(leafPath, .(&leaf[0], leaf.Count)) case .Ok);
+
+		let importer = scope ModelFileImporter();
+		let imported = importer.Import(dropped, fixture.Context, fixture.RootGroup, null, null, null);
+		Test.Assert(imported case .Ok(let instance));
+		let manifest = ImportFixture.ReadManifest(instance);
+		defer delete manifest;
+		Test.Assert(manifest.Manifest.MaterialGuid.Count == 3);
+		var textures = 0;
+		for (let each in instance.OwningGroup.Instances)
+			textures += (each.TypeName == "Sedulous.Texture.Pipeline.TextureAsset") ? 1 : 0;
+		Test.Assert(textures == 3, "the texture, and a copy for each cutoff");
+
+		// The texture each material reads as its base colour, and what that asset keeps.
+		void BaseColour(int material, out bool coverage, out float reference, String outName, out Guid id)
+		{
+			let materialInstance = fixture.Db.GetInstance(manifest.Manifest.MaterialGuid[material]);
+			Test.Assert(materialInstance != null);
+			let owned = scope List<Object>();
+			defer { ClearAndDeleteItems(owned); }
+			let materialObject = materialInstance.ReadObject();
+			owned.Add(materialObject);
+			let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(materialObject)) as MaterialAsset;
+			Test.Assert(asset != null);
+			id = SlotId(asset.Source, "AlbedoMap");
+			let texture = fixture.Db.GetInstance(id);
+			Test.Assert(texture != null);
+			outName.Set(texture.Name);
+			let textureObject = texture.ReadObject();
+			owned.Add(textureObject);
+			let textureAsset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(textureObject)) as TextureAsset;
+			Test.Assert(textureAsset != null);
+			coverage = textureAsset.PreserveAlphaCoverage;
+			reference = textureAsset.AlphaCoverageReference;
+			Test.Assert(manifest.Manifest.MaterialAlbedo[material] == id, "the manifest names the same one");
+		}
+		let halfName = scope String();
+		let lowName = scope String();
+		let veilName = scope String();
+		BaseColour(0, let halfCoverage, let halfReference, halfName, let halfId);
+		BaseColour(1, let lowCoverage, let lowReference, lowName, let lowId);
+		BaseColour(2, let veilCoverage, let veilReference, veilName, let veilId);
+		Test.Assert(!veilCoverage, scope String()..AppendF("the alpha as authored, not kept at {}", veilReference));
+		Test.Assert(halfCoverage && (Math.Abs(halfReference - 0.5f) < 0.01f));
+		Test.Assert(lowCoverage && (Math.Abs(lowReference - 0.3f) < 0.01f));
+		Test.Assert((halfId != lowId) && (halfId != veilId));
+		Test.Assert(halfName.StartsWith(veilName) && lowName.StartsWith(veilName), "a copy is named after the texture");
 	}
 }

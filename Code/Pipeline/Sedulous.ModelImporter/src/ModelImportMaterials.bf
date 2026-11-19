@@ -21,7 +21,7 @@ static class ModelImportMaterials
 	private const String cAssetType = "Sedulous.Materials.Pipeline.MaterialAsset";
 
 	public static void Import(Model model, Group group, List<Guid> textureGuids,
-		ModelManifestSource manifest, List<String> claimed,
+		Dictionary<uint64, Guid> alphaCopies, ModelManifestSource manifest, List<String> claimed,
 		List<DeferredImportWrite> deferredWrites, ImportOptions options)
 	{
 		let bakedPacked = scope Dictionary<uint64, Guid>();
@@ -49,6 +49,22 @@ static class ModelImportMaterials
 				scope (roughIndex, metalIndex) => ModelImportTextures.GetOrBakePacked(model, group, bakedPacked, roughIndex, metalIndex,
 					claimed, deferredWrites), asset);
 
+			// An alpha tested material reads the copy of its base colour that keeps its own
+			// cutoff's coverage, where the texture's asset keeps another's or none
+			// (ModelImportTextures.Import).
+			let albedoIndex = material.BaseColorTextureIndex;
+			var albedo = ((albedoIndex >= 0) && (albedoIndex < textureGuids.Count)) ? textureGuids[albedoIndex] : Guid.Empty;
+			if ((albedoIndex >= 0) && (ModelTextureClassify.BaseColorAlphaUse(material) == .Tested)
+				&& alphaCopies.TryGetValue(ModelTextureClassify.AlphaCopyKey(albedoIndex, ModelTextureClassify.AlphaCutoffStep(material.AlphaCutoff)), let copy))
+			{
+				for (int slot < asset.Source.TextureSlots.Count)
+				{
+					if (asset.Source.TextureSlots[slot] == "AlbedoMap")
+						asset.Source.TextureIds[slot] = copy;
+				}
+				albedo = copy;
+			}
+
 			let instance = ClaimedInstances.Claim(group,
 				options.SelectionName(.Material, materialName), cAssetType, claimed);
 			if ((instance == null) || (instance.WriteObject(asset) case .Err))
@@ -58,10 +74,7 @@ static class ModelImportMaterials
 				continue;
 			}
 			manifest.MaterialGuid.Add(instance.Id);
-
-			let albedoIndex = material.BaseColorTextureIndex;
-			manifest.MaterialAlbedo.Add(((albedoIndex >= 0)
-				&& (albedoIndex < textureGuids.Count)) ? textureGuids[albedoIndex] : Guid.Empty);
+			manifest.MaterialAlbedo.Add(albedo);
 		}
 	}
 }
