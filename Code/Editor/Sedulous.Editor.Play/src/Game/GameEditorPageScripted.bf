@@ -33,8 +33,8 @@ extension GameEditorPage
 		mScriptedReleased = false;
 		if ((mInput != null) && (mInput.ActiveSource === mViewportSource))
 			mInput.SetSourceProvider(mScripted, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
-		if (mGameInstance != null)
-			mGameInstance.SetInputSource(mScripted);
+		if (mApplicationRun != null)
+			mApplicationRun.SetInputSource(mScripted);
 	}
 
 	public void EndScriptedInput()
@@ -45,7 +45,7 @@ extension GameEditorPage
 
 	public bool GetScriptProperty(StringView name, ref ScriptValue value)
 	{
-		return (mGameInstance != null) && mGameInstance.GetScriptProperty(name, ref value);
+		return (mApplicationRun != null) && mApplicationRun.GetScriptProperty(name, ref value);
 	}
 
 	public bool GetLevelProperty(StringView name, ref ScriptValue value)
@@ -82,8 +82,8 @@ extension GameEditorPage
 			return;
 		if ((mInput != null) && (mInput.ActiveSource === mScripted))
 			mInput.SetSourceProvider(mViewportSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
-		if (mGameInstance != null)
-			mGameInstance.SetInputSource(mViewportSource);
+		if (mApplicationRun != null)
+			mApplicationRun.SetInputSource(mViewportSource);
 		DeleteAndNullify!(mScripted);
 		mScriptedEnding = false;
 		mScriptedReleased = false;

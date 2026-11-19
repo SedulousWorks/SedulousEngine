@@ -10,7 +10,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Engine.Audio;
 using Sedulous.Graphics; // RenderWindowDesc: the main window drawn pre-rotated
 using Sedulous.Engine.DefaultApp;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.GUI;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Render;
@@ -254,11 +254,11 @@ class PlayerApplication : DefaultApplication
 		// a startup scene, when the manifest names one, loads behind it. The player's one run
 		// plays one session, from here to OnExit.
 		Instance.Start();
-		LoadAndStartGameScript();
+		LoadAndStartRunBehavior();
 
 		if (instance != null)
 			BeginBootScene(host, instance);
-		else if (GameScriptRunning)
+		else if (RunBehaviorRunning)
 			GlobalLog(.Information, "Player: no startup scene; the game script owns boot");
 		else
 			GlobalLog(.Information,
@@ -267,7 +267,7 @@ class PlayerApplication : DefaultApplication
 
 	/// The manifest's startup script is a cooked ScriptClass, bound from the content
 	/// database by id. None is fine; one that does not resolve is an error the run survives.
-	private void LoadAndStartGameScript()
+	private void LoadAndStartRunBehavior()
 	{
 		let scriptId = mSettings.StartupScriptId;
 		if ((scriptId == Guid()) || (Resources == null))
@@ -278,7 +278,7 @@ class PlayerApplication : DefaultApplication
 			GlobalLog(.Error, "Player: the startup script asset did not resolve");
 			return;
 		}
-		StartGameScript(scriptClass);
+		StartRunBehavior(scriptClass);
 	}
 
 	/// A script loaded level gets the player's full activation: a camera, then the base's
@@ -566,7 +566,7 @@ class PlayerApplication : DefaultApplication
 
 	public override void OnExit(IApplicationHost host)
 	{
-		StopGameScript();
+		StopRunBehavior();
 		Instance.Stop(); // its session ends: whatever follows the run's lifecycle hears it
 		SetPrimaryScene(null);
 		if (mScene != null)

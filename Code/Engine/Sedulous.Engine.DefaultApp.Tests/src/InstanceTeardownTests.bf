@@ -4,7 +4,7 @@ using Sedulous.Engine.DefaultApp;
 
 namespace Sedulous.Engine.DefaultApp.Tests;
 
-/// A game instance released or shut down tells the aware subsystems its scenes are gone, so the
+/// An application run released or shut down tells the aware subsystems its scenes are gone, so the
 /// script subsystem keeps no scene system it would reach freed at shutdown (it did: the scenes
 /// were cleared after their manager was unregistered, which takes away the uninstaller).
 class InstanceTeardownTests

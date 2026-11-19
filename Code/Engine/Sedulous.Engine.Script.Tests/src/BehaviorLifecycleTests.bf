@@ -445,7 +445,7 @@ static class BehaviorLifecycleTests
 	{
 		let subsystem = scope ScriptSubsystem();
 		let play = scope ScriptPlayScene();
-		// Wired as the subsystem wires a composed scene and a game instance's host.
+		// Wired as the subsystem wires a composed scene and an application run's host.
 		subsystem.OnSystemsReady(play.Scene);
 		play.Scripts.SetRunHost(play.Host);
 		play.Host.TeardownCheck = new (h) => { subsystem.MaybeTeardownRunHost(h); };

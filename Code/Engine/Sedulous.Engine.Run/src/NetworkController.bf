@@ -10,7 +10,7 @@ using Sedulous.Net.Replication;
 using Sedulous.Run;
 using Sedulous.Scene;
 
-namespace Sedulous.Engine.GameInstance;
+namespace Sedulous.Engine.Run;
 
 /// A running game's networking, held OFF the instance rather than inherited by it.
 ///

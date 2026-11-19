@@ -22,7 +22,7 @@ class AudioFacade
 	/// an application's manager may be handed over after the facade is made.
 	private AudioSubsystem mAudio;
 	private delegate ResourceManager() mResources ~ delete _;
-	/// BORROWED: the run this facade plays into (a GameInstance); null is outside every run.
+	/// BORROWED: the run this facade plays into (a ApplicationRun); null is outside every run.
 	private IRun mRun;
 
 	public this(AudioSubsystem audio, delegate ResourceManager() resources, IRun run = null)

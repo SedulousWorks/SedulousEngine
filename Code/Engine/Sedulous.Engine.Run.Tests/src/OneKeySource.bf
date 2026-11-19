@@ -2,7 +2,7 @@ using System;
 using Sedulous.Input;
 using Sedulous.Shell;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// One keyboard reporting a single held key, and no other device.
 ///

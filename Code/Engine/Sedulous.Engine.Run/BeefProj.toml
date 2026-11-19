@@ -1,9 +1,9 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Engine.GameInstance"
+Name = "Sedulous.Engine.Run"
 TargetType = "BeefLib"
-StartupObject = "Sedulous.Engine.GameInstance.Program"
+StartupObject = "Sedulous.Engine.Run.Program"
 
 [Dependencies]
 corlib = "*"

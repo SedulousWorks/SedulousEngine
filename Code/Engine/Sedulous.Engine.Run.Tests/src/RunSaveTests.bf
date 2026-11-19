@@ -2,9 +2,9 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// A run's save: the values a game keeps between runs, in a file the host names.
 class RunSaveTests

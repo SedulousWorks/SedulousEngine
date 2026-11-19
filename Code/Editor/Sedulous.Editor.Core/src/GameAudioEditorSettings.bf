@@ -12,7 +12,7 @@ class GameAudioEditorSettings
 	public bool HearAllInstances = false;
 
 	/// The preference's value; the default when no store or section exists (headless, tests).
-	public static bool HearAllGameInstances(EditorContext context)
+	public static bool HearAllRunsPreference(EditorContext context)
 	{
 		let store = context.UserEditorSettings;
 		let section = (store != null) ? store.Find<GameAudioEditorSettings>() : null;
@@ -25,7 +25,7 @@ class GameAudioEditorSettings
 		let contribution = new EditorSettingsContribution("Game audio");
 		contribution.Bools.Add(new EditorSettingsBoolField("Hear every Game tab",
 			"With several Game tabs running, mix every instance's sound. Off (the default): only the focused tab is heard, the others run muted.",
-			new [=context]() => HearAllGameInstances(context),
+			new [=context]() => HearAllRunsPreference(context),
 			new [=context](value) =>
 			{
 				if (let store = context.UserEditorSettings)

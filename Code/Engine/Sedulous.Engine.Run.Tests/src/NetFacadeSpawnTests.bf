@@ -3,7 +3,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Content;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.Net;
 using Sedulous.Net.Replication;
 using Sedulous.Resource;
@@ -11,7 +11,7 @@ using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.VFS;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// Net.Spawn: the host puts a prefab into the replicated scene with a network id carrying
 /// the prefab, so every client builds its own copy; a client's or an offline call spawns

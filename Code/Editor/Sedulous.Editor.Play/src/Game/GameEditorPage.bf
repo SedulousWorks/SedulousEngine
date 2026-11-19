@@ -12,7 +12,7 @@ using Sedulous.Engine.Scene;
 using Sedulous.Render;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Input;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
@@ -31,7 +31,7 @@ class GameEditorPageServices
 	public delegate Node(StringView path) LoadMarkup ~ delete _;
 }
 
-/// The Game tab: plays the project's default scene through its OWN game instance, with the
+/// The Game tab: plays the project's default scene through its OWN application run, with the
 /// startup script, the default input map and bus layout, the resolution it draws at (the project's
 /// by default), and the script debugger beside the game (hidden until its toggle, or a breakpoint,
 /// shows it).
@@ -42,7 +42,7 @@ class GameEditorPageServices
 /// toggle; the game on GUI.Viewport, which the GUI host binds, places and routes, and which keeps
 /// every key while it runs and has the focus (Shift+F1 gives them back).
 ///
-/// The context, host and embedded application are borrowed. The game instance is borrowed from
+/// The context, host and embedded application are borrowed. The application run is borrowed from
 /// the application and released back to it on close.
 class GameEditorPage : UIEditorPage, IPieInstancePage
 {
@@ -83,7 +83,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private GameEditorPageServices mServices ~ delete _;
 	private DefaultApplication mApp;
 	/// THIS tab's running game: its own run host and scenes.
-	private GameInstance mGameInstance;
+	private ApplicationRun mApplicationRun;
 	private SceneSubsystem mScenes = null;
 	private RenderSubsystem mRender = null;
 	/// The level this tab's views draw at, asked for every frame (GameQuality).
@@ -124,7 +124,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private List<ScriptBreakpoint> mAppliedBreakpoints = new .() ~ DeleteContainerAndItems!(_);
 	/// One reference, the page's: its pane holds its own.
 	private Sedulous.GUI.Viewport mViewport ~ _.ReleaseRef();
-	/// The placeholder scene group when there is no game instance.
+	/// The placeholder scene group when there is no application run.
 	private SceneManager mFallbackScenes = new .() ~ delete _;
 
 	private String mSceneTitle = new .() ~ delete _;
@@ -150,7 +150,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	/// `services` it takes; `pieId` names the tab: the id its dock panel persists under and the PIE
 	/// tools address it by (`game-page`, then `game-page-1`, ...).
 	public this(EditorContext context, IApplicationHost host, GameEditorPageServices services, DefaultApplication embeddedApp,
-		GameInstance instance, StringView pieId)
+		ApplicationRun instance, StringView pieId)
 	{
 		mPieId.Set(pieId);
 		TitleFor(pieId, mTitle);
@@ -158,7 +158,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mHost = host;
 		mServices = services;
 		mApp = embeddedApp;
-		mGameInstance = instance;
+		mApplicationRun = instance;
 
 		mScenes = host.Subsystems.GetSubsystem<SceneSubsystem>();
 		mRender = host.Subsystems.GetSubsystem<RenderSubsystem>();
@@ -193,16 +193,16 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		// THIS instance's exit request stops THIS tab's run, whichever tab it is: the script
 		// asking fires inside the embedded app's update, which runs before the pages, so the
 		// stop is deferred to this page's next OnUpdate, no script call on the stack.
-		if (mGameInstance != null)
-			mGameInstance.SetExitRequest(new [=this](code) =>
+		if (mApplicationRun != null)
+			mApplicationRun.SetExitRequest(new [=this](code) =>
 				{
 					GlobalLog(.Information, "Editor: Game: '{}' requested exit({})", mPieId, code);
 					mExitRequested = true;
 				});
 		// A script's RenderQuality.Set picks the level in the tab's quality dropdown, as the user
 		// would; the player would keep it for the next run, the tab keeps it for the session.
-		if (mGameInstance != null)
-			mGameInstance.Quality.SetOnChoose(new [=this] (id) => { SelectQuality(id.ToString(.. scope .())); });
+		if (mApplicationRun != null)
+			mApplicationRun.Quality.SetOnChoose(new [=this] (id) => { SelectQuality(id.ToString(.. scope .())); });
 
 		// The tab from its markup: the bar over the stage, the game beside the debugger.
 		mContent = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(cMarkupPath) : null;
@@ -255,27 +255,27 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	public bool IsStarting => mPendingPlay;
 	public StringView SceneName => (mScene != null) ? mScene.Name : "";
 	public uint64 FrameCount => mFrameCount;
-	public double RunTime => (mRunning && (mGameInstance != null)) ? mGameInstance.RunTime : mStoppedRunTime;
+	public double RunTime => (mRunning && (mApplicationRun != null)) ? mApplicationRun.RunTime : mStoppedRunTime;
 
 	public PieScriptState ScriptState
 	{
 		get
 		{
-			if (mGameInstance == null)
+			if (mApplicationRun == null)
 				return .None;
-			if (mGameInstance.ScriptRunning)
+			if (mApplicationRun.RunBehaviorRunning)
 				return .Running;
-			return mGameInstance.ScriptFault.IsEmpty ? .None : .Faulted;
+			return mApplicationRun.ScriptFault.IsEmpty ? .None : .Faulted;
 		}
 	}
 
-	public StringView ScriptFault => (mGameInstance != null) ? mGameInstance.ScriptFault : "";
+	public StringView ScriptFault => (mApplicationRun != null) ? mApplicationRun.ScriptFault : "";
 
 	public void RequestViewportCapture(StringView path) => mCapture.Request(path);
 	public ViewportCapture LastViewportCapture => mCapture.State;
 
 	/// The instance's scenes, or the page's own placeholder group without an instance.
-	public SceneManager SceneGroup => (mGameInstance != null) ? mGameInstance.Scenes : mFallbackScenes;
+	public SceneManager SceneGroup => (mApplicationRun != null) ? mApplicationRun.Scenes : mFallbackScenes;
 
 	/// Asks for a cook and starts once it is idle.
 	public void Play()
@@ -405,9 +405,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		// at its own render resolution (the shared tier's global overlays draw above it).
 		if ((mApp != null) && (mApp.Gui != null))
 		{
-			mApp.Gui.SetScreenResolution(mGameInstance, mRenderWidth, mRenderHeight, mRenderFit);
-			mApp.Gui.SetScreenOrientation(mGameInstance, mOrientation);
-			mApp.Gui.SetRenderRun(mGameInstance);
+			mApp.Gui.SetScreenResolution(mApplicationRun, mRenderWidth, mRenderHeight, mRenderFit);
+			mApp.Gui.SetScreenOrientation(mApplicationRun, mOrientation);
+			mApp.Gui.SetRenderRun(mApplicationRun);
 		}
 		// Through the viewport's UNORM view: the screen UI blends encoded values, as in the player.
 		mRender.RenderOverlays(frame.Encoder, mViewport.ColorView, mViewport.ColorFormat, w, h, frame.FrameIndex,
@@ -430,17 +430,17 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mRender.ClearViewportQuality(Internal.UnsafeCastToPtr(this)); // the key is this page, about to go
 		if (mInput != null)
 			mInput.ClearSourceProviderIf(mViewportSource);
-		if (mGameInstance != null)
-			mGameInstance.SetInputSource((mInput != null) ? mInput.ShellSource : null);
-		if (mGameInstance != null)
+		if (mApplicationRun != null)
+			mApplicationRun.SetInputSource((mInput != null) ? mInput.ShellSource : null);
+		if (mApplicationRun != null)
 		{
-			mGameInstance.SetExitRequest(null); // it points at this page, which is going
-			mGameInstance.Quality.SetOnChoose(null); // so does the choice's hook
-			mGameInstance.Quality.Clear();
+			mApplicationRun.SetExitRequest(null); // it points at this page, which is going
+			mApplicationRun.Quality.SetOnChoose(null); // so does the choice's hook
+			mApplicationRun.Quality.Clear();
 		}
-		if ((mApp != null) && (mGameInstance != null))
-			mApp.ReleaseInstance(mGameInstance);
-		mGameInstance = null;
+		if ((mApp != null) && (mApplicationRun != null))
+			mApp.ReleaseInstance(mApplicationRun);
+		mApplicationRun = null;
 		if (mHost.Graphics != null)
 		{
 			// A copy recorded last frame completes first: freeing its buffer in flight is the

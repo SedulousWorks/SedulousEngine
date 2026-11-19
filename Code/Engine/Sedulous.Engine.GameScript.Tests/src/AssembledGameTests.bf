@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Script;
 using Sedulous.Script.Resource;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
@@ -99,11 +99,11 @@ static class AssembledGameTests
 		game.Assembly = assembly;
 		{
 			let run = scope GameRun("scratch_game_assembled");
-			Test.Assert(run.Instance.StartScript(game), "launched");
+			Test.Assert(run.Instance.StartRunBehavior(game), "launched");
 			Test.Assert(!AssembledRuntime.sCompiled, "its source never compiled");
 			Test.Assert((AssembledRuntime.sLoaded.Count == 2) && (AssembledRuntime.sLoaded[0] == 0x4D) && (AssembledRuntime.sLoaded[1] == 0x5A));
 			run.Instance.TickScript(0.1f, 1.0f);
-			run.Instance.StopScript();
+			run.Instance.StopRunBehavior();
 		}
 		let calls = AssembledRuntime.sCalls;
 		Test.Assert(calls.Count >= 3, scope $"{calls.Count} calls");

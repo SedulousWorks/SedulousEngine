@@ -65,7 +65,7 @@ abstract class ScriptRuntime
 
 	/// Installs a Service role object, reached by its exact type: what a script's
 	/// `Audio.Play(...)` or `Run.LoadSceneAsync(...)` resolves. BORROWED. A per run service,
-	/// a game instance say, is installed on that run's runtime alone, so one run's script
+	/// an application run say, is installed on that run's runtime alone, so one run's script
 	/// never reaches another's.
 	public void SetService<T>(T service) where T : class
 	{

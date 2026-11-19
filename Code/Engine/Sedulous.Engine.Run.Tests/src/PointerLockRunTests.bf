@@ -1,9 +1,9 @@
 using System;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Input;
 using Sedulous.Shell;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// A mouse that records the lock asked of it, and no other device.
 class LockMouseSource : IInputSourceProvider
@@ -43,12 +43,12 @@ class LockMouseSource : IInputSourceProvider
 /// A run's end frees a pointer its game locked.
 class PointerLockRunTests
 {
-	/// A run ends through StopScript (the player's and the editor's stop, and a restart), the path
+	/// A run ends through StopRunBehavior (the player's and the editor's stop, and a restart), the path
 	/// that stops its pads too.
 	[Test]
 	public static void ARunsEndFreesAPointerItsGameLocked()
 	{
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		let source = scope LockMouseSource();
 		instance.SetInputSource(source);
 		instance.InputRuntime.SetPointerLock(true); // as Input.LockPointer asks it
@@ -56,7 +56,7 @@ class PointerLockRunTests
 		Test.Assert(source.Locking.Relative);
 		Test.Assert(!source.Locking.Visible);
 
-		instance.StopScript();
+		instance.StopRunBehavior();
 		Test.Assert(!source.Locking.Relative);
 		Test.Assert(source.Locking.Visible);
 		Test.Assert(!instance.InputRuntime.PointerLockApplied, "the next run starts unlocked");
@@ -64,7 +64,7 @@ class PointerLockRunTests
 		// A run that never locked leaves a pointer someone else holds alone (an editor viewport's).
 		source.Locking.Relative = true;
 		instance.DriveInput(0.016f, 1.0f);
-		instance.StopScript();
+		instance.StopRunBehavior();
 		Test.Assert(source.Locking.Relative);
 	}
 }

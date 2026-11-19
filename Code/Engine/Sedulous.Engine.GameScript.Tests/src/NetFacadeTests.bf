@@ -1,5 +1,5 @@
 using System;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.Net;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
@@ -41,14 +41,14 @@ class NetFacadeTests
 				void exit() { Net.Disconnect(); }
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(!run.PropBool("offlineServer"));
 		Test.Assert(run.PropBool("canHost") == Sedulous.Net.Manager.NetworkManager.CanHost, "the build's, not the session's");
 		Test.Assert(run.PropInt("offlinePeers") == 0);
 		Test.Assert(run.PropBool("hosted"), "a host on an assigned port opens");
 		Test.Assert(run.PropBool("server") && !run.PropBool("client"));
 		Test.Assert(run.Instance.NetEndpoint != null);
-		run.Instance.StopScript(); // exit() leaves
+		run.Instance.StopRunBehavior(); // exit() leaves
 		Test.Assert(run.Instance.NetEndpoint == null, "left: offline again");
 	}
 
@@ -92,7 +92,7 @@ class NetFacadeTests
 				bool greeted() { return greeting == "masked"; }
 			}
 			""");
-		Test.Assert(host.Instance.StartScript(hostGame));
+		Test.Assert(host.Instance.StartRunBehavior(hostGame));
 		Test.Assert(host.Instance.NetEndpoint != null);
 		let port = host.Instance.NetEndpoint.BoundPort;
 
@@ -119,7 +119,7 @@ class NetFacadeTests
 				bool sent = false;
 			}
 			""");
-		Test.Assert(client.Instance.StartScript(clientGame));
+		Test.Assert(client.Instance.StartRunBehavior(clientGame));
 		for (int i < 200)
 		{
 			Pump(host, client, 1);
@@ -158,7 +158,7 @@ class NetFacadeTests
 				void exit() { Net.Disconnect(); }
 			}
 			""");
-		Test.Assert(host.Instance.StartScript(hostGame));
+		Test.Assert(host.Instance.StartRunBehavior(hostGame));
 		Test.Assert(host.PropInt("self") == 0, "the host is player nought");
 		let port = host.Instance.NetEndpoint.BoundPort;
 
@@ -185,7 +185,7 @@ class NetFacadeTests
 				}
 			}
 			""");
-		Test.Assert(client.Instance.StartScript(clientGame));
+		Test.Assert(client.Instance.StartRunBehavior(clientGame));
 		Test.Assert(client.PropInt("before") == -1, "not welcomed yet");
 		for (int i < 300)
 		{
@@ -200,7 +200,7 @@ class NetFacadeTests
 		Test.Assert(Math.Abs(client.PropFloat("welcome") - (float)(clientId * 10)) < 0.001f, "a message to it alone");
 		Test.Assert(client.PropInt("welcomeFrom") == 0, "from the host, player nought");
 
-		host.Instance.StopScript(); // exit(): the host leaves
+		host.Instance.StopRunBehavior(); // exit(): the host leaves
 		for (int i < 600)
 		{
 			Pump(host, client, 1);
@@ -260,7 +260,7 @@ class NetFacadeTests
 				}
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(run.PropBool("loaded"));
 		run.Step(2);
 		Test.Assert(run.Instance.ScriptFault.IsEmpty, scope $"faulted: {run.Instance.ScriptFault}");
@@ -281,16 +281,16 @@ class NetFacadeTests
 	{
 		let run = scope GameRun("scratch_net_stop");
 		let game = run.Class("Game", "class Game { void launch() { Net.StartServer(0); } }");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(run.Instance.NetEndpoint != null);
-		run.Instance.StopScript();
+		run.Instance.StopRunBehavior();
 		Test.Assert(run.Instance.NetEndpoint == null, "the game's server closed with it");
 
 		Test.Assert(run.Instance.StartServer(0, false), "a startup preset's host");
 		let quiet = run.Class("Game", "class Game { void launch() {} }");
-		Test.Assert(run.Instance.StartScript(quiet));
+		Test.Assert(run.Instance.StartRunBehavior(quiet));
 		Test.Assert(run.Instance.NetEndpoint != null, "the launch stopped no game, so the host stands");
-		run.Instance.StopScript();
+		run.Instance.StopRunBehavior();
 		Test.Assert(run.Instance.NetEndpoint == null);
 	}
 }

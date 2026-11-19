@@ -5,7 +5,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Resource;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 
 namespace Sedulous.Engine.DefaultApp;
 

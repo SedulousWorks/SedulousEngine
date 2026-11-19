@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Input;
 using Sedulous.Messaging;
 using Sedulous.Resource;
@@ -12,11 +12,11 @@ using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Shell;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// The running game as an object: its scene group, its bus, its input, and the load
 /// orchestration it owns.
-class GameInstanceTests
+class ApplicationRunTests
 {
 	/// A map with one button action bound to one key.
 	private static InputMap MakeFireMap(KeyCode key)
@@ -45,8 +45,8 @@ class GameInstanceTests
 	[Test]
 	public static void TheRunClockCountsFramesWithoutAGameScript()
 	{
-		let instance = scope GameInstance();
-		Test.Assert(!instance.ScriptRunning);
+		let instance = scope ApplicationRun();
+		Test.Assert(!instance.RunBehaviorRunning);
 		for (int i < 5)
 			instance.TickScript(1.0f / 60.0f, 1.0f);
 		Test.Assert(Math.Abs(instance.RunTime - 5.0 / 60.0) < 1e-6, scope $"{instance.RunTime}");
@@ -57,7 +57,7 @@ class GameInstanceTests
 	[Test]
 	public static void AFreshInstanceIsIdleAndOwnsAUsableGroup()
 	{
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		Test.Assert(instance.InstanceTimeScale == 1.0f);
 
 		instance.InstanceTimeScale = 0.5f;
@@ -78,8 +78,8 @@ class GameInstanceTests
 		// Each instance has its OWN runtime bound to its OWN source, so one surface's keys
 		// never reach another's game. The same map and the same key, two sources, and only
 		// the one actually holding it fires.
-		let a = scope GameInstance();
-		let b = scope GameInstance();
+		let a = scope ApplicationRun();
+		let b = scope ApplicationRun();
 
 		let sourceA = scope OneKeySource();
 		sourceA.Key = .H;
@@ -121,8 +121,8 @@ class GameInstanceTests
 	{
 		// A playtest's timeline through the project's map, as a player's keys would go: the
 		// scripted instance's action follows the timeline, the other instance never sees it.
-		let a = scope GameInstance();
-		let b = scope GameInstance();
+		let a = scope ApplicationRun();
+		let b = scope ApplicationRun();
 		let scripted = scope ScriptedInputSource();
 		let idle = scope OneKeySource();
 		idle.Key = .H;
@@ -202,12 +202,12 @@ class GameInstanceTests
 		Test.Assert(held.Events.Length == 1 && (held.Events[0].Kind == .KeyUp));
 	}
 
-	/// A GameInstance is its IRun: its scenes are on the run's own bus,
+	/// A ApplicationRun is its IRun: its scenes are on the run's own bus,
 	/// and what it owns is reached through the run.
 	[Test]
 	public static void TheInstanceIsAnIRunItsScenesOnTheRunsBusItsServicesThroughTheRun()
 	{
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		IRun run = instance;
 		Test.Assert(run.Id != 0);
 		Test.Assert(run.State == .Idle);
@@ -216,7 +216,7 @@ class GameInstanceTests
 		Test.Assert(level.Events === run.Events, "one bus: the run's");
 		Test.Assert((Object)level.Run === (Object)run);
 
-		Test.Assert(RunServices.Get<GameInstance>(run) === instance);
+		Test.Assert(RunServices.Get<ApplicationRun>(run) === instance);
 		Test.Assert(RunServices.Get<NetworkController>(run) === instance.Network);
 		Test.Assert(RunServices.Get<ActionRuntime>(run) === instance.InputRuntime);
 		Test.Assert(RunServices.Get<RunSave>(run) === instance.Saves);
@@ -233,7 +233,7 @@ class GameInstanceTests
 	[Test]
 	public static void TheRunBusDefersDeliversInOrderAndStaysPerInstance()
 	{
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		let bus = instance.Events;
 
 		let order = scope List<int32>();
@@ -275,7 +275,7 @@ class GameInstanceTests
 		Test.Assert(cascaded);
 
 		// Two instances own INDEPENDENT buses.
-		let other = scope GameInstance();
+		let other = scope ApplicationRun();
 		var hitsA = 0;
 		var hitsB = 0;
 
@@ -297,7 +297,7 @@ class GameInstanceTests
 		// events and the run's are one object. A subscriber in one scene hears an emit from
 		// another with no relay at all, delivered exactly once by the instance's drain: the
 		// scenes never drain it themselves.
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		let a = instance.CreateScene("A");
 		let b = instance.CreateScene("B");
 		Test.Assert(a != null);
@@ -321,7 +321,7 @@ class GameInstanceTests
 	[Test]
 	public static void ClearScenesResetsTheGroupTimeScale()
 	{
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		instance.Scenes.CreateScene("L1");
 
 		// A game paused and then stopped: the group survives the stop on a persistent
@@ -339,7 +339,7 @@ class GameInstanceTests
 	[Test]
 	public static void AnInstanceIsItsScenesRun()
 	{
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		let created = instance.CreateScene("Created");
 		Test.Assert(created.Run === instance);
 

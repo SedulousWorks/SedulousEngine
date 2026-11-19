@@ -8,7 +8,7 @@ using Sedulous.Core.Logging;
 using Sedulous.VFS;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.GUI;
 using Sedulous.Engine.Input;
 using Sedulous.Engine.Integration;
@@ -75,15 +75,15 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// The engine's GUI, beside the UI while both live. OWNED and REGISTERED, as the UI is.
 	private GuiSubsystem mGui = null ~ delete _;
 
-	/// The live runs (every GameInstance), handed to the subsystem manager for every subsystem.
+	/// The live runs (every ApplicationRun), handed to the subsystem manager for every subsystem.
 	/// Made in Configure; declared before the instances so it
 	/// outlives them and hears each one go.
 	private RunRegistry mRuns = null ~ delete _;
 	/// Names the extra instances' runs ("Game 2", ...).
 	private uint32 mRunsMade = 1;
 	/// The primary running game, which every application level operation targets.
-	private GameInstance mInstance = new .() ~ delete _;
-	private List<GameInstance> mExtraInstances = new .() ~ DeleteContainerAndItems!(_);
+	private ApplicationRun mInstance = new .() ~ delete _;
+	private List<ApplicationRun> mExtraInstances = new .() ~ DeleteContainerAndItems!(_);
 
 
 	private AudioEngineSettings mAudioEngineSettings = null;
@@ -123,7 +123,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	private ScriptAnimationBridge mAnimationBridge = new .() ~ delete _;
 	/// `Save` to scripts outside every run (the editor's Simulate): every fallback read, nothing
 	/// written, rather than a fault on a missing service. On the application's services, since no
-	/// subsystem sits beside RunSave's owner (GameInstance, a run); a run's own comes first.
+	/// subsystem sits beside RunSave's owner (ApplicationRun, a run); a run's own comes first.
 	private SaveFacade mIdleSave = new .(null) ~ delete _;
 	/// The resolution the game draws at, fitted into the window by mRenderFit; nought draws at
 	/// the window's size. With it, the pointer the game and its screen UI read is in render
@@ -161,7 +161,7 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	// ==================== accessors ====================
 
-	public GameInstance Instance => mInstance;
+	public ApplicationRun Instance => mInstance;
 	/// The live runs (null before Configure); also on the subsystem manager, for subsystems. A
 	/// run the application does not make (an editor scene page's) joins them here.
 	public RunRegistry Runs => mRuns;
@@ -472,12 +472,12 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// An ADDITIONAL running game, which is what several games in flight at once needs, and
 	/// what an in editor dedicated server is when headless.
-	public GameInstance CreateInstance(bool headless = false)
+	public ApplicationRun CreateInstance(bool headless = false)
 	{
 		if ((mScenes == null) || (mHost == null))
 			return null;
 
-		let instance = new GameInstance();
+		let instance = new ApplicationRun();
 		mRunsMade++;
 		instance.SetName(scope $"Game {mRunsMade}");
 		if (mRuns != null)
@@ -500,7 +500,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// An instance's run host wired like the subsystem's own, and the instance's `Run`
 	/// verbs backed by this app: scene ids resolve in the scene database, a load's scene
 	/// gets the app's activation, and an exit reaches the host.
-	private void WireInstanceScripting(GameInstance instance, IApplicationHost host)
+	private void WireInstanceScripting(ApplicationRun instance, IApplicationHost host)
 	{
 		if (let scripts = host.Subsystems.GetSubsystem<ScriptSubsystem>())
 			scripts.ConfigureHost(instance.RunHost);
@@ -552,11 +552,11 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// `update(dt)`, `exit()` and `on<Event>` handlers, all optional. The CALLER resolves
 	/// where the class comes from, the manifest's startup script for the player. A fault
 	/// stops the script, not the game.
-	public bool StartGameScript(ScriptClass scriptClass) => mInstance.StartScript(scriptClass);
-	public void StopGameScript() => mInstance.StopScript();
-	public bool GameScriptRunning => mInstance.ScriptRunning;
+	public bool StartRunBehavior(ScriptClass scriptClass) => mInstance.StartRunBehavior(scriptClass);
+	public void StopRunBehavior() => mInstance.StopRunBehavior();
+	public bool RunBehaviorRunning => mInstance.RunBehaviorRunning;
 
-	public void ReleaseInstance(GameInstance instance)
+	public void ReleaseInstance(ApplicationRun instance)
 	{
 		if ((instance == null) || (instance === mInstance))
 			return;
@@ -580,7 +580,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	}
 
 	/// The primary first, then every extra.
-	private void ForEachInstance(delegate void(GameInstance instance) fn)
+	private void ForEachInstance(delegate void(ApplicationRun instance) fn)
 	{
 		fn(mInstance);
 		for (let instance in mExtraInstances)
@@ -661,7 +661,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	protected void TearDownRuns()
 	{
 		// Every game script's exit() before its scenes go.
-		ForEachInstance(scope (instance) => instance.StopScript());
+		ForEachInstance(scope (instance) => instance.StopRunBehavior());
 		ForEachInstance(scope (instance) => instance.Scenes.Clear());
 	}
 
@@ -1113,7 +1113,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		=> PrefabSpawnSystem.SpawnInto(scene, resources, prefab);
 
 	/// Enters a preset role at startup. None leaves it offline.
-	private void ApplyNetworkStartup(GameInstance instance)
+	private void ApplyNetworkStartup(ApplicationRun instance)
 	{
 		switch (mNetStartup.Role)
 		{

@@ -23,7 +23,7 @@ using Sedulous.Engine.Input; // InputFacade
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Script.Facades;
 
-namespace Sedulous.Engine.GameInstance;
+namespace Sedulous.Engine.Run;
 
 /// ONE running game, as an object.
 ///
@@ -44,7 +44,7 @@ namespace Sedulous.Engine.GameInstance;
 /// It IS its run, through RunBase: its id, name, sessions, event
 /// bus, and what it owns registered on it, so others reach those through the run.
 [Scriptable, ScriptService, DisplayName("Run")]
-class GameInstance : RunBase, IRunInput
+class ApplicationRun : RunBase, IRunInput
 {
 	/// What the APP does to a scene the moment one of its tracked loads completes: find a
 	/// camera, start it, enable simulation. Pairing it as the current scene is the instance's
@@ -71,7 +71,7 @@ class GameInstance : RunBase, IRunInput
 	/// OWNED: this run's networking.
 	private NetworkController mNetwork = new .() ~ delete _;
 	/// OWNED: `Http` to this run's scripts. Its client is made on the scripts' first request,
-	/// pumped by TickScript and reset by StopScript.
+	/// pumped by TickScript and reset by StopRunBehavior.
 	private HttpFacade mHttpFacade = new .() ~ delete _;
 	/// OWNED: `RenderQuality` to this run's scripts: the levels the host offers.
 	private RenderQualityFacade mQualityFacade = new .() ~ delete _;
@@ -162,7 +162,7 @@ class GameInstance : RunBase, IRunInput
 		mNetwork.SetMutations(Mutations);
 		// What the run owns and others reach through it (RunServices.Get, and its scripts by type):
 		// borrowed, fields all.
-		Register<GameInstance>(this);
+		Register<ApplicationRun>(this);
 		Register<InputFacade>(mInputFacade);
 		Register<SaveFacade>(mSaveFacade);
 		Register<NetFacade>(mNetFacade);
@@ -206,7 +206,7 @@ class GameInstance : RunBase, IRunInput
 		// The host goes below whatever pins it, and the subsystem that installed its check may
 		// already be gone at shutdown: the check is not asked again.
 		DeleteAndNullify!(mRunHost.TeardownCheck);
-		StopScript();
+		StopRunBehavior();
 		ClearScenes();
 		mRunHost.Teardown();
 	}
@@ -631,7 +631,7 @@ class GameInstance : RunBase, IRunInput
 	public void Emit(StringView eventName, Float4 payload) => Events.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 
 	/// Whether a game script is running: instantiated and not faulted.
-	public bool ScriptRunning => mGame != null;
+	public bool RunBehaviorRunning => mGame != null;
 	/// Reads a property of the running game script (a score, a lives count) into `value`;
 	/// false with no script running or no such property.
 	public bool GetScriptProperty(StringView name, ref ScriptValue value)
@@ -672,9 +672,9 @@ class GameInstance : RunBase, IRunInput
 	/// it has one; `update(dt)` each tick and `exit()` at the stop, all optional, its
 	/// `on<Event>` handlers subscribed to the run bus. False when the class did not load or
 	/// instantiate, logged. A second start stops the first.
-	public bool StartScript(ScriptClass scriptClass)
+	public bool StartRunBehavior(ScriptClass scriptClass)
 	{
-		StopScript();
+		StopRunBehavior();
 		mScriptFault.Clear();
 		if (scriptClass == null)
 			return false;
@@ -695,7 +695,7 @@ class GameInstance : RunBase, IRunInput
 	}
 
 	/// `exit()`, then release. Idempotent; the fault path lands here too.
-	public void StopScript()
+	public void StopRunBehavior()
 	{
 		ClearGameSubscriptions();
 		// Any rumble the game started ends with it: no pad is left buzzing after its run.
@@ -724,7 +724,7 @@ class GameInstance : RunBase, IRunInput
 			// Networking belongs to the game's run: what it hosted or joined closes with it,
 			// after its exit() had the chance to say goodbye. An editor's Game tab stopped and
 			// started again would otherwise come back still a server, its port still held.
-			// Only a game's stop: StartScript stops first, and an app's startup preset hosts
+			// Only a game's stop: StartRunBehavior stops first, and an app's startup preset hosts
 			// or joins before the game launches.
 			mNetwork.StopNetworking();
 		}

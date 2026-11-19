@@ -8,7 +8,7 @@ using Sedulous.Settings;
 using Sedulous.Script;
 using Sedulous.Xml.Serialization;
 
-namespace Sedulous.Engine.GameInstance;
+namespace Sedulous.Engine.Run;
 
 /// A run's save: the values a game keeps between runs (a best time, an unlocked level, its own
 /// options), the file they live in, and whether they changed since the last write.

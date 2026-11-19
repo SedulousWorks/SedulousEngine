@@ -1,10 +1,10 @@
 using System;
 using System.Threading;
 using Sedulous.Core;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Net;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// A ws:// join address: a native client joins the host's browser gateway, at the game port + 1
 /// (the StartServer convention) since the address names none.
@@ -30,8 +30,8 @@ class WebSocketJoinRunTests
 		}
 		Test.Assert(port != 0);
 
-		let server = scope GameInstance();
-		let client = scope GameInstance();
+		let server = scope ApplicationRun();
+		let client = scope ApplicationRun();
 		Test.Assert(server.StartServer(port, true));
 		Test.Assert(server.NetEndpoint != null);
 		Test.Assert(server.NetEndpoint.WebSocketBoundPort == port + 1);

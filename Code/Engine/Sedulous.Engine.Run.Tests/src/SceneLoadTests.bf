@@ -1,12 +1,12 @@
 using System;
 using Sedulous.Content;
 using Sedulous.Core;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// The scene load orchestration the instance owns: the synchronous path, the streaming one,
 /// and the ticket registry that sits over it.
@@ -72,7 +72,7 @@ class SceneLoadTests
 		let resources = scope ResourceManager(fixture.Database);
 		let prefabs = scope PrefabFactory();
 		resources.AddFactory(prefabs);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		// Never bound before: the load binds it for its three placements.
 		let first = instance.LoadScene(level, resources);
@@ -103,7 +103,7 @@ class SceneLoadTests
 		Test.Assert(prefabId != Guid());
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		let scene = instance.LoadScene(level, resources);
 		Test.Assert(scene != null);
 		Test.Assert(scene.EntityCount == 0);
@@ -115,7 +115,7 @@ class SceneLoadTests
 		let fixture = scope SceneContentFixture("scratch_gi_load_scene_ref");
 		let level = AuthorLevel(fixture, "level");
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		instance.SetSceneLoader(new [=fixture, =resources, =instance] (sceneId) =>
 			{
 				let sceneInstance = fixture.Database.GetInstance(sceneId);
@@ -139,7 +139,7 @@ class SceneLoadTests
 	/// Loads `Next` on its first fixed step, as a behaviour's level exit does.
 	private class LevelExit : SceneSystem
 	{
-		public GameInstance Instance;
+		public ApplicationRun Instance;
 		public SceneRef Next;
 		public int Steps = 0;
 		public bool Loaded = false;
@@ -160,7 +160,7 @@ class SceneLoadTests
 		let fixture = scope SceneContentFixture("scratch_gi_load_fixed_step");
 		let level = AuthorLevel(fixture, "level");
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		instance.SetSceneLoader(new [=fixture, =resources, =instance] (sceneId) =>
 			{
 				let sceneInstance = fixture.Database.GetInstance(sceneId);
@@ -201,7 +201,7 @@ class SceneLoadTests
 		let level = AuthorLevel(fixture, "level");
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		let scene = instance.LoadScene(level, resources);
 		Test.Assert(scene != null);
@@ -217,7 +217,7 @@ class SceneLoadTests
 		let level = AuthorLevel(fixture, "level");
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		var handle = instance.LoadSceneAsync(level, resources);
 		Test.Assert(handle.Scene != null);
@@ -242,7 +242,7 @@ class SceneLoadTests
 			SceneContentFixture.SceneTypeName);
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		var handle = instance.LoadSceneAsync(empty, resources);
 		Test.Assert(handle.Failed);
@@ -259,7 +259,7 @@ class SceneLoadTests
 		let level = AuthorLevel(fixture, "level");
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		// No current scene at launch, which is what an orchestrator first boot looks like.
 		Test.Assert(!instance.SceneReady);
 
@@ -307,7 +307,7 @@ class SceneLoadTests
 		let level = AuthorLevel(fixture, "level");
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 		instance.SetSceneActivationPolicy(new (scene) => { scene.Start(); scene.SetSimulationEnabled(true); });
 
 		instance.TrackLoad(instance.LoadSceneAsync(level, resources));
@@ -337,7 +337,7 @@ class SceneLoadTests
 			SceneContentFixture.SceneTypeName);
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		let ticket = instance.TrackLoad(instance.LoadSceneAsync(empty, resources));
 		Test.Assert(ticket == 1);
@@ -358,7 +358,7 @@ class SceneLoadTests
 		let level = AuthorLevel(fixture, "level");
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		let handle = instance.LoadSceneAsync(level, resources);
 		Test.Assert(handle.Scene != null);
@@ -386,7 +386,7 @@ class SceneLoadTests
 		let level = AuthorLevel(fixture, "level");
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		let live = instance.LoadScene(level, resources);
 		Test.Assert(live != null);
@@ -422,7 +422,7 @@ class SceneLoadTests
 		let level = AuthorLevel(fixture, "level");
 
 		let resources = scope ResourceManager(fixture.Database);
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		let ticket = instance.TrackLoad(instance.LoadSceneAsync(level, resources));
 		instance.PumpLoads();

@@ -5,7 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Messaging;
 using Sedulous.Scene;
 using Sedulous.Script;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Script.Facades;
 using Sedulous.Engine.Input; // InputFacade
@@ -42,8 +42,8 @@ static class GameScriptTests
 	{
 		let run = scope GameRun("scratch_game_lifecycle");
 		let game = run.Class("Game", cGame);
-		Test.Assert(run.Instance.StartScript(game), "launched");
-		Test.Assert(run.Instance.ScriptRunning);
+		Test.Assert(run.Instance.StartRunBehavior(game), "launched");
+		Test.Assert(run.Instance.RunBehaviorRunning);
 		Test.Assert(run.PropInt("launches") == 1);
 		Test.Assert(run.PropInt("updates") == 0, "update waits for the tick");
 
@@ -65,12 +65,12 @@ static class GameScriptTests
 		run.Instance.InstanceTimeScale = 1.0f;
 
 		// A second start replaces the first, exit() included: the new one has seen nothing.
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert((run.PropInt("updates") == 0) && (run.PropInt("exits") == 0), "a fresh instance");
 
-		run.Instance.StopScript();
-		Test.Assert(!run.Instance.ScriptRunning);
-		run.Instance.StopScript(); // idempotent
+		run.Instance.StopRunBehavior();
+		Test.Assert(!run.Instance.RunBehaviorRunning);
+		run.Instance.StopRunBehavior(); // idempotent
 	}
 
 	/// The host's pause (the editor's toolbar) holds the Game class still: no update, the run's
@@ -80,7 +80,7 @@ static class GameScriptTests
 	{
 		let run = scope GameRun("scratch_game_host_pause");
 		let game = run.Class("Game", cGame);
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		run.Instance.Start();
 		run.Step();
 		Test.Assert(run.PropInt("updates") == 1);
@@ -96,7 +96,7 @@ static class GameScriptTests
 		run.Step();
 		Test.Assert(run.PropInt("updates") == 2);
 		Test.Assert(run.Instance.RunTime > before);
-		run.Instance.StopScript();
+		run.Instance.StopRunBehavior();
 	}
 
 	[Test]
@@ -104,7 +104,7 @@ static class GameScriptTests
 	{
 		let run = scope GameRun("scratch_game_events");
 		let game = run.Class("Game", cGame);
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 
 		// Published from native code, delivered at the drain, not inside the publish.
 		run.Instance.Events.Publish(StringHash("Score"), Variant.Create((int32)5));
@@ -120,7 +120,7 @@ static class GameScriptTests
 		// An event nobody declared is nothing, and the stop unsubscribes.
 		run.Instance.Emit("Nothing", 1);
 		run.Step();
-		run.Instance.StopScript();
+		run.Instance.StopRunBehavior();
 		run.Instance.Emit("Score", 7);
 		run.Step();
 		Test.Assert(run.Instance.Events.SubscriberCount == 0, "unsubscribed with the script");
@@ -140,7 +140,7 @@ static class GameScriptTests
 				void onUpdate(float dt) { if (!done) { done = true; scene.Scripts.Emit("Score", 3); } }
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 
 		// A scene the instance created: its behaviours run on the instance's host, and its
 		// bus IS the run bus.
@@ -175,7 +175,7 @@ static class GameScriptTests
 				void onPing(int value) { scene.Scripts.Emit("Score", value); }
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 
 		let level = run.Instance.CreateScene("level");
 		let components = level.GetSystem<ScriptComponentManager>();
@@ -229,7 +229,7 @@ static class GameScriptTests
 			}}
 			""", levelId);
 		let game = run.Class("Game", source);
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(!run.PropBool("readyBefore"), "no scene at launch");
 		// The coroutine ran to its first yield inside launch(): the load is in flight.
 		Test.Assert(run.PropInt("ticket") == 1, scope $"ticket {run.PropInt("ticket")}");
@@ -262,7 +262,7 @@ static class GameScriptTests
 				}
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(run.PropInt("ticket") == 0, "nought is the load that did not start");
 		Test.Assert(!run.PropBool("synced"));
 		Test.Assert((run.ExitCode == 3) && (run.Exits == 1), "the exit reached the host with its code");
@@ -287,18 +287,18 @@ static class GameScriptTests
 			""";
 		{
 			let unwired = scope GameRun("scratch_game_profiler_unwired");
-			Test.Assert(unwired.Instance.StartScript(unwired.Class("Game", source)));
+			Test.Assert(unwired.Instance.StartRunBehavior(unwired.Class("Game", source)));
 			Test.Assert(!unwired.PropBool("available"));
-			unwired.Instance.StopScript();
+			unwired.Instance.StopRunBehavior();
 		}
 
 		let run = scope GameRun("scratch_game_profiler");
 		let calls = scope List<bool>();
 		run.Instance.SetProfilerOverlay(new (shown) => calls.Add(shown), new () => true);
-		Test.Assert(run.Instance.StartScript(run.Class("Game", source)));
+		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", source)));
 		Test.Assert(run.PropBool("available"));
 		Test.Assert((calls.Count == 1) && calls[0]);
-		run.Instance.StopScript(); // exit() hides it
+		run.Instance.StopRunBehavior(); // exit() hides it
 		Test.Assert((calls.Count == 2) && !calls[1]);
 	}
 
@@ -313,11 +313,11 @@ static class GameScriptTests
 				void update(float dt) { updates++; if (updates == 2) { int[] a; a[5] = 1; } }
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		run.Step();
-		Test.Assert(run.Instance.ScriptRunning);
+		Test.Assert(run.Instance.RunBehaviorRunning);
 		run.Step();
-		Test.Assert(!run.Instance.ScriptRunning, "the fault stopped the script");
+		Test.Assert(!run.Instance.RunBehaviorRunning, "the fault stopped the script");
 		run.Step(2); // and the run keeps ticking without it
 		Test.Assert(run.Game == null);
 		// The fault is remembered with where it happened, and the run's clock kept moving.
@@ -328,9 +328,9 @@ static class GameScriptTests
 		Test.Assert(run.Instance.RunTime == 0);
 		Test.Assert(run.Instance.RealDeltaTime == 0, "a new run does not read the last one's frame time");
 		// A new start clears it.
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(run.Instance.ScriptFault.IsEmpty);
-		run.Instance.StopScript();
+		run.Instance.StopRunBehavior();
 		Test.Assert(run.Instance.ScriptFault.IsEmpty, "a clean stop is not a fault");
 	}
 
@@ -347,8 +347,8 @@ static class GameScriptTests
 				void update(float dt) { ready = Run.SceneReady; }
 			}
 			""";
-		Test.Assert(a.Instance.StartScript(a.Class("Game", game)));
-		Test.Assert(b.Instance.StartScript(b.Class("Game", game)));
+		Test.Assert(a.Instance.StartRunBehavior(a.Class("Game", game)));
+		Test.Assert(b.Instance.StartRunBehavior(b.Class("Game", game)));
 		Test.Assert(b.Instance.LoadScene(bLevel), "b has a scene");
 		a.Step();
 		b.Step();
@@ -375,7 +375,7 @@ static class GameScriptTests
 				void onScore(int points) { score += points; }
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		IScriptDebugger debugger = null;
 		run.Instance.RequestDebugger(new [&] (d) => { d.SetBreakpoint("Game.as", 9); debugger = d; });
 		Test.Assert(debugger != null);
@@ -383,7 +383,7 @@ static class GameScriptTests
 		run.Step();
 		Test.Assert(run.Instance.IsDebugPaused, "held inside update");
 		Test.Assert((run.PropInt("updates") == 1) && (run.PropInt("after") == 0));
-		Test.Assert(run.Instance.ScriptRunning, "paused is not faulted");
+		Test.Assert(run.Instance.RunBehaviorRunning, "paused is not faulted");
 
 		// Held: no new update, and the bus waits.
 		run.Instance.Emit("Score", 4);
@@ -436,7 +436,7 @@ static class GameScriptTests
 				}
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		Float3 F3(StringView name) => run.Prop(name).AsFloat3;
 		Test.Assert(F3("sum") == Float3(5, 7, 9));
 		Test.Assert(F3("diff") == Float3(3, 3, 3));
@@ -499,7 +499,7 @@ static class GameScriptTests
 				}}
 			}}
 			""", levelId);
-		Test.Assert(run.Instance.StartScript(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
 		run.Step();
 		Test.Assert(run.Instance.ScriptFault.IsEmpty, scope String(run.Instance.ScriptFault));
 		Test.Assert(run.PropBool("compared"), "the level was current at the next frame");
@@ -556,9 +556,9 @@ static class GameScriptTests
 				}}
 			}}
 			""", firstId, secondId);
-		Test.Assert(run.Instance.StartScript(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
 		run.Step(2);
-		Test.Assert(run.Instance.ScriptRunning, scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.RunBehaviorRunning, scope String(run.Instance.ScriptFault));
 		Test.Assert(run.PropInt("stage") == 2, "both frames ran");
 		Test.Assert(run.Prop("before").AsString == "e0", "the first level's entity, while it lived");
 		Test.Assert(run.PropInt("countNow") == 3, "the run is in the second level");
@@ -593,7 +593,7 @@ static class GameScriptTests
 		let sourceB = scope OnePadSource();
 		runA.Instance.SetInputSource(sourceA);
 		runB.Instance.SetInputSource(sourceB);
-		Test.Assert(runA.Instance.StartScript(runA.Class("Game", cRumbler)));
+		Test.Assert(runA.Instance.StartRunBehavior(runA.Class("Game", cRumbler)));
 
 		// Asked in the update, applied by the next input drive through the run's own source.
 		runA.Step();
@@ -617,7 +617,7 @@ static class GameScriptTests
 		runA.Step();
 		runA.Instance.DriveInput(1.0f / 60.0f, 1.0f);
 		Test.Assert(sourceA.Gamepad.RumbleLow == 0.5f);
-		runA.Instance.StopScript();
+		runA.Instance.StopRunBehavior();
 		Test.Assert(sourceA.Gamepad.RumbleLow == 0.0f);
 		Test.Assert(sourceB.Gamepad.RumbleCalls == 0);
 	}
@@ -652,7 +652,7 @@ static class GameScriptTests
 		}
 		run.Instance.SetInputMap(map);
 		let input = run.Instance.InputRuntime;
-		Test.Assert(run.Instance.StartScript(run.Class("Game", cMenu)));
+		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", cMenu)));
 		Test.Assert(input.IsSetEnabled("Gameplay"));
 
 		run.Step();
@@ -712,7 +712,7 @@ static class GameScriptTests
 		let kinds = scope Sedulous.Input.InputKindTracker();
 		run.Instance.[Friend]mInputFacade.InputKinds = kinds;
 		defer { run.Instance.[Friend]mInputFacade.InputKinds = null; }
-		Test.Assert(run.Instance.StartScript(run.Class("Game", cHint)));
+		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", cHint)));
 
 		run.Step();
 		Test.Assert(run.Prop("shown").AsString == "Hold Space: talk", scope $"{run.Prop("shown").AsString}");
@@ -723,7 +723,7 @@ static class GameScriptTests
 		kinds.SetKind(.Pad);
 		run.Step();
 		Test.Assert(run.Prop("shown").AsString == "Hold Pad South: talk", scope $"{run.Prop("shown").AsString}");
-		run.Instance.StopScript();
+		run.Instance.StopRunBehavior();
 	}
 
 	/// Each run counts itself and keeps a best time; the second sees the first's values. The
@@ -756,9 +756,9 @@ static class GameScriptTests
 		{
 			let run = scope GameRun(scope $"scratch_game_save_run{runIndex}");
 			run.Instance.SetSaveFile(path);
-			Test.Assert(run.Instance.StartScript(run.Class("Game", cCounter)));
+			Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", cCounter)));
 			Test.Assert(run.Instance.Saves.Values.GetInt("runs", 0) == runIndex);
-			run.Instance.StopScript();
+			run.Instance.StopRunBehavior();
 		}
 
 		let reread = scope RunSave();
@@ -783,7 +783,7 @@ static class GameScriptTests
 		{
 			let run = scope GameRun("scratch_game_save_floats_a");
 			run.Instance.SetSaveFile(path);
-			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+			Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", """
 				class Game
 				{
 					void launch()
@@ -795,7 +795,7 @@ static class GameScriptTests
 					void update(float dt) {}
 				}
 				""")));
-			run.Instance.StopScript();
+			run.Instance.StopRunBehavior();
 		}
 
 		let reread = scope RunSave();
@@ -807,7 +807,7 @@ static class GameScriptTests
 		{
 			let run = scope GameRun("scratch_game_save_floats_b");
 			run.Instance.SetSaveFile(path);
-			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+			Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", """
 				class Game
 				{
 					bool had = false;
@@ -833,7 +833,7 @@ static class GameScriptTests
 			Test.Assert(run.PropFloat("last") == 30.0f);
 			Test.Assert(!run.PropBool("notList"));
 			Test.Assert(run.PropInt("notListCount") == 0);
-			run.Instance.StopScript();
+			run.Instance.StopRunBehavior();
 		}
 	}
 
@@ -850,7 +850,7 @@ static class GameScriptTests
 		{
 			let run = scope GameRun("scratch_game_save_flush_a");
 			run.Instance.SetSaveFile(path);
-			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+			Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", """
 				class Game
 				{
 					bool flushed = false;
@@ -863,19 +863,19 @@ static class GameScriptTests
 			let reread = scope RunSave();
 			reread.Open(path);
 			Test.Assert(reread.Values.GetInt("coins", 0) == 37);
-			run.Instance.StopScript();
+			run.Instance.StopRunBehavior();
 		}
 		{
 			let run = scope GameRun("scratch_game_save_flush_b");
 			run.Instance.SetSaveFile(path);
-			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+			Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", """
 				class Game
 				{
 					void launch() { Save.Clear(); }
 					void update(float dt) {}
 				}
 				""")));
-			run.Instance.StopScript();
+			run.Instance.StopRunBehavior();
 			let reread = scope RunSave();
 			reread.Open(path);
 			Test.Assert(reread.Values.Count == 0);
@@ -884,7 +884,7 @@ static class GameScriptTests
 			// No file named: the game's values last the run, its reads see them, nothing is
 			// written.
 			let run = scope GameRun("scratch_game_save_flush_c");
-			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+			Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", """
 				class Game
 				{
 					int coins = 0;
@@ -894,7 +894,7 @@ static class GameScriptTests
 				""")));
 			Test.Assert(run.PropInt("coins") == 5);
 			Test.Assert(!run.Instance.Saves.Flush());
-			run.Instance.StopScript();
+			run.Instance.StopRunBehavior();
 		}
 	}
 
@@ -924,19 +924,19 @@ static class GameScriptTests
 		run.Instance.RunHost.Subsystems = application;
 		defer { run.Instance.RunHost.Subsystems = null; }
 
-		Test.Assert(!run.Instance.ScriptRunning);
+		Test.Assert(!run.Instance.RunBehaviorRunning);
 		let runtime = run.Instance.RunHost.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
 		let context = runtime.Context;
 		Test.Assert(context.FindService(typeof(InputFacade)) === run.Instance.[Friend]mInputFacade, "the run's Input");
 		Test.Assert(context.FindService(typeof(SaveFacade)) === run.Instance.[Friend]mSaveFacade, "the run's Save");
-		Test.Assert(context.FindService(typeof(GameInstance)) === run.Instance, "and Run");
+		Test.Assert(context.FindService(typeof(ApplicationRun)) === run.Instance, "and Run");
 		Test.Assert(context.FindService(typeof(ScriptRandom)) === run.Instance.RunHost.Random, "the context's own first");
 
 		// The run gone (disposed: its services with it), its scripts find the application's.
 		run.Instance.Dispose();
 		Test.Assert(context.FindService(typeof(InputFacade)) === idleInput, "the application's, the run's gone");
 		Test.Assert(context.FindService(typeof(SaveFacade)) === idleSave);
-		Test.Assert(context.FindService(typeof(GameInstance)) == null);
+		Test.Assert(context.FindService(typeof(ApplicationRun)) == null);
 	}
 }

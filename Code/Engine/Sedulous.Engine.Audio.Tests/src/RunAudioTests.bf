@@ -16,7 +16,7 @@ namespace Sedulous.Engine.Audio.Tests;
 /// manager on the subsystem manager: no call to the audio.
 class RunAudioTests
 {
-	/// A run of its own (a GameInstance is the real one).
+	/// A run of its own (a ApplicationRun is the real one).
 	private class TestRun : RunBase
 	{
 		public this() : base("test") {}

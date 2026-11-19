@@ -6,7 +6,7 @@ using Sedulous.Messaging;
 namespace Sedulous.Run;
 
 /// IRun implemented once: the id, name, state machine, event bus and service table. A run derives
-/// from it (the engine's GameInstance does). One that registers its own members as services calls
+/// from it (the engine's ApplicationRun does). One that registers its own members as services calls
 /// Dispose in its own destructor, so their stop hooks run while they still exist.
 class RunBase : IRun
 {

@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Engine.DefaultApp;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 
 namespace Sedulous.Engine.DefaultApp.Tests;
 

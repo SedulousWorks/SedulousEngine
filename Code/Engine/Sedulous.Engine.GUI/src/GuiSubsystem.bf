@@ -524,7 +524,7 @@ class GuiSubsystem : Subsystem, ISceneObserver, IRunListener
 	}
 
 	/// The action runtime the GUI's prompts (GUI.Gamekit's Prompt) name the bindings of: the game's
-	/// (the application's primary game instance's, as the default application sets it); null, the
+	/// (the application's primary application run's, as the default application sets it); null, the
 	/// input subsystem's own. BORROWED: it outlives its use here, or is set to null first. Its
 	/// bindings' changes (a map loaded, a rebinding, a set enabled) are seen at the next frame and
 	/// every prompt reads them again.

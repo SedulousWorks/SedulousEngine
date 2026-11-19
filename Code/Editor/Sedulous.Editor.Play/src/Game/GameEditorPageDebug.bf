@@ -13,9 +13,9 @@ extension GameEditorPage
 {
 	private void EnableDebugging()
 	{
-		if (mGameInstance == null)
+		if (mApplicationRun == null)
 			return;
-		mGameInstance.RunHost.RequestDebugger(new [=this](debugger) =>
+		mApplicationRun.RunHost.RequestDebugger(new [=this](debugger) =>
 		{
 			debugger.SetListener(mDebugListener);
 			for (let breakpoint in mContext.Breakpoints)
@@ -33,7 +33,7 @@ extension GameEditorPage
 		mContext.ScriptValueProbe = new [=this](identifier, outText) =>
 		{
 			outText.Clear();
-			if ((mGameInstance == null) || !mRunning || !mGameInstance.RunHost.IsDebugPaused)
+			if ((mApplicationRun == null) || !mRunning || !mApplicationRun.RunHost.IsDebugPaused)
 				return;
 			let debugger = mDebuggerPanel.Debugger;
 			if (debugger == null)

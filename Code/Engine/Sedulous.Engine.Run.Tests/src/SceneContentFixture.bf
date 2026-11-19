@@ -6,7 +6,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Scene.Resource;
 using Sedulous.VFS;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// A scratch directory, a content database over it, and the scene document types
 /// registered: what the load orchestration needs on the other side of the content

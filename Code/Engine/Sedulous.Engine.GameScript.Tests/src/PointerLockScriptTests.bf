@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Input;
 using Sedulous.Shell;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
@@ -69,7 +69,7 @@ class PointerLockScriptTests
 		let sourceB = scope LockMouseSource();
 		runA.Instance.SetInputSource(sourceA);
 		runB.Instance.SetInputSource(sourceB);
-		Test.Assert(runA.Instance.StartScript(runA.Class("Game", cLooker)), scope String(runA.Instance.ScriptFault));
+		Test.Assert(runA.Instance.StartRunBehavior(runA.Class("Game", cLooker)), scope String(runA.Instance.ScriptFault));
 
 		// Asked in the update, not yet applied; the next input drive locks the run's own mouse.
 		runA.Step();
@@ -91,7 +91,7 @@ class PointerLockScriptTests
 		runA.Step();
 		runA.Instance.DriveInput(1.0f / 60.0f, 1.0f);
 		Test.Assert(sourceA.Locking.Relative);
-		runA.Instance.StopScript();
+		runA.Instance.StopRunBehavior();
 		Test.Assert(!sourceA.Locking.Relative);
 		Test.Assert(sourceA.Locking.Visible);
 	}

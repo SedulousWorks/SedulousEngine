@@ -717,7 +717,7 @@ class GuiSubsystemTests
 		engine.Gui.ScreenRoot.UpdateLayout();
 		Test.Assert(prompt.Text == "F", scope $"{prompt.Text}");
 
-		// The runtime the host names (a game instance's) instead.
+		// The runtime the host names (an application run's) instead.
 		let game = scope Sedulous.Input.ActionRuntime();
 		let g = MapWith(.G);
 		defer delete g;

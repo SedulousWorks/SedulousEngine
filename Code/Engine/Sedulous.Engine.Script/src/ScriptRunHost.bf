@@ -33,7 +33,7 @@ class ScriptRunHost
 	/// BORROWED: the services the owner installed on this host, by exact type, which its scripts
 	/// find first (FindService).
 	private List<(Type type, Object service)> mServices = new .() ~ delete _;
-	/// BORROWED: the run this host belongs to (a GameInstance, a scene page's run), whose
+	/// BORROWED: the run this host belongs to (a ApplicationRun, a scene page's run), whose
 	/// services its scripts find after the host's own; null outside every run (the subsystem's
 	/// default host).
 	public IRun OwningRun = null;
@@ -112,13 +112,13 @@ class ScriptRunHost
 	public ScriptRandom Random => mRandom;
 
 	/// A game script running on this host pins it: no teardown while it lives. Set by the
-	/// game instance that launched it.
+	/// application run that launched it.
 	public bool HasGameScriptHold = false;
 	/// Asks the host's owner whether the host can go now (nothing pins it), and tears it down
 	/// when so. Installed by the ScriptSubsystem; null for a host nobody watches. Owned.
 	public delegate void(ScriptRunHost host) TeardownCheck = null ~ delete _;
 
-	/// Runs the owner's teardown check: what a game instance calls when its game script ends.
+	/// Runs the owner's teardown check: what an application run calls when its game script ends.
 	public void CheckTeardown()
 	{
 		if (TeardownCheck != null)

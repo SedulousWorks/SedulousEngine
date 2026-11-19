@@ -102,7 +102,7 @@ class AngelScriptCook : IScriptLanguageCook
 		case .Game:
 			outSource.Append("""
 				// The run's orchestrator: the reserved class `Game`, one per run. `Run` is the
-				// game instance: load the opening scene from launch(), Run.LoadScene(sceneId),
+				// application run: load the opening scene from launch(), Run.LoadScene(sceneId),
 				// and use Run.Emit for run wide events; on<Event> handlers receive them.
 				class Game
 				{

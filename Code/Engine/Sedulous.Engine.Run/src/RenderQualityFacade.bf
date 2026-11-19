@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Script;
 
-namespace Sedulous.Engine.GameInstance;
+namespace Sedulous.Engine.Run;
 
 /// A run's quality levels to a script, reached as `RenderQuality`: what an options menu's
 /// graphics setting lists, the level the game plays at, and a switch.

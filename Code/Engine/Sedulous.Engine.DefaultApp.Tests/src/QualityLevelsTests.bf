@@ -9,7 +9,7 @@ using Sedulous.Settings;
 using Sedulous.Xml.Serialization;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.DefaultApp;
 
 namespace Sedulous.Engine.DefaultApp.Tests;

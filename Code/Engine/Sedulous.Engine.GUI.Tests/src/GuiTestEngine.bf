@@ -12,7 +12,7 @@ using Sedulous.VFS;
 
 namespace Sedulous.Engine.GUI.Tests;
 
-/// A run of its own, for the run screen tests (a GameInstance is the real one).
+/// A run of its own, for the run screen tests (a ApplicationRun is the real one).
 class GuiTestRun : RunBase
 {
 	public this() : base("test") {}

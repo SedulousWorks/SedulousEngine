@@ -81,13 +81,13 @@ class InputSubsystemTests
 		Test.Assert(input.ActiveSource !== tabA);
 	}
 
-	/// A run of its own (a GameInstance is the real one).
+	/// A run of its own (a ApplicationRun is the real one).
 	private class TestRun : RunBase
 	{
 		public this() : base("test") {}
 	}
 
-	/// The runtimes in play: the subsystem's own, then each run's (a game instance's, the
+	/// The runtimes in play: the subsystem's own, then each run's (an application run's, the
 	/// ActionRuntime it holds as a service), found through the runs on its subsystem manager, so
 	/// the UI's consumption and the touch guide reach the game too.
 	[Test]
@@ -116,7 +116,7 @@ class InputSubsystemTests
 		Test.Assert((order.Count == 3) && (order[0] === input.Runtime) && (order[1] === first) && (order[2] === second));
 	}
 
-	/// A run with input of its own, as a game instance has.
+	/// A run with input of its own, as an application run has.
 	private class InputRun : RunBase, IRunInput
 	{
 		public ActionRuntime Runtime = new .() ~ delete _;

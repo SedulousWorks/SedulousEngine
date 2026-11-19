@@ -88,7 +88,7 @@ editor reads its prefabs once, at start.
 ## A field naming a scene
 
 A component field that names a scene (a level's exit, the next course) is a `SceneRef`: the
-scene's id, which `GameInstance.LoadScene` and `LoadSceneAsync` take. It is not a `Ref<T>`: a
+scene's id, which `ApplicationRun.LoadScene` and `LoadSceneAsync` take. It is not a `Ref<T>`: a
 scene is read whole when a level loads, so nothing binds or caches it, and naming one never
 loads it. The inspector offers scenes for it and `component_set` sets it by guid, as for any
 reference; a pruned export keeps the scene a reflected component's `SceneRef` names, and the

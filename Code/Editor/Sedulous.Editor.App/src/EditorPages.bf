@@ -180,7 +180,7 @@ class EditorPages
 		return page;
 	}
 
-	/// The Game tab (`newInstance`: another one beside it, with a game instance of its own),
+	/// The Game tab (`newInstance`: another one beside it, with an application run of its own),
 	/// made through the context's GamePageFactory, the seam the play library registers.
 	public void OpenGame(bool newInstance)
 	{

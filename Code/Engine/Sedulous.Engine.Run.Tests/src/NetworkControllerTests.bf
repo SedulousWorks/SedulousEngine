@@ -1,12 +1,12 @@
 using System;
 using Sedulous.Core;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.Net;
 using Sedulous.Net.Manager;
 using Sedulous.Net.Replication;
 using Sedulous.Scene;
 
-namespace Sedulous.Engine.GameInstance.Tests;
+namespace Sedulous.Engine.Run.Tests;
 
 /// A run's networking: the role lifecycle, which scene a fresh endpoint replicates, and the
 /// edges at which the replicated scene's fixed lane is wired to the endpoint and unwired
@@ -96,8 +96,8 @@ class NetworkControllerTests
 	[Test]
 	public static void EachInstanceOwnsAnIndependentEndpoint()
 	{
-		let server = scope GameInstance();
-		let client = scope GameInstance();
+		let server = scope ApplicationRun();
+		let client = scope ApplicationRun();
 		Test.Assert(server.NetEndpoint == null);
 
 		Test.Assert(server.StartServer(0, true));
@@ -135,7 +135,7 @@ class NetworkControllerTests
 		// Destroying the CURRENT scene clears the pairing first, so the endpoint's own scene
 		// and the controller's cache are both empty BEFORE the scene is freed. A later pump
 		// or reconnect then never reaches dead storage.
-		let instance = scope GameInstance();
+		let instance = scope ApplicationRun();
 
 		let level = instance.CreateScene("Level");
 		Test.Assert(level != null);
@@ -156,7 +156,7 @@ class NetworkControllerTests
 	}
 
 	/// As the network subsystem pumps a run: its mutations deferred, flushed after.
-	private static void Pump(GameInstance instance)
+	private static void Pump(ApplicationRun instance)
 	{
 		if (let endpoint = instance.NetEndpoint)
 		{
@@ -174,8 +174,8 @@ class NetworkControllerTests
 	[Test]
 	public static void NetworkingStoppedFromInsideThePumpIsDeletedAfterIt()
 	{
-		let server = scope GameInstance();
-		let client = scope GameInstance();
+		let server = scope ApplicationRun();
+		let client = scope ApplicationRun();
 		Test.Assert(server.StartServer(0, true));
 		Test.Assert(client.Connect("127.0.0.1", server.NetEndpoint.BoundPort));
 		bool offlineInHandler = false;

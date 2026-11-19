@@ -29,7 +29,7 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 
 	public ScriptRunHost Host => mHost;
 
-	/// Wires a host a run owns (a game instance's, a scene page's) the way this subsystem's own
+	/// Wires a host a run owns (an application run's, a scene page's) the way this subsystem's own
 	/// is wired: the same surface and services through Configure, so a run's scripts see what
 	/// the default host's do, plus whatever the run installs on top.
 	public void ConfigureHost(ScriptRunHost host)
@@ -67,7 +67,7 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 		host.Teardown();
 	}
 
-	/// A debugger on the default host: the scenes outside every run. A run (a game instance's)
+	/// A debugger on the default host: the scenes outside every run. A run (an application run's)
 	/// is debugged through its own host.
 	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mHost.RequestDebugger(configurator);
 	public bool IsDebugPaused => mHost.IsDebugPaused;

@@ -1623,7 +1623,7 @@ class EditorApplication : IApplication
 		}
 		// The embedded runtime's frame first (per-scene fixed steps in BeginFrame, physics
 		// interpolation in Update), so pages read fresh state; EndFrame closes in OnRenderWindow
-		// after the scene bracket. The embedded app's own OnUpdate ticks every game instance's
+		// after the scene bracket. The embedded app's own OnUpdate ticks every application run's
 		// script once a frame, however many Game tabs.
 		if (mEmbeddedApp != null)
 		{

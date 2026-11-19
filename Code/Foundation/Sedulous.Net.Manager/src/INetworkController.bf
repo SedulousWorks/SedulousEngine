@@ -2,7 +2,7 @@ using System;
 
 namespace Sedulous.Net.Manager;
 
-/// The owner of a running game's networking (a GameInstance's NetworkController), as a run holds
+/// The owner of a running game's networking (a ApplicationRun's NetworkController), as a run holds
 /// it: what reaches the run's live endpoint from below the runtime layer. The engine's network
 /// subsystem pumps each run's endpoint through it, since it cannot name the runtime's controller.
 /// The controller outlives every endpoint it opens; the endpoint

@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
@@ -48,7 +48,7 @@ class RenderQualityFacadeRunTests
 				}
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		run.Step();
 		Test.Assert(run.Prop("listed").AsString == "Low,Medium,High", scope String(run.Prop("listed").AsString));
 		Test.Assert(run.Prop("before").AsString == "High");
@@ -57,7 +57,7 @@ class RenderQualityFacadeRunTests
 		Test.Assert(run.Prop("after").AsString == "Low");
 		Test.Assert(quality.CurrentId == low);
 		Test.Assert((played.Count == 1) && (played[0] == low), "the refused set asked for nothing");
-		run.Instance.StopScript();
+		run.Instance.StopRunBehavior();
 
 		// A run that offers none lists nothing, reads an empty label and refuses a set.
 		quality.Clear();

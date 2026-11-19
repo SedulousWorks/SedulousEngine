@@ -14,7 +14,7 @@ namespace Sedulous.Engine.DefaultApp.Tests;
 /// offers one per run among the run's services.
 class AudioFacadeRunTests
 {
-	/// A run of its own (a GameInstance is the real one).
+	/// A run of its own (a ApplicationRun is the real one).
 	private class TestRun : RunBase
 	{
 		public this() : base("test") {}
@@ -50,7 +50,7 @@ class AudioFacadeRunTests
 		defer { delete context; delete audio; }
 		let engine = audio.Engine;
 
-		let run = scope TestRun(); // a GameInstance is the real one
+		let run = scope TestRun(); // a ApplicationRun is the real one
 		let inRun = scope AudioFacade(audio, new () => (ResourceManager)null, run);
 		let outside = scope AudioFacade(audio, new () => (ResourceManager)null);
 

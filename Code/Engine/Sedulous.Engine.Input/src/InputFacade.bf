@@ -6,7 +6,7 @@ using Sedulous.Script;
 namespace Sedulous.Engine.Input;
 
 /// `Input`: the run's actions, by name. Each run has its own action runtime and its own one of
-/// these among its services (a GameInstance's), so instance A's script never sees B's keys; the
+/// these among its services (a ApplicationRun's), so instance A's script never sees B's keys; the
 /// subsystem offers an idle one, over no runtime, to scripts outside every run.
 [Scriptable, ServiceFacade("Input")]
 class InputFacade

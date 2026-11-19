@@ -17,7 +17,7 @@ using Sedulous.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Core.Serialization;
 using Sedulous.Content;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.DefaultApp;
 
 namespace Sedulous.Editor.Play.Tests;
@@ -89,7 +89,7 @@ class GamePageTests
 
 		/// `instance` (borrowed, outliving the bed) is the tab's run; none by default. `withScenes`
 		/// gives the host a scene subsystem, which a start needs to run at all.
-		public this(GameInstance instance = null, bool withScenes = false)
+		public this(ApplicationRun instance = null, bool withScenes = false)
 		{
 			if (withScenes)
 				Host.Subsystems.AddSubsystem<Sedulous.Engine.Scene.SceneSubsystem>();
@@ -276,7 +276,7 @@ class GamePageTests
 		manager.AddFactory(factory);
 
 		// The tab's run, which outlives the tab.
-		let run = scope GameInstance();
+		let run = scope ApplicationRun();
 		{
 			let bed = scope Bed(run);
 			bed.Context.Resources = manager;
@@ -381,7 +381,7 @@ class GamePageTests
 	public static void AStartWhoseDefaultSceneDoesNotLoadLeavesNothingWiredToTheTab()
 	{
 		// The tab's run, which outlives the tab.
-		let run = scope GameInstance();
+		let run = scope ApplicationRun();
 		let bed = scope Bed(run, true);
 		// A scene with no scene stream: it does not load.
 		let broken = bed.Project.SourceDb.RootGroup.CreateInstance("Broken", "Sedulous.Scene.Resource.SceneDocument");

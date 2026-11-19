@@ -11,14 +11,14 @@ using Sedulous.Script;
 using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.VFS;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Composition;
 using Sedulous.Run;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
-/// A game instance wired the way the default application wires one, without an application:
+/// An application run wired the way the default application wires one, without an application:
 /// its run host bound to the engine surface, its scenes composed with the script managers,
 /// a scene database of authored levels for `Run.LoadSceneAsync`, and an exit request that
 /// records the code. Driven by hand, one frame at a time.
@@ -26,7 +26,7 @@ class GameRun
 {
 	private static bool sRegistered = false;
 
-	public GameInstance Instance = new .();
+	public ApplicationRun Instance = new .();
 	public ScriptSurface Surface = new .();
 	public ResourceManager Resources;
 	public int32 ExitCode = -1;

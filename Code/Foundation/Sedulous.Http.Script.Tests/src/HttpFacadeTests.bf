@@ -11,7 +11,7 @@ namespace Sedulous.Http.Script.Tests;
 /// says, so the facade is checked without a network: Get, Post, and Request with its headers
 /// reach the client as asked; handlers hear (status, body, error) on the pump; a cancelled request
 /// is never answered; the client is made only on the first request; a run with no factory gets
-/// nought back. The script languages reach it through the run (GameInstance).
+/// nought back. The script languages reach it through the run (ApplicationRun).
 class HttpFacadeTests
 {
 	private class Recorded

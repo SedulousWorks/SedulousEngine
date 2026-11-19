@@ -88,8 +88,8 @@ static class EngineScriptSurfaceTests
 		Test.Assert((audio != null) && (audio.Role == .Service) && (audio.DisplayName == "Audio"));
 		let input = s.Find("Sedulous.Engine.Input.InputFacade");
 		Test.Assert((input != null) && (input.Role == .Service) && (input.DisplayName == "Input"));
-		Test.Assert(s.Find("Sedulous.Engine.GameInstance.GameInstance").Role == .Service, "Run");
-		let save = s.Find("Sedulous.Engine.GameInstance.SaveFacade");
+		Test.Assert(s.Find("Sedulous.Engine.Run.ApplicationRun").Role == .Service, "Run");
+		let save = s.Find("Sedulous.Engine.Run.SaveFacade");
 		Test.Assert((save != null) && (save.Role == .Service) && (save.DisplayName == "Save"));
 		Test.Assert(s.Find("Sedulous.Engine.UI.Script.UiScript") == null, "the old UI's Ui is gone");
 		let gui = s.Find("Sedulous.GUI.GuiFacade");

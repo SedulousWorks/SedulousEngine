@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using Sedulous.Http;
-using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Run;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
@@ -38,7 +38,7 @@ class HttpFacadeRunTests
 				void onSlow(int status, const string &in body, const string &in error) { late = 1; }
 			}
 			""");
-		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.StartRunBehavior(game));
 		for (int i < 5000)
 		{
 			if (!run.Prop("got").AsString.IsEmpty)
@@ -49,7 +49,7 @@ class HttpFacadeRunTests
 		}
 		Test.Assert(run.Prop("got").AsString == "200 best: 12.5", scope String(run.Prop("got").AsString));
 		Test.Assert(run.Instance.Http.Pending == 1, "the slow one");
-		run.Instance.StopScript();
+		run.Instance.StopRunBehavior();
 		Test.Assert(run.Instance.Http.Pending == 0);
 		Test.Assert(run.PropInt("late") == 0);
 	}

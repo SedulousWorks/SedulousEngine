@@ -1,13 +1,13 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Engine.GameInstance.Tests"
+Name = "Sedulous.Engine.Run.Tests"
 TargetType = "BeefTest"
-StartupObject = "Sedulous.Engine.GameInstance.Tests.Program"
+StartupObject = "Sedulous.Engine.Run.Tests.Program"
 
 [Dependencies]
 corlib = "*"
-"Sedulous.Engine.GameInstance" = "*"
+"Sedulous.Engine.Run" = "*"
 "Sedulous.Engine.Net" = "*"
 "Sedulous.Content" = "*"
 "Sedulous.Core" = "*"

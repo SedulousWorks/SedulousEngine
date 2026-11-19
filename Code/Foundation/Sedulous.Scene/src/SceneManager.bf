@@ -11,7 +11,7 @@ namespace Sedulous.Scene;
 /// variable and fixed lanes; and it assembles and tears down each scene through hooks a
 /// driver wires. It stays composition agnostic and runtime agnostic itself.
 ///
-/// That agnosticism is the point. A game instance, up in the runtime layer, OWNS a scene
+/// That agnosticism is the point. An application run, up in the runtime layer, OWNS a scene
 /// manager, so the dependency points DOWN and the scene library never learns about the
 /// runtime. A manager reads only its own group's configuration and never reaches up to its
 /// owner; the context's time scale and fixed step are handed IN.

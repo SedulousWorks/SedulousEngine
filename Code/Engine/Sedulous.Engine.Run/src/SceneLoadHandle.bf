@@ -1,7 +1,7 @@
 using Sedulous.Resource;
 using Sedulous.Scene;
 
-namespace Sedulous.Engine.GameInstance;
+namespace Sedulous.Engine.Run;
 
 /// One async scene load in flight: the scene being built, and how far its resources have
 /// got.

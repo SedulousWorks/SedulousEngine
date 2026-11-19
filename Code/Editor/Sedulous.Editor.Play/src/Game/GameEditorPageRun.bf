@@ -39,15 +39,15 @@ extension GameEditorPage
 
 		mFrameCount = 0;
 		mStoppedRunTime = 0;
-		if (mGameInstance != null)
+		if (mApplicationRun != null)
 		{
-			mGameInstance.ResetRunClock(); // run time counts from this start
+			mApplicationRun.ResetRunClock(); // run time counts from this start
 			// A Game tab keeps its own save in the project's ignored Editor/ folder, so testing
 			// never touches a player's save.
 			let saveName = ProjectLayout.SaveFileName(project.Settings.Name, .. scope String());
-			mGameInstance.SetSaveFile(PathJoin(project.EditorStateRoot(.. scope String()), saveName, .. scope String()));
+			mApplicationRun.SetSaveFile(PathJoin(project.EditorStateRoot(.. scope String()), saveName, .. scope String()));
 			// The project's levels as they are at this start, for the run's scripts.
-			QualityLevels.Offer(mGameInstance.Quality, project.Settings, mContext.Resources, .());
+			QualityLevels.Offer(mApplicationRun.Quality, project.Settings, mContext.Resources, .());
 			SyncQualityChoice();
 			EnableDebugging();
 			StartGameScriptFromProject();
@@ -59,7 +59,7 @@ extension GameEditorPage
 			// behaviours run on the run's script host, where Input and Run live. The bare group's
 			// scenes have no run and use the subsystem's default host, where a behaviour reading
 			// Input faults.
-			let startScene = (mGameInstance != null) ? mGameInstance.CreateScene(instance.Name) : mFallbackScenes.CreateScene(instance.Name);
+			let startScene = (mApplicationRun != null) ? mApplicationRun.CreateScene(instance.Name) : mFallbackScenes.CreateScene(instance.Name);
 			if ((startScene == null) || !(SceneStorage.LoadScene(instance, startScene) case .Ok))
 			{
 				mContext.Notify(.Error, "Game: default scene failed to load.");
@@ -80,25 +80,25 @@ extension GameEditorPage
 			EnsureCamera(startScene);
 			startScene.Start();
 			startScene.SetSimulationEnabled(true);
-			if (mGameInstance != null)
-				mGameInstance.SetScene(startScene);
+			if (mApplicationRun != null)
+				mApplicationRun.SetScene(startScene);
 			else
 				mScene = startScene; // no instance to track a current scene
 		}
 
 		mRunning = true;
-		if (mGameInstance != null)
-			mGameInstance.Start(); // the run's session: whatever follows the run's lifecycle hears it
+		if (mApplicationRun != null)
+			mApplicationRun.Start(); // the run's session: whatever follows the run's lifecycle hears it
 		if (mPauseToggle != null)
 			mPauseToggle.Checked = false;
-		if (mGameInstance != null)
-			mScene = mGameInstance.GetScene();
+		if (mApplicationRun != null)
+			mScene = mApplicationRun.GetScene();
 		mSceneTitle.Set((mScene != null) ? mScene.Name : "(no scene)");
 		BindInput();
 		BindBusLayout();
 		// The tab Play was pressed in is the one played (and heard).
-		if ((mApp != null) && (mApp.Runs != null) && (mGameInstance != null))
-			mApp.Runs.SetFocused(mGameInstance);
+		if ((mApp != null) && (mApp.Runs != null) && (mApplicationRun != null))
+			mApp.Runs.SetFocused(mApplicationRun);
 		GlobalLog(.Information, "Editor: Game: running scene '{}'", mSceneTitle);
 		RefreshToolbar();
 	}
@@ -131,21 +131,21 @@ extension GameEditorPage
 		delete mContext.OnBreakpointsChanged; // the live sync dies with the run
 		mContext.OnBreakpointsChanged = null;
 		ClearAndDeleteItems(mAppliedBreakpoints);
-		if (mRunning && (mGameInstance != null))
-			mStoppedRunTime = mGameInstance.RunTime;
-		if (mGameInstance != null)
-			mGameInstance.StopScript();
+		if (mRunning && (mApplicationRun != null))
+			mStoppedRunTime = mApplicationRun.RunTime;
+		if (mApplicationRun != null)
+			mApplicationRun.StopRunBehavior();
 		// The run's session ends: its sound fades out and its screens go with it, as everything
 		// following the run's lifecycle hears (another tab's run and the editor's own play on).
-		if (mGameInstance != null)
-			mGameInstance.Stop();
+		if (mApplicationRun != null)
+			mApplicationRun.Stop();
 		{
 			let active = scope List<Sedulous.Scene.Scene>();
 			active.AddRange(SceneGroup.ActiveScenes);
 			for (let s in active)
 				s.Stop();
-			if (mGameInstance != null)
-				mGameInstance.ClearScenes();
+			if (mApplicationRun != null)
+				mApplicationRun.ClearScenes();
 			else
 				mFallbackScenes.Clear();
 			mScene = null;
@@ -158,9 +158,9 @@ extension GameEditorPage
 	/// The script may have switched scenes; follow it, and drop the ones it left.
 	private void FollowInstanceScene()
 	{
-		if (!mRunning || (mGameInstance == null))
+		if (!mRunning || (mApplicationRun == null))
 			return;
-		let current = mGameInstance.GetScene();
+		let current = mApplicationRun.GetScene();
 		if (current == mScene)
 			return;
 		mScene = current; // may be null: a script that unloaded without loading
@@ -174,7 +174,7 @@ extension GameEditorPage
 		for (let s in outgoing)
 		{
 			s.Stop();
-			mGameInstance.DestroyScene(s); // drops any matching tracked load too
+			mApplicationRun.DestroyScene(s); // drops any matching tracked load too
 		}
 
 		if (mInput != null)
@@ -217,16 +217,16 @@ extension GameEditorPage
 		mViewportSource.Viewport = mViewport;
 		mViewportSource.ShellInput = mShellInput;
 		mInput.SetSourceProvider(ActiveSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
-		if (mGameInstance != null)
-			mGameInstance.SetInputSource(ActiveSource);
+		if (mApplicationRun != null)
+			mApplicationRun.SetInputSource(ActiveSource);
 		let mapId = mContext.Project.Settings.DefaultInputMapId;
 		if (mapId.IsNil || (mContext.Resources == null))
 			return;
 		let map = mContext.Resources.Bind<InputMapResource>(mapId).Get;
 		if (map != null)
 		{
-			if (mGameInstance != null)
-				mGameInstance.SetInputMap(map.Map);
+			if (mApplicationRun != null)
+				mApplicationRun.SetInputMap(map.Map);
 			GlobalLog(.Information, "Editor: Game: input map bound");
 		}
 		else
@@ -243,9 +243,9 @@ extension GameEditorPage
 	private void SyncRunAudio()
 	{
 		let audio = Audio;
-		if ((audio == null) || (mGameInstance == null))
+		if ((audio == null) || (mApplicationRun == null))
 			return;
-		let hearAll = GameAudioEditorSettings.HearAllGameInstances(mContext);
+		let hearAll = GameAudioEditorSettings.HearAllRunsPreference(mContext);
 		if (audio.HearAllRuns != hearAll)
 			audio.SetHearAllRuns(hearAll);
 		if (!mRunning)
@@ -253,11 +253,11 @@ extension GameEditorPage
 		// The toolbar's pause and a debugger break freeze the run's sound with the game (a
 		// game's own pause menu is time scale nought, the game's business: its music plays on).
 		let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked);
-		mGameInstance.SetPaused(paused); // the host's pause: the run (its sound with it) hears it once per change
+		mApplicationRun.SetPaused(paused); // the host's pause: the run (its sound with it) hears it once per change
 		// Clicking into this tab's viewport makes its run the one played, and the one heard.
 		let runs = (mApp != null) ? mApp.Runs : null;
-		if (mViewport.IsFocused && (runs != null) && ((Object)runs.Focused !== mGameInstance))
-			runs.SetFocused(mGameInstance);
+		if (mViewport.IsFocused && (runs != null) && ((Object)runs.Focused !== mApplicationRun))
+			runs.SetFocused(mApplicationRun);
 	}
 
 	private void BindBusLayout()
@@ -291,7 +291,7 @@ extension GameEditorPage
 			mContext.Notify(.Warning, "Game: startup script asset not found.");
 			return;
 		}
-		if ((mGameInstance == null) || !mGameInstance.StartScript(scriptClass))
+		if ((mApplicationRun == null) || !mApplicationRun.StartRunBehavior(scriptClass))
 			mContext.Notify(.Error, "Game: startup script failed to start (see Console).");
 	}
 }

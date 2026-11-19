@@ -2282,7 +2282,7 @@ class AudioEngine
 
 	// ==================== runs ====================
 	//
-	// Everything one running game plays (a GameInstance: the player's, each play in editor
+	// Everything one running game plays (a ApplicationRun: the player's, each play in editor
 	// Game tab's), one level above its scenes' groups. A run has its own child group under
 	// each bus, carrying the run's own bus gains (a game's volume sliders never touch the
 	// editor's or another run's buses), its music slot, and stop, pause, mute and volume for

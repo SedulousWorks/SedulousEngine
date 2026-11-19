@@ -29,7 +29,7 @@ class InputSubsystem : Subsystem, IRunListener
 	private IRunManager mRunManager = null;
 	/// `Input` to scripts outside every run (the editor's Simulate), on the application's services:
 	/// every action released and at rest rather than a fault on a missing service. A run's own (a
-	/// GameInstance's, over its action runtime) comes first for its scripts. OWNED.
+	/// ApplicationRun's, over its action runtime) comes first for its scripts. OWNED.
 	private InputFacade mScriptFacade = new .(null) ~ delete _;
 	/// What ForEachActionRuntime calls with each runtime.
 	public typealias ActionRuntimeVisitor = delegate void(ActionRuntime runtime);
@@ -92,7 +92,7 @@ class InputSubsystem : Subsystem, IRunListener
 	// IRunListener: a run's `Input` names its controls by the input kind tracked here.
 	public void OnRunCreated(IRun run) => PointRunInput(run, mInputKinds);
 
-	/// Points `run`'s own `Input` (a game instance's) at `kinds`; null: none.
+	/// Points `run`'s own `Input` (an application run's) at `kinds`; null: none.
 	private static void PointRunInput(IRun run, InputKindTracker kinds)
 	{
 		if (let facade = RunServices.Get<InputFacade>(run))

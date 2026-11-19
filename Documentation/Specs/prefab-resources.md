@@ -191,11 +191,11 @@ Then the resources:
    the notifications and a prefab page's save (Editor.Core.Tests, Editor.Scene.Tests,
    DefaultApp.Tests).
 5. `Scene: spawns come from the loaded prefab`: the spawn API, a synchronous first bind, its callers
-   (Scene.Resource, GameInstance, GameScript and DefaultApp.Integration tests: a disk overwrite
+   (Scene.Resource, ApplicationRun, GameScript and DefaultApp.Integration tests: a disk overwrite
    after the first spawn changes nothing until a reload; a delete refuses the next spawn; the
    replicated spawn arrives in its frame); Assets.md, Scenes.md, McpGuide.md; CHANGELOG.
 6. `Scene loads place prefabs from the loaded prefab`, one read per prefab however many are placed
-   (GameInstance.Tests, Editor.Play.Tests).
+   (ApplicationRun.Tests, Editor.Play.Tests).
 7. `Scene.Resource: a text prefab loads in the binary format`, keeping a record whose manager is
    absent (Scene.Resource.Tests, DefaultApp.Tests).
 8. `Editor.Mcp: a prefab field picks prefab documents` (`SceneReference.SourceAssetTypesFor` maps a

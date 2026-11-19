@@ -246,11 +246,11 @@ extension GameEditorPage
 	/// current, when it is offered.
 	private void SyncQualityChoice()
 	{
-		if (mGameInstance == null)
+		if (mApplicationRun == null)
 			return;
 		let project = mContext?.Project;
 		let played = (project != null) ? GameQualityLevel(project.Settings, PlayedQualityLevel()) : Guid();
-		let quality = mGameInstance.Quality;
+		let quality = mApplicationRun.Quality;
 		quality.CurrentId = quality.Offers(played) ? played : Guid();
 	}
 

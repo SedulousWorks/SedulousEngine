@@ -8,7 +8,7 @@ using Sedulous.Scene.Resource;
 using Sedulous.Net.Replication;
 using Sedulous.Net.Manager;
 
-namespace Sedulous.Engine.GameInstance;
+namespace Sedulous.Engine.Run;
 
 /// A run's networking to a script, reached as `Net`: whether it is a host or a client, the
 /// role controls a game's menu calls (host, join, leave), and messages to the other side.
@@ -17,7 +17,7 @@ namespace Sedulous.Engine.GameInstance;
 /// dangles; each call reaches the live endpoint through it and does nothing offline. Ports
 /// are whole numbers (0 to 65535); a message is an RPC by name, from a client to the host or
 /// from the host to every client, and On, OnNumber and OnText receive one. Players are named by
-/// id: nought the host, a client the id the host's welcome gave it. The game instance installs
+/// id: nought the host, a client the id the host's welcome gave it. The application run installs
 /// one on its run.
 ///
 /// Its entities are the replicated scene's (IScriptEntityScene): a spawn answers one a script
