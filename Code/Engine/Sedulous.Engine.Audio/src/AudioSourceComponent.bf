@@ -96,6 +96,10 @@ struct AudioSourceComponent : ISerializable, IComponentResources
 
 	[Hidden]
 	public VoiceHandle Voice = .();
+	/// Keeps what the voice plays (the clip, or the cue its variant came from) loaded while the
+	/// component lives, whatever Clip and Cue name meanwhile: a voice runs on when they change.
+	[Hidden]
+	public ResourceHold VoiceHold = null;
 
 	/// The entity active LATCH: true while the voice is stopped BECAUSE its entity is
 	/// effectively inactive. Reactivation restarts an automatic source from it.

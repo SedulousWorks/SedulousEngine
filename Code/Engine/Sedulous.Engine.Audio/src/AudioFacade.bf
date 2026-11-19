@@ -33,8 +33,14 @@ class AudioFacade
 	}
 
 	private ResourceManager Resources => (mResources != null) ? mResources() : null;
-	private AudioClip Clip(Guid id) => ((Resources != null) && (id != Guid())) ? Resources.Bind<AudioClip>(id).Get : null;
-	private SoundCue Cue(Guid id) => ((Resources != null) && (id != Guid())) ? Resources.Bind<SoundCue>(id).Get : null;
+	private Proxy<AudioClip> Clip(Guid id) => ((Resources != null) && (id != Guid())) ? Resources.Bind<AudioClip>(id) : default;
+	private Proxy<SoundCue> Cue(Guid id) => ((Resources != null) && (id != Guid())) ? Resources.Bind<SoundCue>(id) : default;
+	/// A voice played by id: what it plays stays loaded while it does (nothing else holds it).
+	private VoiceHandle Held(VoiceHandle voice, ResourceHandle handle)
+	{
+		mAudio?.HoldWhilePlaying(voice, handle);
+		return voice;
+	}
 	private AudioEngine Engine => mAudio?.Engine;
 	/// The run's group, made on first use; nought outside a run.
 	private uint64 RunGroup => ((mAudio != null) && (mRun != null)) ? mAudio.RunGroupFor(mRun) : 0;
@@ -44,7 +50,7 @@ class AudioFacade
 	public VoiceHandle PlayOneShot(Guid clip, AudioBus bus = .Effects, float volume = 1.0f, float pitch = 1.0f)
 	{
 		let resolved = Clip(clip);
-		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayOneShot(resolved, bus, volume, pitch, RunGroup) : .();
+		return ((resolved.Get != null) && (mAudio != null)) ? Held(mAudio.PlayOneShot(resolved.Get, bus, volume, pitch, RunGroup), resolved.Handle) : .();
 	}
 	[Scriptable]
 	public VoiceHandle PlayOneShot3D(Guid clip, Float3 position)
@@ -52,13 +58,13 @@ class AudioFacade
 		let resolved = Clip(clip);
 		var parameters = AudioPlayParams();
 		parameters.RunGroup = RunGroup;
-		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayOneShot3D(resolved, position, parameters) : .();
+		return ((resolved.Get != null) && (mAudio != null)) ? Held(mAudio.PlayOneShot3D(resolved.Get, position, parameters), resolved.Handle) : .();
 	}
 	[Scriptable]
 	public VoiceHandle PlayCue(Guid cue, AudioBus bus = .Effects)
 	{
 		let resolved = Cue(cue);
-		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayCueOneShot(resolved, bus, RunGroup) : .();
+		return ((resolved.Get != null) && (mAudio != null)) ? Held(mAudio.PlayCueOneShot(resolved.Get, bus, RunGroup), resolved.Handle) : .();
 	}
 	[Scriptable]
 	public VoiceHandle PlayCue3D(Guid cue, Float3 position)
@@ -66,14 +72,14 @@ class AudioFacade
 		let resolved = Cue(cue);
 		var parameters = AudioPlayParams();
 		parameters.RunGroup = RunGroup;
-		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayCueOneShot3D(resolved, position, parameters) : .();
+		return ((resolved.Get != null) && (mAudio != null)) ? Held(mAudio.PlayCueOneShot3D(resolved.Get, position, parameters), resolved.Handle) : .();
 	}
 	/// The music track, cross faded from the run's last.
 	[Scriptable]
 	public VoiceHandle PlayMusic(Guid clip, float crossFadeSeconds = 1.0f, float volume = 1.0f)
 	{
 		let resolved = Clip(clip);
-		return ((resolved != null) && (mAudio != null)) ? mAudio.PlayMusic(resolved, crossFadeSeconds, volume, RunGroup) : .();
+		return ((resolved.Get != null) && (mAudio != null)) ? Held(mAudio.PlayMusic(resolved.Get, crossFadeSeconds, volume, RunGroup), resolved.Handle) : .();
 	}
 	/// The run's music, faded out.
 	[Scriptable]

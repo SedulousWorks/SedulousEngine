@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Resource;
 using Sedulous.Scene;
 
 namespace Sedulous.Engine.Audio;
@@ -37,6 +38,7 @@ class AudioSourceComponentManager : ResourceBindingComponentManager<AudioSourceC
 		if ((mReleaser != null) && component.Voice.IsValid)
 			mReleaser.ReleaseVoice(component.Voice);
 		component.Voice = .();
+		ResourceHold.Drop(ref component.VoiceHold);
 		DeleteAndNullify!(component.BusName);
 	}
 }

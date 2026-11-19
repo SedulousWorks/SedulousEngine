@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Audio;
 using Sedulous.Core;
+using Sedulous.Resource;
 using Sedulous.Core.Logging;
 using Sedulous.Profiler;
 using Sedulous.Run;
@@ -402,6 +403,8 @@ class AudioSceneSystem : SceneSystem, IAudioReleaser
 		}
 
 		component.Voice = mEngine.Play(clip, parameters);
+		if (component.Voice.IsValid)
+			ResourceHold.Replace(ref component.VoiceHold, (component.SourceType == .Cue) ? component.Cue.Handle : component.Clip.Handle);
 		component.VoiceLoops = component.Loop || clip.Loop;
 		// No voice now: later.
 		component.AwaitingVoice = !component.Voice.IsValid && component.VoiceLoops && component.AutoPlay;

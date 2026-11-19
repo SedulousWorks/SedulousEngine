@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Collections;
 using Sedulous.Core;
 
@@ -18,6 +19,11 @@ class SoundCue
 	public const int cMaxVariants = 64;
 
 	public List<SoundCueVariant> Variants = new .() ~ delete _;
+
+	private static int64 sNextInstanceId = 0;
+	/// Unique per cue object: what a player keys a cue's state by, so a cue made later at a freed
+	/// one's address inherits nothing.
+	internal readonly uint64 InstanceId = (uint64)Interlocked.Increment(ref sNextInstanceId);
 	public SoundCueMode Mode = .RandomNoRepeat;
 
 	/// The jitter applied per trigger, on top of the play parameters.

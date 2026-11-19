@@ -325,8 +325,8 @@ class AudioEngineSceneTests
 	}
 
 	/// A streamed clip's name carries its key through hex and back whole, a key with its top
-	/// bit set included: Android tags heap addresses in their top byte, and such a key read
-	/// back as a signed number overflowed, so the clip never opened.
+	/// bit set included (when the key was a heap address, Android's tagged top byte made a signed
+	/// read overflow, so the clip never opened).
 	[Test]
 	public static void AStreamNameCarriesAnyKey()
 	{
@@ -334,13 +334,51 @@ class AudioEngineSceneTests
 		for (let bits in keys)
 		{
 			let name = scope String();
-			AudioEngine.AppendStreamName(name, (int)bits);
+			AudioEngine.AppendStreamName(name, bits);
 			Test.Assert(AudioEngine.TryParseStreamName(name, let key));
-			Test.Assert(key == (int)bits);
+			Test.Assert(key == bits);
 		}
 
 		Test.Assert(!AudioEngine.TryParseStreamName("dclip:12", ?));
 		Test.Assert(!AudioEngine.TryParseStreamName("dstream:", ?));
 		Test.Assert(!AudioEngine.TryParseStreamName("dstream:zz", ?));
+	}
+
+	/// A clip destroyed while it plays: the engine stops its voices (a compressed clip's decode
+	/// reads the clip's own bytes) and lets go of what it registered for it, and another clip's
+	/// voice is untouched. A clip made afterwards, wherever it lands, plays as itself.
+	[Test]
+	public static void AClipDestroyedWhilePlayingStopsItsVoicesAndLeavesTheOthers()
+	{
+		let engine = scope AudioEngine(HeadlessSettings!());
+		let doomed = MakeToneClip(1.0f);
+		let compressed = MakeToneClip(1.0f);
+		compressed.KeepCompressed = true;
+		let kept = MakeToneClip(1.0f, 4000, 1);
+		defer delete kept;
+
+		var looping = AudioPlayParams();
+		looping.Loop = true;
+		looping.AllowDedupe = false;
+		let doomedVoice = engine.Play(doomed, looping);
+		let compressedVoice = engine.Play(compressed, looping);
+		let keptVoice = engine.Play(kept, looping);
+		Test.Assert(doomedVoice.IsValid && compressedVoice.IsValid && keptVoice.IsValid);
+		engine.Update(0.1f);
+
+		delete doomed;
+		delete compressed;
+		Test.Assert(!engine.IsValidHandle(doomedVoice), "its voice stopped with it");
+		Test.Assert(!engine.IsValidHandle(compressedVoice));
+		Test.Assert(engine.IsValidHandle(keptVoice), "another clip's voice plays on");
+		for (int i < 5)
+			engine.Update(0.1f); // ASan: nothing reads the destroyed clips' frames or bytes
+
+		let fresh = MakeToneClip(0.5f);
+		defer delete fresh;
+		let freshVoice = engine.Play(fresh, looping);
+		Test.Assert(freshVoice.IsValid);
+		engine.Update(0.1f);
+		Test.Assert(engine.IsValidHandle(freshVoice));
 	}
 }

@@ -7,6 +7,8 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
 using Sedulous.Profiler;
 using Sedulous.Resource;
+// A cue's InstanceId keys its one-shot state.
+using internal Sedulous.Audio;
 using Sedulous.Run;
 using Sedulous.Runtime;
 using Sedulous.Scene;
@@ -60,8 +62,12 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 	private List<SceneEntry> mSystems = new .() ~ delete _;
 
 	private Sedulous.Core.Random mCueRandom = .();
-	private Dictionary<SoundCue, CueOneShotState> mCueOneShotState
+	/// Keyed by the cue's InstanceId, never its address: a cue freed and another made at the same
+	/// address must not inherit the first one's variant history.
+	private Dictionary<uint64, CueOneShotState> mCueOneShotState
 		= new .() ~ DeleteDictionaryAndValues!(_);
+	/// The resources behind voices played by id or path, held while each plays (HoldWhilePlaying).
+	private List<(VoiceHandle Voice, ResourceHold Hold)> mVoiceHolds = new .() ~ { for (let entry in _) entry.Hold.Release(); delete _; };
 	/// Warned once per content path, so a mistyped path in a script does not flood the log.
 	private HashSet<String> mWarnedPaths = new .() ~ DeleteContainerAndItems!(_);
 
@@ -150,6 +156,7 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 		using (ProfileScope("Audio.Engine"))
 		{
 			ReapEndedRuns(deltaTime);
+			DropEndedHolds();
 
 			let capacity = mEngine.ListenerCount;
 			uint32 used = 0;
@@ -477,45 +484,57 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 	public VoiceHandle PlayOneShotByPath(ResourceManager resources, StringView path,
 		AudioBus bus = .Effects, uint64 runGroup = 0)
 	{
-		ResolveContentPath(resources, path, var clip, var cue);
+		ResolveContentPath(resources, path, var clip, var cue, let handle);
+		VoiceHandle voice = .();
 		if (cue != null)
 		{
 			var parameters = AudioPlayParams();
 			parameters.Bus = bus;
 			parameters.RunGroup = runGroup;
-			return PlayCueResolved(cue, parameters);
+			voice = PlayCueResolved(cue, parameters);
 		}
-		return (clip != null) ? PlayOneShot(clip, bus, 1.0f, 1.0f, runGroup) : .();
+		else if (clip != null)
+			voice = PlayOneShot(clip, bus, 1.0f, 1.0f, runGroup);
+		HoldWhilePlaying(voice, handle);
+		return voice;
 	}
 
 	public VoiceHandle PlayOneShot3DByPath(ResourceManager resources, StringView path,
 		Float3 position, uint64 runGroup = 0)
 	{
-		ResolveContentPath(resources, path, var clip, var cue);
+		ResolveContentPath(resources, path, var clip, var cue, let handle);
 		var parameters = AudioPlayParams();
 		parameters.RunGroup = runGroup;
+		VoiceHandle voice = .();
 		if (cue != null)
 		{
 			parameters.Spatial = true;
 			parameters.Position = position;
-			return PlayCueResolved(cue, parameters);
+			voice = PlayCueResolved(cue, parameters);
 		}
-		return (clip != null) ? PlayOneShot3D(clip, position, parameters) : .();
+		else if (clip != null)
+			voice = PlayOneShot3D(clip, position, parameters);
+		HoldWhilePlaying(voice, handle);
+		return voice;
 	}
 
 	public VoiceHandle PlayCueByPath(ResourceManager resources, StringView path,
 		AudioBus bus = .Effects, uint64 runGroup = 0)
 	{
-		ResolveContentPath(resources, path, var clip, var cue);
+		ResolveContentPath(resources, path, var clip, var cue, let handle);
+		VoiceHandle voice = .();
 		if (cue != null)
-			return PlayCueOneShot(cue, bus, runGroup);
-		return (clip != null) ? PlayOneShot(clip, bus, 1.0f, 1.0f, runGroup) : .();
+			voice = PlayCueOneShot(cue, bus, runGroup);
+		else if (clip != null)
+			voice = PlayOneShot(clip, bus, 1.0f, 1.0f, runGroup);
+		HoldWhilePlaying(voice, handle);
+		return voice;
 	}
 
 	public VoiceHandle PlayMusicByPath(ResourceManager resources, StringView path,
 		float crossFadeSeconds = 1.0f, uint64 runGroup = 0)
 	{
-		ResolveContentPath(resources, path, var clip, var cue);
+		ResolveContentPath(resources, path, var clip, var cue, let handle);
 
 		if ((clip == null) && (cue != null))
 		{
@@ -530,7 +549,31 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 			}
 		}
 
-		return (clip != null) ? PlayMusic(clip, crossFadeSeconds, 1.0f, runGroup) : .();
+		let voice = (clip != null) ? PlayMusic(clip, crossFadeSeconds, 1.0f, runGroup) : VoiceHandle();
+		HoldWhilePlaying(voice, handle);
+		return voice;
+	}
+
+	/// Keeps the resource behind a voice loaded while the voice plays (a clip or cue played by id
+	/// or path, which nothing else holds): `handle` is the clip's or the cue's. Dropped once the
+	/// voice has ended.
+	public void HoldWhilePlaying(VoiceHandle voice, ResourceHandle handle)
+	{
+		if (!voice.IsValid || (handle == null))
+			return;
+		mVoiceHolds.Add((voice, new ResourceHold(handle)));
+	}
+
+	/// The holds of voices that have ended, let go.
+	private void DropEndedHolds()
+	{
+		for (int i = mVoiceHolds.Count - 1; i >= 0; i--)
+		{
+			if ((mEngine != null) && mEngine.IsValidHandle(mVoiceHolds[i].Voice))
+				continue;
+			mVoiceHolds[i].Hold.Release();
+			mVoiceHolds.RemoveAt(i);
+		}
 	}
 
 	protected override void OnInit()
@@ -619,6 +662,18 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 
 	/// The path's product, sniffed by the instance's TYPE. Binding through the manager caches
 	/// it exactly as a component's reference does.
+	private void ResolveContentPath(ResourceManager resources, StringView path, out AudioClip outClip, out SoundCue outCue,
+		out ResourceHandle outHandle)
+	{
+		outHandle = null;
+		ResolveContentPath(resources, path, out outClip, out outCue);
+		if ((outClip == null) && (outCue == null))
+			return;
+		let instance = resources.Database.GetInstanceByPath(path);
+		if (instance != null)
+			outHandle = resources.FindHandle(instance.Id);
+	}
+
 	private void ResolveContentPath(ResourceManager resources, StringView path,
 		out AudioClip outClip, out SoundCue outCue)
 	{
@@ -665,11 +720,11 @@ class AudioSubsystem : Subsystem, ISceneObserver, IRunListener
 
 	private CueOneShotState CueState(SoundCue cue)
 	{
-		if (mCueOneShotState.TryGetValue(cue, let existing))
+		if (mCueOneShotState.TryGetValue(cue.InstanceId, let existing))
 			return existing;
 
 		let created = new CueOneShotState();
-		mCueOneShotState[cue] = created;
+		mCueOneShotState[cue.InstanceId] = created;
 		return created;
 	}
 

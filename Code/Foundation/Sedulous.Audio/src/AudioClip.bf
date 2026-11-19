@@ -1,6 +1,10 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
+
+// A clip and its engines share the clip's id and its destruction hook.
+using internal Sedulous.Audio;
 
 namespace Sedulous.Audio;
 
@@ -41,4 +45,19 @@ class AudioClip
 	public IAudioStreamSource StreamSource = null ~ if (_ != null) delete _;
 
 	public Span<uint8> EncodedBytes => EncodedData;
+
+	private static int64 sNextInstanceId = 0;
+	/// Unique per clip object: what an engine keys what it registered for this clip by, so a clip
+	/// made later at a freed one's address inherits nothing.
+	internal readonly uint64 InstanceId = (uint64)Interlocked.Increment(ref sNextInstanceId);
+	/// Set when an engine first plays it: its destruction then tells the engines.
+	internal bool mPlayed = false;
+
+	/// Before its bytes go: an engine that played it stops its voices and lets go of what it
+	/// registered for it.
+	public ~this()
+	{
+		if (mPlayed)
+			AudioEngine.ForgetClip(this);
+	}
 }

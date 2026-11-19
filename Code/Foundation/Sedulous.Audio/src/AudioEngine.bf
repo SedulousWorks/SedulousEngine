@@ -1,9 +1,13 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.VFS;
 using miniaudio_Beef;
+
+// A clip and its engines share the clip's id and its destruction hook.
+using internal Sedulous.Audio;
 
 namespace Sedulous.Audio;
 
@@ -38,10 +42,12 @@ class AudioEngine
 	/// A clip registered with the backend's resource manager.
 	///
 	/// The manager holds the payload BY REFERENCE and does not copy it, so this owns the
-	/// decoded frames and keeps the clip, and with it the encoded bytes, alive.
+	/// decoded frames; a compressed clip's encoded bytes are the clip's, and the clip being
+	/// destroyed takes this entry out first (ForgetClip).
 	private class RegisteredClip
 	{
-		public AudioClip KeepAlive = null;
+		/// BORROWED.
+		public AudioClip Clip = null;
 		public List<float> DecodedFrames = new .() ~ delete _;
 		public uint64 DecodedFrameCount = 0;
 		public uint32 DecodedChannels = 0;
@@ -280,11 +286,16 @@ class AudioEngine
 	private Dictionary<uint64, RunGroupData> mRunGroups = new .() ~ delete _;
 	private uint64 mNextRunGroupId = 1;
 
-	/// Keyed by the clip's address. The engine holds no reference of its own; the entry's own
-	/// keep alive does.
-	private Dictionary<int, RegisteredClip> mRegisteredClips = new .() ~ delete _;
-	private Dictionary<int, AudioClip> mStreamClips = new .() ~ delete _;
-	private Dictionary<int, DedupeEntry> mRecentPlays = new .() ~ delete _;
+	/// Keyed by the clip's InstanceId, never its address: a clip freed and another made at the
+	/// same address must not inherit what was registered for the first. A clip being destroyed
+	/// takes its entries out (ForgetClip).
+	private Dictionary<uint64, RegisteredClip> mRegisteredClips = new .() ~ delete _;
+	private Dictionary<uint64, AudioClip> mStreamClips = new .() ~ delete _;
+	private Dictionary<uint64, DedupeEntry> mRecentPlays = new .() ~ delete _;
+
+	/// Every engine alive, which a clip being destroyed tells (ForgetClip).
+	private static List<AudioEngine> sEngines = new .() ~ delete _;
+	private static Monitor sEnginesLock = new .() ~ delete _;
 
 	private List<CustomBusData> mCustomBuses = new .() ~ DeleteContainerAndItems!(_);
 
@@ -303,6 +314,8 @@ class AudioEngine
 
 	public this(AudioEngineSettings settings = null)
 	{
+		using (sEnginesLock.Enter())
+			sEngines.Add(this);
 		// Its OWN copy, so the caller may keep, change or free what it passed.
 		mSettings = new AudioEngineSettings();
 		if (settings != null)
@@ -332,8 +345,43 @@ class AudioEngine
 
 	public ~this()
 	{
+		using (sEnginesLock.Enter())
+			sEngines.Remove(this);
 		Shutdown();
 		delete mSettings;
+	}
+
+	/// A clip that was played is being destroyed: every engine stops the voices playing it, its
+	/// dying tails included, and lets go of what it registered for it, before the bytes they read
+	/// go. Called from the clip's destructor, on the thread that destroys it.
+	internal static void ForgetClip(AudioClip clip)
+	{
+		let engines = scope List<AudioEngine>();
+		using (sEnginesLock.Enter())
+			engines.AddRange(sEngines);
+		for (let engine in engines)
+			engine.Forget(clip);
+	}
+
+	private void Forget(AudioClip clip)
+	{
+		for (let slot in mVoices)
+		{
+			if (slot.Clip === clip)
+				ReleaseSlot(slot);
+		}
+		for (int i = mDyingVoices.Count - 1; i >= 0; i--)
+		{
+			if (mDyingVoices[i].Clip === clip)
+				ReapDyingVoice(i);
+		}
+		let key = clip.InstanceId;
+		// The backend's record of the payload stays, under a name nothing builds again; the
+		// frames it pointed at go with the entry.
+		if (mRegisteredClips.GetAndRemove(key) case .Ok(let registered))
+			delete registered.value;
+		mStreamClips.Remove(key);
+		mRecentPlays.Remove(key);
 	}
 
 	/// True when mixing without a device, whether that was asked for or fallen back to.
@@ -485,7 +533,8 @@ class AudioEngine
 		if (clip.Stream && (clip.StreamSource == null))
 			return .();
 
-		let clipKey = (int)(void*)Internal.UnsafeCastToPtr(clip);
+		let clipKey = clip.InstanceId;
+		clip.mPlayed = true;
 
 		// The recent play merge: a repeat inside the window folds into the voice already
 		// going. An opt out play neither merges NOR arms the window, or a persistent source
@@ -504,7 +553,7 @@ class AudioEngine
 		if (parameters.Spatial && (clip.Channels > 1))
 			WarnAboutSpatialMultichannel(clip);
 
-		// The name the resource manager knows the payload by, which is the clip's own address
+		// The name the resource manager knows the payload by, which is the clip's own instance id
 		// under a prefix saying which form of it this is.
 		mNameScratch.Clear();
 		var useMonoVariant = false;
@@ -1139,13 +1188,13 @@ class AudioEngine
 	/// alive for as long as anything can play it.
 	private RegisteredClip EnsureRegistered(AudioClip clip, bool wantMono)
 	{
-		let key = (int)(void*)Internal.UnsafeCastToPtr(clip);
+		let key = clip.InstanceId;
 
 		RegisteredClip entry;
 		if (!mRegisteredClips.TryGetValue(key, out entry))
 		{
 			entry = new RegisteredClip();
-			entry.KeepAlive = clip;
+			entry.Clip = clip;
 			mRegisteredClips[key] = entry;
 		}
 
@@ -1953,21 +2002,20 @@ class AudioEngine
 	}
 
 	/// The name a streamed clip's voice opens it by: its key (the clip's address) in hex.
-	internal static void AppendStreamName(String outName, int key)
+	internal static void AppendStreamName(String outName, uint64 key)
 	{
-		outName.AppendF("dstream:{:X}", (uint64)key);
+		outName.AppendF("dstream:{:X}", key);
 	}
 
-	/// The key a streamed clip's name carries, read back as the bits it was written from.
-	/// Android tags heap addresses in their top byte, so the hex is often past int's range.
-	internal static bool TryParseStreamName(StringView name, out int key)
+	/// The key a streamed clip's name carries, read back as written.
+	internal static bool TryParseStreamName(StringView name, out uint64 key)
 	{
 		key = 0;
 		if (!name.StartsWith("dstream:"))
 			return false;
 		if (!(uint64.Parse(name.Substring(8), .Hex) case .Ok(let bits)))
 			return false;
-		key = (int)bits;
+		key = bits;
 		return true;
 	}
 
