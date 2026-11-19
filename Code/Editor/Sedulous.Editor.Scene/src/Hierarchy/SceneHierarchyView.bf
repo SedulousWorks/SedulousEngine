@@ -112,13 +112,13 @@ class SceneHierarchyView
 			return true;
 		}
 
-		public override DropEffect CanDrop(ModelDrop drop, String reason)
+		/// The entities a drop moves within the scene, in order: this tree's rows, whether the
+		/// drop names them (its ids) or carries them (an entity drag, which is what the rows' own
+		/// drag carries: the view no longer knows its rows then). False when it moves none;
+		/// `reason` says why when that is a refusal, not another kind of drop.
+		private bool MovedEntities(ModelDrop drop, List<Guid> outEntities, String reason)
 		{
-			Guid parent;
-			Guid before;
-			if (!mView.DropTarget(drop, out parent, out before))
-				return .None;
-			// The hierarchy's own rows move: never inside themselves.
+			outEntities.Clear();
 			if ((drop.Source === this) && !drop.Ids.IsEmpty)
 			{
 				for (let id in drop.Ids)
@@ -127,8 +127,38 @@ class SceneHierarchyView
 					if (entity.IsNil)
 					{
 						reason.Set("The scene stays where it is");
-						return .None;
+						return false;
 					}
+					outEntities.Add(entity);
+				}
+				return true;
+			}
+			if ((drop.Payload == null) || !EntityDrag.Read(drop.Payload, outEntities) || outEntities.IsEmpty)
+				return false;
+			let scene = mView.mEdit.Scene;
+			for (let entity in outEntities)
+			{
+				if (!scene.IsValid(scene.FindEntity(entity)))
+				{
+					reason.Set("These entities are in another scene");
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public override DropEffect CanDrop(ModelDrop drop, String reason)
+		{
+			Guid parent;
+			Guid before;
+			if (!mView.DropTarget(drop, out parent, out before))
+				return .None;
+			// The scene's own entities move: never inside themselves.
+			let moved = scope List<Guid>();
+			if (MovedEntities(drop, moved, reason))
+			{
+				for (let entity in moved)
+				{
 					if (!parent.IsNil && mView.mEdit.IsSelfOrAncestor(parent, entity))
 					{
 						reason.Set("An entity cannot go inside itself");
@@ -137,6 +167,8 @@ class SceneHierarchyView
 				}
 				return .Move;
 			}
+			if (!reason.IsEmpty)
+				return .None;
 			// Prefabs from the assets: an instance of each, there.
 			let assets = scope List<AssetDrag>();
 			defer { ClearAndDeleteItems!(assets); }
@@ -161,12 +193,10 @@ class SceneHierarchyView
 				return false;
 			mView.DropTarget(drop, let parent, let before);
 			let edit = mView.mEdit;
-			if ((drop.Source === this) && !drop.Ids.IsEmpty)
+			// What moves, read before the first move builds nothing (the rows are as dropped).
+			let moved = scope List<Guid>();
+			if (MovedEntities(drop, moved, scope .()))
 			{
-				// What moves, read before the first move builds nothing (the rows are as dropped).
-				let moved = scope List<Guid>();
-				for (let id in drop.Ids)
-					moved.Add(EntityOfId(id));
 				for (let entity in moved)
 				{
 					if ((entity == before) || (entity == parent))

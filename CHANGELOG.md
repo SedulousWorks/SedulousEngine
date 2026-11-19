@@ -188,6 +188,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: dragging entities in the scene hierarchy moves them again: onto a row puts them under it,
+  at a row's edge before or after it, onto the scene's row makes them roots.
 - Leaves, grass and other alpha-tested foliage no longer thin out and vanish with distance. A
   texture's mipmaps averaged each leaf with the gaps round it below the material's cutoff; a
   texture can now keep its cutoff's coverage in every mipmap (Preserve Alpha Coverage, with the

@@ -931,6 +931,83 @@ class ScenePageTests
 
 		/// A key pressed on what has the focus.
 		public void Key(Sedulous.GUI.KeyCode key) => Root.EventDispatcher.InjectKeyDown((uint32)key);
+
+		private Float2 mHeld;
+
+		/// Presses row `item`, drags it past the threshold and over row `onto` at `down` of its
+		/// height (0 its top edge, 0.5 its middle), and leaves it held there for the test to look
+		/// at before Release.
+		public void Drag(TreeView tree, int32 item, int32 onto, float down)
+		{
+			Root.UpdateLayout();
+			let from = tree.RowForItem(item);
+			let to = tree.RowForItem(onto);
+			Test.Assert((from != null) && (to != null), "realised");
+			let a = from.ScreenBounds;
+			let b = to.ScreenBounds;
+			let press = Float2(a.X + a.Width * 0.5f, a.Y + a.Height * 0.5f);
+			mHeld = Float2(b.X + b.Width * 0.5f, b.Y + b.Height * down);
+			Root.EventDispatcher.InjectMouseMove(press);
+			Root.EventDispatcher.InjectMouseDown(press, .Left);
+			Root.EventDispatcher.InjectMouseMove(.(press.X + 12.0f, press.Y + 4.0f));
+			Root.EventDispatcher.InjectMouseMove(mHeld);
+		}
+
+		public void Release() => Root.EventDispatcher.InjectMouseUp(mHeld, .Left);
+	}
+
+	/// The rows' own drag carries their entities (the payload an entity slot takes), not the
+	/// view: the hierarchy takes that as a move of its own rows. A drop handed to the model
+	/// directly passed while a real drag was refused.
+	[Test]
+	public static void ARowDraggedWithTheMouseGoesUnderTheRowItLandsOnBeforeOneAtItsEdgeOrToTheRoots()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let tree = page.Hierarchy;
+		Test.Assert(tree != null);
+		let barrel = page.EditContext.CreateEntity("Barrel");
+		let lid = page.EditContext.CreateEntity("Lid", bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Lid |   Barrel"), tree.Rows(.. scope .()));
+		{
+			let shown = scope Shown(page);
+			let view = tree.Tree;
+			void Settle()
+			{
+				page.OnUpdate(bed.Host, 1.0f / 60.0f);
+				shown.Root.UpdateLayout();
+			}
+
+			// Onto Crate's middle: under it, after Lid.
+			shown.Drag(view, tree.ItemOf(barrel), tree.ItemOf(bed.Crate), 0.5f);
+			Test.Assert(shown.Root.EventDispatcher.DragPayload.Type == EntityDrag.cType);
+			Test.Assert(shown.Root.EventDispatcher.DropEffect == .Move);
+			shown.Release();
+			Settle();
+			Test.Assert(RowsAre(tree, "Level |   Crate |     Lid |     Barrel"), tree.Rows(.. scope .()));
+
+			// At Lid's top edge: before it.
+			shown.Drag(view, tree.ItemOf(barrel), tree.ItemOf(lid), 0.1f);
+			shown.Release();
+			Settle();
+			Test.Assert(RowsAre(tree, "Level |   Crate |     Barrel |     Lid"), tree.Rows(.. scope .()));
+
+			// Onto the scene's row: a root again.
+			shown.Drag(view, tree.ItemOf(barrel), 0, 0.5f);
+			shown.Release();
+			Settle();
+			Test.Assert(RowsAre(tree, "Level |   Crate |     Lid |   Barrel"), tree.Rows(.. scope .()));
+
+			// Onto its own child: refused, nothing moves.
+			shown.Drag(view, tree.ItemOf(bed.Crate), tree.ItemOf(lid), 0.5f);
+			Test.Assert(shown.Root.EventDispatcher.DropEffect == .None);
+			shown.Release();
+			Settle();
+			Test.Assert(RowsAre(tree, "Level |   Crate |     Lid |   Barrel"), tree.Rows(.. scope .()));
+		}
+		page.OnClose();
 	}
 
 	static bool RowsAre(SceneHierarchyView tree, StringView expected)
