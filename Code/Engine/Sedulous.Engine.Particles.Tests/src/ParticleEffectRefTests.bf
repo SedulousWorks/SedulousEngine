@@ -357,4 +357,41 @@ class ParticleEffectRefTests
 		scene.Update(0.1f);
 		Test.Assert(Near(manager.CameraPosition.X, -1.0f));
 	}
+
+	/// The attached effect is held: a reference re-pointed at nothing (an asset still loading)
+	/// leaves the component drawing the effect it attached, which stays loaded however long
+	/// nothing else names it, and goes once the component does.
+	[Test]
+	public static void TheAttachedEffectIsHeldUntilTheComponentGoes()
+	{
+		let fixture = scope ParticleResourceFixture("scratch_engine_particles_hold");
+		let effectId = fixture.CookEffect("Sparks", 32);
+		fixture.Manager.SetUnusedFrames(2);
+
+		let scene = new Scene();
+		let manager = scene.AddSystem<ParticleEffectComponentManager>();
+		let entity = scene.CreateEntity("Emitter");
+		let component = manager.Add(entity);
+		component.EffectAsset.SetId(effectId);
+		SceneResolve.ResolveSceneResources(scene, fixture.Manager);
+		scene.Update(1.0f / 60.0f);
+		let live = component.EffectAsset.Get;
+		Test.Assert((live != null) && (component.AttachedResource === live));
+		let handle = fixture.Manager.FindHandle(effectId);
+
+		component.EffectAsset.SetId(Guid.Create());
+		component.EffectAsset.Rebind(fixture.Manager);
+		for (int i < 6)
+		{
+			scene.Update(1.0f / 60.0f);
+			fixture.Manager.CollectGarbage();
+		}
+		Test.Assert(handle.Product === live, "held while it is attached");
+		Test.Assert(component.AttachedResource === live);
+
+		delete scene;
+		for (int i < 4)
+			fixture.Manager.CollectGarbage();
+		Test.Assert(handle.Product == null, "released once the component went");
+	}
 }

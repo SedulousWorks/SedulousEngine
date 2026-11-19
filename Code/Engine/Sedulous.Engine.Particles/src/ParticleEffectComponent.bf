@@ -67,6 +67,10 @@ struct ParticleEffectComponent : ISerializable, IComponentResources
 	public ParticleEffect OwnedEffect = null;
 	/// What the clone was made from, compared by reference so a pick or a reload re attaches.
 	public ParticleEffectResource AttachedResource = null;
+	/// Keeps AttachedResource loaded while it is attached from EffectAsset (the extract reads it
+	/// every frame), whatever EffectAsset names meanwhile; null when attached otherwise.
+	[Hidden]
+	public ResourceHold AttachedHold = null;
 
 	/// Runtime scratch, never serialized: the resolved per system materials, refreshed at
 	/// extract so a mesh system's render data can borrow a stable per submesh array for the

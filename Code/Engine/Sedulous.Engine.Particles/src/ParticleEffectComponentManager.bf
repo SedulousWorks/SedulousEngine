@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Resource;
 using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
 using Sedulous.Materials;
@@ -108,6 +109,7 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 
 		component.Effect = null;
 		component.AttachedResource = null;
+		ResourceHold.Drop(ref component.AttachedHold);
 	}
 
 	/// Attaches a BORROWED effect the caller owns, which is the code path a sample or a test
@@ -243,7 +245,12 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 		// load's resolve, or a hot reload swapping what sits behind the proxy.
 		let resource = component.EffectAsset.Get;
 		if ((resource !== component.AttachedResource) && (resource != null))
+		{
 			AttachResource(component, resource);
+			// Held while attached: a reference re-pointed at an effect still loading keeps
+			// drawing this one until the new one attaches.
+			ResourceHold.Replace(ref component.AttachedHold, component.EffectAsset.Handle);
+		}
 
 		if (component.Instance == null)
 			return;
