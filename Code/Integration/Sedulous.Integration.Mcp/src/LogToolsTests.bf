@@ -140,7 +140,9 @@ static class LogToolsTests
 		let source = entries.At(0).Get("references");
 		Test.Assert(source.Count == 1);
 		Test.Assert(source.At(0).Get("kind").AsString() == "source");
-		Test.Assert(source.At(0).Get("fields").At(0).AsString() == file);
+		// The file as the recognizer gives it, with forward slashes on every platform.
+		let forward = scope String(file)..Replace('\\', '/');
+		Test.Assert(source.At(0).Get("fields").At(0).AsString() == forward);
 		Test.Assert(source.At(0).Get("fields").At(1).AsString() == "12");
 		Test.Assert(source.At(0).Get("fields").At(2).AsString() == "3");
 		Test.Assert(source.At(0).Get("start").AsNumber() == 0.0);
