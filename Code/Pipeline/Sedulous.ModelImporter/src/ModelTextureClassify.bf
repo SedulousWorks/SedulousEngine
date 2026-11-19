@@ -57,4 +57,23 @@ static class ModelTextureClassify
 				outNormal[index] = true;
 		}
 	}
+
+	/// Per texture, the cutoff of an alpha tested (Mask) material that takes it as its base
+	/// colour, 0 for none: its mipmaps keep that cutoff's coverage
+	/// (TextureAsset.PreserveAlphaCoverage), or leaves and grass thin out and vanish with
+	/// distance. Two masked materials sharing one texture: the higher cutoff, which thins the
+	/// most.
+	public static void AlphaTestedTextures(Model model, List<float> outCutoff)
+	{
+		outCutoff.Clear();
+		outCutoff.Count = model.Textures.Length;
+		for (let material in model.Materials)
+		{
+			if ((material == null) || (material.AlphaMode != .Mask))
+				continue;
+			let index = material.BaseColorTextureIndex;
+			if ((index >= 0) && (index < outCutoff.Count))
+				outCutoff[index] = Math.Max(outCutoff[index], Math.Clamp(material.AlphaCutoff, 0.0f, 1.0f));
+		}
+	}
 }

@@ -64,4 +64,38 @@ class PackedMetallicRoughnessTests
 		Test.Assert(linear[0]);
 		Test.Assert(linear[1]);
 	}
+
+	/// Leaves: an alpha tested (Mask) material's base colour keeps its cutoff's coverage in its
+	/// mipmaps; an opaque or blended material's texture, and every other slot, keep none.
+	[Test]
+	public static void AMaskedMaterialsBaseColourKeepsItsCutoffsCoverage()
+	{
+		let model = scope Model();
+		let leaves = model.AddTexture(MeshFixture.Gray(255));
+		let leavesNormal = model.AddTexture(MeshFixture.Gray(255));
+		let bark = model.AddTexture(MeshFixture.Gray(255));
+		let glass = model.AddTexture(MeshFixture.Gray(255));
+
+		let masked = new ModelMaterial();
+		masked.AlphaMode = .Mask;
+		masked.AlphaCutoff = 0.45f;
+		masked.BaseColorTextureIndex = leaves;
+		masked.NormalTextureIndex = leavesNormal;
+		model.AddMaterial(masked);
+		let opaque = new ModelMaterial();
+		opaque.BaseColorTextureIndex = bark;
+		model.AddMaterial(opaque);
+		let blended = new ModelMaterial();
+		blended.AlphaMode = .Blend;
+		blended.BaseColorTextureIndex = glass;
+		model.AddMaterial(blended);
+
+		let cutoff = scope List<float>();
+		ModelTextureClassify.AlphaTestedTextures(model, cutoff);
+		Test.Assert(cutoff.Count == 4);
+		Test.Assert(Math.Abs(cutoff[leaves] - 0.45f) < 0.0001f);
+		Test.Assert(cutoff[leavesNormal] == 0.0f);
+		Test.Assert(cutoff[bark] == 0.0f);
+		Test.Assert(cutoff[glass] == 0.0f);
+	}
 }

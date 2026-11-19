@@ -36,6 +36,9 @@ static class ModelImportTextures
 		ModelTextureClassify.LinearTextures(model, linear);
 		let normal = scope List<bool>();
 		ModelTextureClassify.NormalTextures(model, normal);
+		// A masked material's base colour: its alpha cutoff, which its mipmaps keep.
+		let cutoff = scope List<float>();
+		ModelTextureClassify.AlphaTestedTextures(model, cutoff);
 
 		let textures = model.Textures;
 		for (int i < textures.Length)
@@ -50,7 +53,8 @@ static class ModelImportTextures
 				// else was simply unusable, so dependents wire nothing.
 				let fileBacked = ((texture != null) && !texture.SourceFile.IsEmpty)
 					? ImportFileBacked(texture, i, (i < normal.Count) && normal[i],
-						(i < linear.Count) && linear[i], context, sidecarsCopied, group, options,
+						(i < linear.Count) && linear[i], (i < cutoff.Count) ? cutoff[i] : 0.0f,
+						context, sidecarsCopied, group, options,
 						claimed, deferredWrites)
 					: null;
 				outGuids.Add((fileBacked != null) ? fileBacked.Id : Guid.Empty);
@@ -70,6 +74,12 @@ static class ModelImportTextures
 			asset.EmbeddedHeight = (uint32)texture.Height;
 			asset.ColorSpace = ((i < linear.Count) && linear[i]) ? .Linear : .Srgb;
 			asset.GenerateMipmaps = true;
+			// A masked material's base colour: its mipmaps keep the cutoff's coverage.
+			if ((i < cutoff.Count) && (cutoff[i] > 0.0f))
+			{
+				asset.PreserveAlphaCoverage = true;
+				asset.AlphaCoverageReference = cutoff[i];
+			}
 			// Provenance for the texture page, and DISPLAY ONLY: the asset's name prefers the
 			// file stem, so a rename or an embedded image can leave the two disagreeing, and
 			// nothing may load from this.
@@ -129,7 +139,7 @@ static class ModelImportTextures
 	/// from the file's own header facts. Null means deselected, or that it could not be
 	/// copied.
 	private static Instance ImportFileBacked(ModelTexture texture, int index, bool normalSlot,
-		bool linear, ImportContext context, bool sidecarsCopied, Group group,
+		bool linear, float alphaCutoff, ImportContext context, bool sidecarsCopied, Group group,
 		ImportOptions options, List<String> claimed, List<DeferredImportWrite> deferredWrites)
 	{
 		let relative = IsModelRelativeUri(texture.Uri);
@@ -185,6 +195,12 @@ static class ModelImportTextures
 			asset.SetupForNormalMap();
 		else if (linear)
 			asset.SetupForDataMask();
+		// A masked material's base colour: its mipmaps keep the cutoff's coverage.
+		if (alphaCutoff > 0.0f)
+		{
+			asset.PreserveAlphaCoverage = true;
+			asset.AlphaCoverageReference = alphaCutoff;
+		}
 
 		let instance = ClaimedInstances.Claim(group,
 			options.SelectionName(.Texture, textureName), cAssetType, claimed);

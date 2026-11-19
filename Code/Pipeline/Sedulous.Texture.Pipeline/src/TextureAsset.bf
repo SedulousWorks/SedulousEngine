@@ -55,6 +55,24 @@ class TextureAsset : Asset
 	/// size, and it must stay out of that decision.
 	public String SourceHint = new .() ~ delete _;
 
+	/// An alpha tested material's texture: each mip level keeps as much of the texture at or
+	/// above AlphaCoverageReference (the material's cutoff) as the full size image has. A plain
+	/// chain averages a leaf with the gaps round it below the cutoff, and foliage thins out, then
+	/// vanishes, with distance. The model importer sets both for a masked material's base colour.
+	/// Appended: an asset saved before them keeps the defaults (off).
+	[Appended]
+	[DisplayName("Preserve Alpha Coverage")]
+	[Description("Keep the share of texels at or above the reference in every mipmap, so an alpha-tested material (leaves, grass) does not thin out with distance")]
+	public bool PreserveAlphaCoverage = false;
+	[Appended]
+	[DisplayName("Alpha Coverage Reference")]
+	[Description("The alpha whose coverage is kept: the material's alpha cutoff")]
+	[Range(0.0f, 1.0f, 0.01f)]
+	public float AlphaCoverageReference = 0.5f;
+
+	/// The reference the asset's chain keeps the coverage of, or 0 when it keeps none.
+	public float CoverageReference => PreserveAlphaCoverage ? Math.Clamp(AlphaCoverageReference, 0.0f, 1.0f) : 0.0f;
+
 	// ==================== profiles ====================
 	// Each configures the WHOLE story coherently: sampler, shape, usage, and the colour space
 	// the usage implies. The editor's profile buttons and the importer share these definitions

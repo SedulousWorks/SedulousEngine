@@ -115,7 +115,7 @@ class TextureAssetBuilder : IAssetBuilder
 		if (image.Format == .RGBA8)
 		{
 			if (texture.GenerateMipmaps && (texture.Shape == .Texture2D))
-				record.MipLevels = TextureMipChain.Append(pixels, image.Width, image.Height, srgb);
+				record.MipLevels = TextureMipChain.Append(pixels, image.Width, image.Height, srgb, texture.CoverageReference);
 			mipsMs = clock.ElapsedMilliseconds;
 
 			if (texture.Shape == .Texture2D)
@@ -369,7 +369,7 @@ class TextureAssetBuilder : IAssetBuilder
 		if (texture.GenerateMipmaps && (texture.Shape == .Texture2D))
 		{
 			record.MipLevels = TextureMipChain.Append(pixels, texture.EmbeddedWidth,
-				texture.EmbeddedHeight, srgb);
+				texture.EmbeddedHeight, srgb, texture.CoverageReference);
 		}
 		if (texture.Shape == .Texture2D)
 		{

@@ -178,6 +178,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Leaves, grass and other alpha-tested foliage no longer thin out and vanish with distance. A
+  texture's mipmaps averaged each leaf with the gaps round it below the material's cutoff; a
+  texture can now keep its cutoff's coverage in every mipmap (Preserve Alpha Coverage, with the
+  cutoff as its reference), and a model import sets it for each alpha-tested material's base colour.
+  Reimport a model to have it for textures imported before.
 - Resources: assets nothing uses any more are unloaded after about ten seconds, rather than kept
   for the whole run; a game that moves between levels no longer keeps every level's assets.
 - Editor: a game's mouse look in the Game tab keeps turning however far the mouse moves; it stopped

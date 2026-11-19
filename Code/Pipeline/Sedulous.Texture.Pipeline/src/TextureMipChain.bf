@@ -58,8 +58,79 @@ static class TextureMipChain
 	/// tightly packed RGBA8, by a two by two box clamped at an odd edge. Alpha, and everything
 	/// in a linear image, averages directly.
 	///
+	/// With `coverageReference` above 0, each level's alpha is then scaled to keep level
+	/// nought's coverage of it (PreserveAlphaCoverage).
+	///
 	/// Returns the TOTAL level count, the first one included.
-	public static uint32 Append(List<uint8> pixels, uint32 width, uint32 height, bool srgb)
+	public static uint32 Append(List<uint8> pixels, uint32 width, uint32 height, bool srgb, float coverageReference = 0.0f)
+	{
+		let levels = AppendBoxChain(pixels, width, height, srgb);
+		if (coverageReference > 0.0f)
+			PreserveAlphaCoverage(pixels, width, height, levels, coverageReference);
+		return levels;
+	}
+
+	/// Scales the alpha of each level after the first of a tight RGBA8 2D chain (`levels`
+	/// levels, level nought `width` x `height`) so the share of its texels at or above
+	/// `reference` (0..1, an alpha test's cutoff) is level nought's. The whole chain is built
+	/// from unscaled levels first, so no level's scale feeds the next. Per level, the alpha
+	/// above which that share of its texels lies (from a histogram) is scaled onto the
+	/// reference.
+	public static void PreserveAlphaCoverage(List<uint8> pixels, uint32 width, uint32 height, uint32 levels, float reference)
+	{
+		let cut = (uint32)(Math.Clamp(reference, 0.0f, 1.0f) * 255.0f + 0.5f);
+		if ((cut == 0) || (levels < 2))
+			return; // everything passes a zero cutoff: nothing to keep
+		uint64[256] bins = default;
+		void Histogram(int offset, int count)
+		{
+			for (int b < 256)
+				bins[b] = 0;
+			for (int i < count)
+				bins[pixels[offset + i * 4 + 3]]++;
+		}
+		let count0 = (int)width * (int)height;
+		Histogram(0, count0);
+		uint64 passing0 = 0;
+		for (uint32 a = cut; a < 256; a++)
+			passing0 += bins[a];
+		if ((passing0 == 0) || (passing0 == (uint64)count0))
+			return; // all or nothing passes: the box chain keeps that already
+		let target = (double)passing0 / (double)count0;
+		var offset = count0 * 4;
+		var w = width;
+		var h = height;
+		for (uint32 level = 1; level < levels; level++)
+		{
+			w = (w > 1) ? w / 2 : 1;
+			h = (h > 1) ? h / 2 : 1;
+			let count = (int)w * (int)h;
+			Histogram(offset, count);
+			// The alpha above which the target share of this level's texels lies.
+			let wanted = (uint64)(target * (double)count + 0.5);
+			uint64 seen = 0;
+			uint32 threshold = 255;
+			while ((threshold > 0) && ((seen + bins[threshold]) < wanted))
+			{
+				seen += bins[threshold];
+				threshold--;
+			}
+			// Threshold 0 would need texels with no alpha to pass: the level keeps what it has.
+			if ((threshold > 0) && (wanted > 0))
+			{
+				let scale = (float)cut / (float)threshold;
+				for (int i < count)
+				{
+					let at = offset + i * 4 + 3;
+					pixels[at] = (uint8)Math.Min(255.0f, (float)pixels[at] * scale + 0.5f);
+				}
+			}
+			offset += count * 4;
+		}
+	}
+
+	/// The two by two box chain below level nought, appended; the level count.
+	private static uint32 AppendBoxChain(List<uint8> pixels, uint32 width, uint32 height, bool srgb)
 	{
 		let tables = srgb ? scope SrgbTables() : null;
 		uint32 levels = 1;
