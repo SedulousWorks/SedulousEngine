@@ -24,6 +24,10 @@ class SceneShadowContext
 	/// A compact array so the per cascade cull streams it linearly rather than chasing each
 	/// item's own allocation, which is what the cull cost at scale.
 	public List<Float4> CasterBounds = new .() ~ delete _;
+	/// The bounds of everything the scene draws (casters or not): where shadows can land, which
+	/// the directional cascades fit to (ShadowMath.ComputeCascades). Empty when the scene draws
+	/// nothing.
+	public AABB ReceiverBounds = AABB.Empty();
 	/// The moving casters' world spheres, which is what routes a static tile's refresh: a
 	/// skinned caster, and while the scene has cached shadows any caster that moved, appeared
 	/// or went (where it is and where it was).

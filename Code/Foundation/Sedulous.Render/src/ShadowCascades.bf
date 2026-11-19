@@ -19,6 +19,12 @@ struct ShadowCascades
 	/// World units per shadow texel, which the normal offset bias is measured in: a fixed
 	/// bias is either useless in the near cascade or peters out in the far one.
 	public float[Count] TexelWorldSize = .(0.0f, 0.0f, 0.0f, 0.0f);
+	/// The furthest along the light a cascade carries a shadow from its caster: the deepest
+	/// cascade's depth. A caster whose shadow cannot reach the view within it is not drawn.
+	public float CasterReach = 0.0f;
+	/// Whether anything the scene draws lies in each cascade's slice of the view. One without (a
+	/// view turned to the sky, past the scene's edge) is cleared but draws no casters.
+	public bool[Count] HasReceivers = .(true, true, true, true);
 	/// The caster light's own values (DirectionalShadow), carried to every renderer that
 	/// samples the cascades.
 	public float NormalBias = ShadowBiasDefaults.NormalBias; // texels

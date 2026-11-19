@@ -39,7 +39,7 @@ static class ShadowMath
 	/// `lambda` blends the splits: nought is uniform and one logarithmic, more of the map near
 	/// the camera; halfway is the practical split.
 	public static ShadowCascades ComputeCascades(ViewCamera camera, Float3 lightDir,
-		float shadowDistance, uint32 resolution, float lambda = 0.5f)
+		float shadowDistance, uint32 resolution, float lambda = 0.5f, AABB* receivers = null)
 	{
 		var cascades = ShadowCascades();
 		cascades.Valid = true;
@@ -100,14 +100,44 @@ static class ShadowMath
 			var radius = 0.0f;
 			for (int i < 8)
 				radius = Max(radius, Length(corners[i] - center));
+			// How far toward the light the box reaches past its centre: the slice's own three radii.
+			let towardLight = (Ceil(radius * 16.0f) / 16.0f) * 3.0f;
+
+			if ((receivers != null) && receivers.IsValid())
+			{
+				var slice = AABB.Empty();
+				for (int i < 8)
+					slice.Expand(corners[i]);
+				let overlap = AABB(Max(slice.Min, receivers.Min), Min(slice.Max, receivers.Max));
+				if (!overlap.IsValid())
+				{
+					cascades.HasReceivers[c] = false; // nothing here to shadow: keep the slice's box
+				}
+				else
+				{
+					// In eighths of the slice's radius, which depends only on the projection, so
+					// the box does not swim as the camera turns.
+					let step = radius / 8.0f;
+					let fitted = Ceil(Length(overlap.Extents()) / step) * step;
+					if (fitted < radius)
+					{
+						radius = fitted;
+						center = overlap.Center();
+					}
+				}
+			}
 			// Snapped, so the cascade's size steps rather than creeping frame to frame.
 			radius = Ceil(radius * 16.0f) / 16.0f;
 
 			cascades.TexelWorldSize[c] = (radius * 2.0f) / (float)resolution;
 			cascades.SplitFar[c] = splits[c + 1];
 
-			let depth = radius * 6.0f;
-			let eye = center - direction * (radius * 3.0f);
+			// A fitted box keeps the slice's reach toward the light, so every caster the slice's
+			// box would have drawn still lands in it, and its depth never grows.
+			let depth = towardLight + radius * 3.0f;
+			// A caster in the box shadows a receiver in it no further along the light than this.
+			cascades.CasterReach = Max(cascades.CasterReach, depth);
+			let eye = center - direction * towardLight;
 			let view = Float4x4.LookAtRH(eye, center, up);
 			let projection = Float4x4.OrthographicRH(radius * 2.0f, radius * 2.0f, 0.0f, depth);
 			var viewProj = view * projection;
@@ -124,6 +154,49 @@ static class ShadowMath
 		}
 
 		return cascades;
+	}
+
+	/// What of a view receives its directional shadows: its frustum from the near plane to
+	/// `shadowDistance`, the depth the cascades cover (measured as ComputeCascades measures it),
+	/// with the planes pointing outward. The far plane is the cut at that depth, not the camera's.
+	public static BoundingFrustum ShadowReceiverFrustum(ViewCamera camera, float shadowDistance)
+	{
+		var frustum = BoundingFrustum(camera.ViewProjection);
+		let nearZ = camera.NearPlane;
+		let farZ = Max(nearZ + 1.0f, shadowDistance);
+		let cameraFar = Max(farZ, camera.FarPlane);
+		let inverseViewProj = Inverse(camera.ViewProjection);
+		let nearCentre = UnprojectNDC(inverseViewProj, 0.0f, 0.0f, Projection.NdcDepthNear);
+		let farCentre = UnprojectNDC(inverseViewProj, 0.0f, 0.0f, Projection.NdcDepthFar);
+		let cut = nearCentre + (farCentre - nearCentre) * ((farZ - nearZ) / (cameraFar - nearZ));
+		// From the view's own axis rather than the projection's far plane, which an endless
+		// projection does not have.
+		frustum.Planes[1] = Plane.FromPointNormal(cut, Normalized(farCentre - nearCentre));
+		return frustum;
+	}
+
+	/// Whether a directional light's caster can shadow what the view receives shadows on. A
+	/// shadow falls from its caster along the light. A cascade draws a caster whose sphere
+	/// touches its box, and the shadow pass clamps depth, so the part of it that sticks out
+	/// toward the light (up to its diameter) still casts: its shadow lands at most `reach`
+	/// (ShadowCascades.CasterReach) plus that diameter from its centre. The caster matters only
+	/// when its bounding sphere (xyz centre, w radius), swept that far along `lightDir` (unit,
+	/// the direction light travels), touches `receivers`. Conservative: a caster it rejects
+	/// writes no shadow the view samples. A caster beside or behind the view whose shadow falls
+	/// away from it, or every caster of a view turned to the sky, is rejected.
+	public static bool CasterShadowReachesView(BoundingFrustum receivers, Float3 lightDir, float reach, Float4 sphere)
+	{
+		let centre = Float3(sphere.X, sphere.Y, sphere.Z);
+		let sweep = reach + 2.0f * sphere.W;
+		for (let plane in receivers.Planes)
+		{
+			// The capsule is outside the plane when both its ends are further out than its radius.
+			let start = Dot(plane.Normal, centre) + plane.D;
+			let end = start + Dot(plane.Normal, lightDir) * sweep;
+			if (Min(start, end) > sphere.W)
+				return false;
+		}
+		return true;
 	}
 
 	/// Whether a cached (static) atlas tile must be redrawn for a moving caster (a figure, a

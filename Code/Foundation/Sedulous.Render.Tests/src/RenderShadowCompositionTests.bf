@@ -267,4 +267,73 @@ class RenderShadowCompositionTests
 		Test.Assert(!info[0].MapBound);
 		Test.Assert(frame.LocalShadowEntries.IsEmpty);
 	}
+
+	/// A view's cascades draw only the casters whose shadow can reach it; the scene's caster list
+	/// keeps them all, since another view or a local light may need them.
+	[Test]
+	public static void AViewsCascadesDrawOnlyTheCastersWhoseShadowCanReachIt()
+	{
+		let fixture = scope RenderFrameFixture(128, 128);
+		if (!fixture.Ready)
+			return;
+
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(meshRenderer);
+		let shadows = scope ShadowSystem(fixture.Device, 2);
+		Test.Assert(shadows.Initialize() case .Ok);
+		let frame = scope RenderFrame(fixture.Device, registry, 2, null, null, shadows);
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MakeLitMaterial();
+		defer delete material;
+
+		// The sun straight down over three casters: one in front of the camera, one 55 m behind
+		// it (its shadow falls behind it too) and one far above anything a cascade carries a
+		// shadow from.
+		let scene = scope ExtractedScene();
+		Float3[3] places = .(.(0, 0, 0), .(0, 0, 60), .(0, 5000, 0));
+		for (let place in places)
+		{
+			let data = scene.Add<MeshRenderData>();
+			data.World = Float4x4.Translation(place);
+			data.Mesh = cube;
+			data.Material = material;
+			data.Category = RenderCategories.Opaque;
+			data.WorldCenter = place;
+			data.WorldRadius = 1.0f;
+		}
+		var directional = DirectionalShadow();
+		directional.Direction = .(0, -1, 0);
+		directional.Valid = true;
+		scene.SetDirectionalShadow(directional);
+
+		var camera = RenderFrameFixture.LookingAtTheOrigin();
+		frame.Begin(fixture.Encoder, 0);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.End();
+
+		Test.Assert(frame.ShadowCasterCount(scene) == 3);
+		var info = frame.ViewShadowInfo;
+		Test.Assert(info.Length == 1);
+		Test.Assert(info[0].Directional);
+		Test.Assert(info[0].DirectionalCasters == 1, "only the caster whose shadow it can see");
+		// The scene lies within a few metres of the camera along its view: the nearer cascades
+		// hold it, the furthest slices are past it and draw nothing.
+		Test.Assert(info[0].CascadesWithReceivers >= 1);
+		Test.Assert(info[0].CascadesWithReceivers < (uint32)ShadowCascades.Count);
+
+		// Turned to the sky from just above them, the view keeps none of the casters below it.
+		camera.View = Float4x4.LookAtRH(.(0, 3, 0), .(0, 4, 0), .(0, 0, -1));
+		camera.Position = .(0, 3, 0);
+		frame.Begin(fixture.Encoder, 1);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.End();
+		info = frame.ViewShadowInfo;
+		Test.Assert(info.Length == 1);
+		Test.Assert(info[0].DirectionalCasters == 0, "a view turned to the sky keeps none");
+	}
 }

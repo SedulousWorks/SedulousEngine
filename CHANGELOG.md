@@ -114,6 +114,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Rendering: the sun's shadows draw only the casters whose shadow can fall on what the view shows,
+  and each cascade fits the part of its slice the scene fills, so a view turned to the sky or past
+  the scene's edge no longer pays for the whole scene's shadows. What the shadows look like is
+  unchanged.
 - A project's folders follow its asset groups: imported and new files land in their group's folder,
   a model's files (sidecars too) in its own; moving an asset or renaming a group moves its file
   along; an older project's files move into their groups' folders when it opens.

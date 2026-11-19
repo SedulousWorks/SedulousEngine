@@ -148,6 +148,10 @@ class RenderFrame
 	private List<AtlasDraw> mStaticRenderDraws = new .() ~ delete _;
 	/// The per tile culled subset, reused.
 	private List<DrawItem> mShadowCullScratch = new .() ~ delete _;
+	/// Per shadow view, the scene's casters whose shadow can reach it and their bounds, aligned:
+	/// what its cascades cull from. Filled as the cascades are declared, read as they record.
+	private List<DrawItem>[ShadowSystem.MaxShadowViews] mViewCasters = .(new .(), new .(), new .(), new .()) ~ { for (let list in _) delete list; };
+	private List<Float4>[ShadowSystem.MaxShadowViews] mViewCasterBounds = .(new .(), new .(), new .(), new .()) ~ { for (let list in _) delete list; };
 
 	private List<ViewShadowDebug> mViewShadowDebug = new .() ~ delete _;
 	private List<ShadowBinding> mViewShadows = new .() ~ delete _;
@@ -682,11 +686,21 @@ class RenderFrame
 		let bounds = context.CasterBoundsById[context.BoundsFrame];
 		let lastBounds = context.CasterBoundsById[context.BoundsFrame ^ 1];
 		bounds.Clear();
+		context.ReceiverBounds = AABB.Empty();
 
 		for (let data in scene.Items)
 		{
 			if (data == null)
 				continue;
+			// Everything drawn can receive a shadow, caster or not (a grass filler, a blended
+			// glass). Bounds that are not finite would make the box meaningless.
+			if (data.WorldRadius.IsFinite && data.WorldCenter.X.IsFinite && data.WorldCenter.Y.IsFinite
+				&& data.WorldCenter.Z.IsFinite)
+			{
+				let r = Float3(data.WorldRadius, data.WorldRadius, data.WorldRadius);
+				context.ReceiverBounds.Expand(data.WorldCenter - r);
+				context.ReceiverBounds.Expand(data.WorldCenter + r);
+			}
 			if ((data.Category != RenderCategories.Opaque)
 				&& (data.Category != RenderCategories.Masked))
 				continue;
@@ -1291,8 +1305,13 @@ class RenderFrame
 			// The scene's reach (its environment settings), from the view's eye (ShadowReach).
 			let reach = context.Scene.ShadowSettings;
 			let distance = ShadowMath.ShadowReach(view.Camera, reach.Distance);
+			// Fitted to what the scene draws: a slice over its edge shrinks to the overlap, and one
+			// with nothing in it (up into the sky) draws no casters.
+			var receiverBounds = context.ReceiverBounds;
 			var cascades = ShadowMath.ComputeCascades(view.Camera, lightDirection, distance,
-				shadowResolution, Math.Clamp(reach.CascadeSplit, 0.0f, 1.0f));
+				shadowResolution, Math.Clamp(reach.CascadeSplit, 0.0f, 1.0f), &receiverBounds);
+			for (uint32 c = 0; c < cascadeCount; c++)
+				mViewShadowDebug[i].CascadesWithReceivers += cascades.HasReceivers[c] ? 1 : 0;
 			cascades.FarFade = reach.FadeDistance;
 			// The caster light's own biases and strength ride with its cascades.
 			let caster = context.Scene.DirectionalShadowData;
@@ -1301,15 +1320,39 @@ class RenderFrame
 			cascades.Strength = caster.Strength;
 			let layerBase = (uint32)i * cascadeCount;
 
+			// The casters whose shadow can reach this view. They come from the view's SCENE's
+			// camera independent list, not this view's culled draw list, since an off camera
+			// caster can shadow what the view sees; but one whose shadow, swept along the light as
+			// far as a cascade carries it, misses everything the view receives shadows on is
+			// dropped here, once for all four cascades. The per cascade cull then keeps each one
+			// left to about one cascade.
+			let kept = mViewCasters[i];
+			let keptBounds = mViewCasterBounds[i];
+			using (ProfileScope("shadow.viewCull"))
+			{
+				let receivers = ShadowMath.ShadowReceiverFrustum(view.Camera, distance);
+				let lightDir = Normalized(lightDirection);
+				kept.Clear();
+				keptBounds.Clear();
+				for (int k < context.Casters.Count)
+				{
+					let casterBounds = context.CasterBounds[k];
+					if (ShadowMath.CasterShadowReachesView(receivers, lightDir, cascades.CasterReach, casterBounds))
+					{
+						kept.Add(context.Casters[k]);
+						keptBounds.Add(casterBounds);
+					}
+				}
+				mViewShadowDebug[i].DirectionalCasters = (uint32)kept.Count;
+			}
+
 			for (uint32 c = 0; c < cascadeCount; c++)
 			{
 				let cascadeViewProj = cascades.ViewProjection[c];
 				let layer = layerBase + c;
+				// Still cleared when it has nothing to shadow, so its layer never holds an old frame.
+				let draws = cascades.HasReceivers[c];
 
-				// The casters come from the view's SCENE's camera independent list, not this
-				// view's culled draw list, so view frustum culling cannot drop an off camera
-				// caster whose shadow is visible. The per cascade cull then keeps each caster
-				// to about one cascade.
 				mGraph.AddRenderPass("shadow.cascade", scope (builder) =>
 					{
 						builder.SetDepthTarget(shadowHandle, .Clear, .Store, Depth.ClearValue,
@@ -1318,10 +1361,12 @@ class RenderFrame
 
 						builder.SetExecute(new (encoder) =>
 							{
+								if (!draws)
+									return;
 								// A cascade follows its OWNING view's level selection, so the
 								// shadow matches what that view draws.
-								RecordShadowCasters(encoder, context.Casters, mRegistry,
-									cascadeViewProj, .(0, 0, 0), 0.0f, true, context.CasterBounds,
+								RecordShadowCasters(encoder, kept, mRegistry,
+									cascadeViewProj, .(0, 0, 0), 0.0f, true, keptBounds,
 									view, context.Scene);
 							});
 					});

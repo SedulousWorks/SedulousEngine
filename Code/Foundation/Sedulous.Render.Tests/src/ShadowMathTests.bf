@@ -436,4 +436,112 @@ class ShadowMathTests
 		Test.Assert(Math.Abs(ShadowMath.ShadowReach(camera, 120.0f) - 160.0f) < 1e-3f);
 		Test.Assert(Math.Abs(ShadowMath.ShadowReach(camera, 5000.0f) - 1040.0f) < 1e-3f, "never past the far plane");
 	}
+
+	private static ViewCamera Looking(Float3 eye, Float3 at, Float3 up, float aspect)
+	{
+		var camera = ViewCamera();
+		camera.View = Float4x4.LookAtRH(eye, at, up);
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, aspect, 0.1f, 250.0f);
+		camera.FarZ = 250.0f;
+		return camera;
+	}
+
+	/// A caster counts when its shadow can fall on what the view receives: the view's frustum
+	/// cut at the shadow distance.
+	[Test]
+	public static void ACasterCountsWhenItsShadowCanFallOnWhatTheViewReceives()
+	{
+		// A camera at the origin looking down -Z (60 degrees, near 0.1, far 100), shadows to
+		// 50 m, the sun straight down and carried 30 m.
+		var camera = ViewCamera();
+		camera.View = Float4x4.LookAtRH(.(0, 0, 0), .(0, 0, -1), .(0, 1, 0));
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, 1.0f, 0.1f, 100.0f);
+		let receivers = ShadowMath.ShadowReceiverFrustum(camera, 50.0f);
+		let down = Float3(0, -1, 0);
+		let reach = 30.0f;
+
+		Test.Assert(ShadowMath.CasterShadowReachesView(receivers, down, reach, .(0, 0, -10, 1)), "in view");
+		// Above the view, out of it, but its shadow falls through it.
+		Test.Assert(ShadowMath.CasterShadowReachesView(receivers, down, reach, .(0, 20, -10, 1)), "above, shadowing it");
+		// Higher than the light carries a shadow.
+		Test.Assert(!ShadowMath.CasterShadowReachesView(receivers, down, reach, .(0, 40, -10, 1)), "beyond the reach");
+		// Just within reach once its diameter counts: the shadow pass clamps a caster's depth,
+		// so the part sticking out toward the light still casts.
+		Test.Assert(ShadowMath.CasterShadowReachesView(receivers, down, reach, .(0, 37, -10, 1)), "its diameter counts");
+		// Behind the camera, its shadow falling straight down behind it too.
+		Test.Assert(!ShadowMath.CasterShadowReachesView(receivers, down, reach, .(0, 0, 20, 1)), "behind");
+		// In front but past the shadow distance (inside the camera's far plane).
+		Test.Assert(!ShadowMath.CasterShadowReachesView(receivers, down, reach, .(0, 0, -80, 1)), "past the cut");
+		// Its radius counts: just beyond the cut, but large enough to reach back into it.
+		Test.Assert(ShadowMath.CasterShadowReachesView(receivers, down, reach, .(0, 0, -55, 6)), "its radius counts");
+
+		// The view turned to the sky from 2 m up: the forest below shadows nothing it sees.
+		var sky = camera;
+		sky.View = Float4x4.LookAtRH(.(0, 2, 0), .(0, 3, 0), .(0, 0, -1));
+		let skyward = ShadowMath.ShadowReceiverFrustum(sky, 50.0f);
+		for (float x = -40.0f; x <= 40.0f; x += 10.0f)
+		{
+			for (float z = -40.0f; z <= 40.0f; z += 10.0f)
+				Test.Assert(!ShadowMath.CasterShadowReachesView(skyward, down, reach, .(x, 0.5f, z, 1.0f)), "below a skyward view");
+		}
+		// A caster up in the view (a branch overhead) still casts.
+		Test.Assert(ShadowMath.CasterShadowReachesView(skyward, down, reach, .(0, 10, 0, 1)), "overhead");
+	}
+
+	/// CasterReach is the deepest cascade's depth: as far as any shadow is carried.
+	[Test]
+	public static void TheCasterReachIsTheDeepestCascadesDepth()
+	{
+		let camera = Looking(.(0, 2, 0), .(0, 2, -1), .(0, 1, 0), 16.0f / 9.0f);
+		let resolution = (uint32)1024;
+		let cascades = ShadowMath.ComputeCascades(camera, Normalized(Float3(0.3f, -1.0f, 0.2f)), 200.0f, resolution);
+		// Each cascade's box is six radii deep along the light, its radius half its width.
+		var deepest = 0.0f;
+		for (int c < ShadowCascades.Count)
+			deepest = Max(deepest, cascades.TexelWorldSize[c] * (float)resolution * 0.5f * 6.0f);
+		Test.Assert(cascades.CasterReach > 0.0f);
+		Test.Assert(Near(cascades.CasterReach, deepest, 0.01f));
+	}
+
+	/// Fitted to the scene, a cascade shrinks to what of its slice holds anything; one past the
+	/// scene draws nothing.
+	[Test]
+	public static void AFittedCascadeShrinksToWhatOfItsSliceHoldsAnything()
+	{
+		// A view 2 m up looking down -Z over a scene 30 m tall that ends partway along it.
+		let camera = Looking(.(0, 2, 0), .(0, 2, -1), .(0, 1, 0), 1.0f);
+		let light = Normalized(Float3(0.3f, -1.0f, 0.2f));
+		let resolution = (uint32)1024;
+		let slices = ShadowMath.ComputeCascades(camera, light, 200.0f, resolution);
+		// The scene ends just before the last cascade's slice begins.
+		var scene = AABB(.(-50.0f, -13.0f, -(slices.SplitFar[2] - 1.0f)), .(50.0f, 17.0f, 10.0f));
+		let fitted = ShadowMath.ComputeCascades(camera, light, 200.0f, resolution, 0.5f, &scene);
+
+		// The near cascade's slice lies wholly in the scene: unchanged.
+		Test.Assert(fitted.HasReceivers[0]);
+		Test.Assert(Near(fitted.TexelWorldSize[0], slices.TexelWorldSize[0], 0.0001f));
+		// The last slice is past the scene: nothing to shadow there.
+		Test.Assert(!fitted.HasReceivers[3]);
+		// The third slice spans far more height than the scene's 30 m: it shrinks to the
+		// overlap, its texels finer, and still holds what of the scene is in it.
+		Test.Assert(fitted.HasReceivers[2]);
+		Test.Assert(fitted.TexelWorldSize[2] < slices.TexelWorldSize[2]);
+		let mid = (slices.SplitFar[1] + slices.SplitFar[2]) * 0.5f;
+		let fittedBox = BoundingFrustum(fitted.ViewProjection[2]);
+		Float3[3] inScene = .(.(0, 0, -mid), .(-10, 15, -mid), .(10, -12, -mid));
+		for (let p in inScene)
+			Test.Assert(fittedBox.Contains(p) != .Disjoint);
+		// A fitted box reaches no deeper than the slice's would.
+		Test.Assert(fitted.CasterReach > 0.0f);
+		Test.Assert(fitted.CasterReach <= slices.CasterReach + 0.001f);
+
+		// No bounds (a scene that draws nothing) fits nothing: the boxes stay the slices'.
+		var nothing = AABB.Empty();
+		let none = ShadowMath.ComputeCascades(camera, light, 200.0f, resolution, 0.5f, &nothing);
+		for (int c < ShadowCascades.Count)
+		{
+			Test.Assert(none.HasReceivers[c]);
+			Test.Assert(Near(none.TexelWorldSize[c], slices.TexelWorldSize[c], 0.0001f));
+		}
+	}
 }
