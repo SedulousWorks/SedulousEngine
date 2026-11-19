@@ -11,6 +11,7 @@ class PhysicsColliderGizmoRenderer : IGizmoRenderer
 {
 	public Type ComponentType => typeof(RigidBodyComponent);
 	public bool DrawWhenUnselected => true;
+	public bool IsOn(GizmoContext ctx) => ctx.ShowColliders;
 
 	public void Draw(void* component, EntityHandle owner, GizmoContext ctx)
 	{

@@ -12,6 +12,7 @@ class JointGizmoRenderer : IGizmoRenderer
 {
 	public Type ComponentType => typeof(JointComponent);
 	public bool DrawWhenUnselected => true;
+	public bool IsOn(GizmoContext ctx) => ctx.ShowColliders;
 
 	public void Draw(void* component, EntityHandle owner, GizmoContext ctx)
 	{

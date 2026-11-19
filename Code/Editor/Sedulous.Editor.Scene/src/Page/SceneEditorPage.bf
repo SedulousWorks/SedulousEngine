@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Core.IO;
+using Sedulous.Profiler; // the update's scopes
 using Sedulous.Content;
 using Sedulous.Run;
 using Sedulous.Shell;
@@ -587,6 +588,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		// The steps below each have their own scope: a large scene shows which costs.
+		var updateScope = ProfileScope("ScenePage.Update");
+		defer updateScope.Dispose();
 		mViewport.CompleteCapture(host); // a capture recorded last frame: the GPU finished the copy
 		// A scene with no saved view opens showing it whole once nothing is left loading, so its
 		// bounds are whole; a camera the user has moved by then stays where they put it.
@@ -626,18 +630,24 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		if (active && mViewport.ZoomedThisFrame && (mHud != null))
 			mHud.Zoomed();
 		if (mEditContext != null)
-			UpdateTools(active, dt);
+		{
+			using (ProfileScope("ScenePage.Tools"))
+				UpdateTools(active, dt);
+		}
 		// The page's run: its scripts' clock, and its bus drained once a frame (events a Simulate
 		// tick emitted last frame arrive now). The clock moves by the scene's time, as a game's
 		// moves by its gameplay time, and holds while the Simulate is paused, as a game's while
 		// the toolbar pauses it.
 		let run = mSimulation.Run;
-		if ((run.State == .Running) && (mScene != null))
+		using (ProfileScope("ScenePage.Run"))
 		{
-			let contextScale = (host != null) ? host.Subsystems.TimeScale : 1.0f;
-			run.Scripts.Advance(FrameTime(dt, contextScale, mSceneManager.TimeScale, mScene.TimeScale).SceneDelta);
+			if ((run.State == .Running) && (mScene != null))
+			{
+				let contextScale = (host != null) ? host.Subsystems.TimeScale : 1.0f;
+				run.Scripts.Advance(FrameTime(dt, contextScale, mSceneManager.TimeScale, mScene.TimeScale).SceneDelta);
+			}
+			run.DrainEvents();
 		}
-		run.DrainEvents();
 		// Clicking into a simulating viewport makes its run the one heard, as with a Game tab.
 		if (mSimulation.IsRunning && (mServices.Runs != null) && mViewport.IsFocused && ((Object)mServices.Runs.Focused !== run))
 			mServices.Runs.SetFocused(run);
@@ -657,18 +667,34 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			frame.ComponentGizmos = mComponentGizmos;
 			if ((mAnimation != null) && mAnimationShown && mAnimation.Preview.IsPosing)
 				frame.Previewed = mAnimation.Preview.PosedEntity;
-			mOverlays.Draw(dd, frame);
+			using (ProfileScope("ScenePage.Overlays"))
+				mOverlays.Draw(dd, frame);
 		}
 		if (mTools != null)
-			mTools.Sync();
+		{
+			using (ProfileScope("ScenePage.ToolsSync"))
+				mTools.Sync();
+		}
 		if (mHud != null)
-			mHud.Update(dt, mViewport.View.RenderHeight);
+		{
+			using (ProfileScope("ScenePage.Hud"))
+				mHud.Update(dt, mViewport.View.RenderHeight);
+		}
 		if (mCameraPreview != null)
-			mCameraPreview.Update();
+		{
+			using (ProfileScope("ScenePage.CameraPreview"))
+				mCameraPreview.Update();
+		}
 		if (mHierarchy != null)
-			mHierarchy.Refresh(); // the scene changed: built again
+		{
+			using (ProfileScope("ScenePage.Hierarchy"))
+				mHierarchy.Refresh(); // the scene changed: built again
+		}
 		if (mInspector != null)
-			mInspector.Refresh(); // the selection or its components changed: built again; else its values
+		{
+			using (ProfileScope("ScenePage.Inspector"))
+				mInspector.Refresh(); // the selection or its components changed: built again; else its values
+		}
 		// A move snapping by the grid's cell takes the cell where the camera is now.
 		if (let gizmos = Gizmos)
 		{
@@ -676,7 +702,10 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				gizmos.Gizmo.TranslateSnap = mOverlays.CurrentGridSpacing(mViewport.Camera).Spacing;
 		}
 		if (mBar != null)
-			mBar.Sync();
+		{
+			using (ProfileScope("ScenePage.Bar"))
+				mBar.Sync();
+		}
 	}
 
 	/// The viewport tools' frame of input (picking lives in the select tool). Runs every frame so

@@ -12,6 +12,7 @@ class LodOverlayGizmoRenderer : IGizmoRenderer
 {
 	public Type ComponentType => typeof(MeshComponent);
 	public bool DrawWhenUnselected => true;
+	public bool IsOn(GizmoContext ctx) => ctx.LodOverlay && (ctx.ViewCamera != null);
 
 	public void Draw(void* component, EntityHandle owner, GizmoContext ctx)
 	{

@@ -10,6 +10,7 @@ class ChildColliderGizmoRenderer : IGizmoRenderer
 {
 	public Type ComponentType => typeof(ColliderComponent);
 	public bool DrawWhenUnselected => true;
+	public bool IsOn(GizmoContext ctx) => ctx.ShowColliders;
 
 	public void Draw(void* component, EntityHandle owner, GizmoContext ctx)
 	{

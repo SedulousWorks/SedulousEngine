@@ -11,6 +11,7 @@ class CharacterColliderGizmoRenderer : IGizmoRenderer
 {
 	public Type ComponentType => typeof(CharacterComponent);
 	public bool DrawWhenUnselected => true;
+	public bool IsOn(GizmoContext ctx) => ctx.ShowColliders;
 
 	public void Draw(void* component, EntityHandle owner, GizmoContext ctx)
 	{

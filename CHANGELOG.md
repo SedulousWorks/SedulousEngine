@@ -114,6 +114,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Editor: a scene view's gizmos cost what they draw. Every frame asked every entity about every
+  component type, so a large scene paid for gizmos it did not draw; with Show Colliders, the LOD
+  overlay and Entity Markers off it now visits only the selection. The Profiler shows each part of
+  a scene page's update (`ScenePage.*`).
 - Rendering: the sun's shadows draw only the casters whose shadow can fall on what the view shows,
   and each cascade fits the part of its slice the scene fills, so a view turned to the sky or past
   the scene's edge no longer pays for the whole scene's shadows. What the shadows look like is

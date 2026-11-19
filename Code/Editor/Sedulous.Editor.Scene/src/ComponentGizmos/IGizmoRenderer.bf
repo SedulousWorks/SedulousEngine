@@ -12,4 +12,7 @@ interface IGizmoRenderer
 	/// Whether the gizmo shows on entities that are not selected: a collider outline does,
 	/// a light's range sphere does not.
 	bool DrawWhenUnselected { get => false; }
+	/// Whether it draws anything at all this frame: off, it is not asked for a single component
+	/// (a toggle driven overlay with its toggle off). The default is always on.
+	bool IsOn(GizmoContext ctx) => true;
 }

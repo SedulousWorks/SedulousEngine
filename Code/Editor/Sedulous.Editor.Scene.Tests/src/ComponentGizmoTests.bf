@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Render;
@@ -340,5 +341,66 @@ class ComponentGizmoTests
 		for (let v in missing.OverlayLineVertices)
 			orange = orange || ((v.Color & 0xFF) > ((v.Color >> 8) & 0xFF) + 40);
 		Test.Assert(orange);
+	}
+
+	/// DrawScene, what the viewport draws a scene's gizmos with: the selection's every gizmo, and
+	/// the rest's only from the renderers that draw unselected and are on, each over its own
+	/// component's owners. A renderer whose toggle is off is never asked, which is what keeps a
+	/// scene of forty thousand meshes from paying for gizmos it does not draw.
+	[Test]
+	public static void DrawSceneDrawsEachColliderOnceAndNoneWithShowCollidersOff()
+	{
+		let scene = scope Scene();
+		let bodies = scene.AddSystem<RigidBodyComponentManager>();
+		let boxes = scope List<EntityHandle>();
+		for (int i < 3)
+		{
+			let e = scene.CreateEntity("Box");
+			bodies.Add(e).Shape = .Box;
+			boxes.Add(e);
+		}
+		for (int i < 50)
+			scene.CreateEntity("Empty"); // entities with nothing to draw
+
+		let registry = scope GizmoRendererRegistry();
+		BuiltinGizmoRenderers.Register(registry);
+		let ctx = scope GizmoContext();
+		ctx.ShowColliders = true;
+
+		// One box's wireframe, as the selection path draws it.
+		let one = scope DebugDraw();
+		ctx.Scene = scene;
+		ctx.Debug = one;
+		registry.DrawEntity(boxes[0], true, ctx);
+		let perBox = one.LineVertices.Length;
+		Test.Assert(perBox > 0);
+
+		// Nothing selected: every box from the unselected pass.
+		let all = scope DebugDraw();
+		ctx.Debug = all;
+		registry.DrawScene(scene, .(), ctx);
+		Test.Assert(all.LineVertices.Length == 3 * perBox);
+
+		// One selected: drawn by the selection's pass and passed by in the other, so still once.
+		Guid[1] chosen = .(scene.GetEntityId(boxes[1]));
+		let withSelection = scope DebugDraw();
+		ctx.Debug = withSelection;
+		registry.DrawScene(scene, chosen, ctx);
+		Test.Assert(withSelection.LineVertices.Length == 3 * perBox);
+
+		// An inactive one still draws (dimmed): the pass sets EntityEffectivelyActive per owner.
+		scene.SetActive(boxes[2], false);
+		let dimmed = scope DebugDraw();
+		ctx.Debug = dimmed;
+		registry.DrawScene(scene, .(), ctx);
+		Test.Assert(dimmed.LineVertices.Length == 3 * perBox);
+		scene.SetActive(boxes[2], true);
+
+		// Show Colliders off: nothing, selected or not.
+		ctx.ShowColliders = false;
+		let none = scope DebugDraw();
+		ctx.Debug = none;
+		registry.DrawScene(scene, chosen, ctx);
+		Test.Assert(!none.HasAnyDraws);
 	}
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Render;
@@ -132,16 +133,11 @@ class SceneOverlays
 	{
 		if (frame.Selection == null)
 			return;
-		let selection = frame.Selection;
 		let scene = frame.Scene;
-		let showMarkers = Settings.ShowMarkers;
-		scene.ForEachEntity(scope [&](e) =>
+		void Mark(EntityHandle e, bool selected)
 		{
 			let world = scene.GetWorldMatrix(e);
 			let p = Float3(world.M[3][0], world.M[3][1], world.M[3][2]);
-			let selected = selection.Contains(scene.GetEntityId(e));
-			if (!selected && !showMarkers)
-				return; // the Markers toggle: an unselected origin draws nothing
 			let s = 0.25f;
 			let color = selected ? Color(1.0f, 0.85f, 0.25f, 1.0f) : Color(0.75f, 0.75f, 0.80f, 1.0f);
 			dd.DrawLine(p - Float3(s, 0, 0), p + Float3(s, 0, 0), color);
@@ -155,7 +151,23 @@ class SceneOverlays
 				return;
 			}
 			dd.DrawWireBoxCenter(p, .(0.35f, 0.35f, 0.35f), color);
-		});
+		}
+		if (!Settings.ShowMarkers)
+		{
+			// The Markers toggle off: only the selection's, without visiting every entity.
+			for (let id in frame.Selection.Items)
+			{
+				let e = scene.FindEntity(id);
+				if (e.IsAssigned)
+					Mark(e, true);
+			}
+			return;
+		}
+		// A large scene's whole selection, asked of every entity.
+		let selected = scope HashSet<Guid>();
+		for (let id in frame.Selection.Items)
+			selected.Add(id);
+		scene.ForEachEntity(scope [&](e) => { Mark(e, selected.Contains(scene.GetEntityId(e))); });
 	}
 
 	/// The tools' gizmos, then the component gizmos: the full set for the selected entities, the
@@ -183,12 +195,6 @@ class SceneOverlays
 		ctx.ViewCamera = &gizmoCamera;
 		ctx.LodOverlay = Settings.ShowLodOverlay;
 		ctx.ShowColliders = Settings.ShowColliders;
-		let selection = frame.Selection;
-		let scene = frame.Scene;
-		let gizmos = frame.ComponentGizmos;
-		scene.ForEachEntity(scope [&](e) =>
-		{
-			gizmos.DrawEntity(e, selection.Contains(scene.GetEntityId(e)), ctx);
-		});
+		frame.ComponentGizmos.DrawScene(frame.Scene, frame.Selection.Items, ctx);
 	}
 }

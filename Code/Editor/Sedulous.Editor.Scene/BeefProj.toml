@@ -8,6 +8,7 @@ StartupObject = "Sedulous.Editor.Scene.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Profiler" = "*"
 "Sedulous.Editor.Project" = "*"
 "Sedulous.Shell" = "*"
 "Sedulous.Settings" = "*"
