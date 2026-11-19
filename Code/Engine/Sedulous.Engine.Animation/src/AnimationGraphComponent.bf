@@ -33,6 +33,12 @@ struct AnimationGraphComponent : ISerializable, IComponentResources
 	/// What the player was built for, BORROWED and compared by reference.
 	public Skeleton PlayerSkeleton = null;
 	public AnimationGraph PlayerGraph = null;
+	/// Keep PlayerSkeleton and PlayerGraph loaded while the player reads them, whatever the
+	/// references name meanwhile.
+	[Hidden]
+	public ResourceHold PlayerSkeletonHold = null;
+	[Hidden]
+	public ResourceHold PlayerGraphHold = null;
 
 	/// The feed targets, by stable id. Empty means the owner.
 	[Scriptable]

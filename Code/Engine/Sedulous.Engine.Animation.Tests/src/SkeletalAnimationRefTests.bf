@@ -208,4 +208,45 @@ class SkeletalAnimationRefTests
 		Test.Assert(loaded.GetEntityName(loaded.FindEntity(reloaded.MeshEntities[0].Id)) == "PartA");
 		Test.Assert(loaded.GetEntityName(loaded.FindEntity(reloaded.MeshEntities[1].Id)) == "PartB");
 	}
+
+	/// The player holds what it samples: a clip re-pointed at nothing (a pick of an asset still
+	/// loading) leaves the player on the old clip, which stays loaded however long nothing else
+	/// names it, and goes once the animator does.
+	[Test]
+	public static void ThePlayerHoldsTheClipItSamplesUntilTheAnimatorGoes()
+	{
+		let fixture = scope AnimationResourceFixture("scratch_engine_animref_hold");
+		let skeletonId = fixture.CookSkeleton("Skel");
+		let clipId = fixture.CookClip("Walk");
+		fixture.Manager.SetUnusedFrames(2);
+
+		let scene = new Scene();
+		scene.AddSystem<MeshComponentManager>();
+		let animators = scene.AddSystem<SkeletalAnimationComponentManager>();
+		let entity = scene.CreateEntity("Rig");
+		let animator = animators.Add(entity);
+		animator.Skeleton.SetId(skeletonId);
+		animator.Clip.SetId(clipId);
+		SceneResolve.ResolveSceneResources(scene, fixture.Manager);
+		scene.Update(1.0f / 60.0f);
+		let clip = animator.Clip.Get;
+		Test.Assert((clip != null) && (animator.Player.CurrentClip === clip));
+		let clipHandle = fixture.Manager.FindHandle(clipId);
+
+		// Re-pointed at nothing: the player plays on with the old clip.
+		animator.Clip.SetId(Guid.Create());
+		animator.Clip.Rebind(fixture.Manager);
+		for (int i < 6)
+		{
+			scene.Update(1.0f / 60.0f);
+			fixture.Manager.CollectGarbage();
+		}
+		Test.Assert(clipHandle.Product === clip, "held while the player samples it");
+		Test.Assert(animator.Player.CurrentClip === clip);
+
+		delete scene;
+		for (int i < 4)
+			fixture.Manager.CollectGarbage();
+		Test.Assert(clipHandle.Product == null, "released once the animator went");
+	}
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Animation;
 using Sedulous.Core;
+using Sedulous.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Profiler;
 using Sedulous.Scene;
@@ -58,6 +59,10 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 		DeleteAndNullify!(component.MeshEntities);
 		component.PlayerSkeleton = null;
 		component.PlayerClip = null;
+		ResourceHold.Drop(ref component.PlayerSkeletonHold);
+		ResourceHold.Drop(ref component.PlayerClipHold);
+		ResourceHold.Drop(ref component.PreviousClipHold);
+		ResourceHold.Drop(ref component.OneShot.PlayingHold);
 	}
 
 	// ---- the control surface ----
@@ -224,8 +229,12 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 			// Its clip events, for the animation subsystem to tell its listeners.
 			component.Player.SetEventHandler(new (name, time) => { mEvents.Add(new ClipEventFired(owner, name)); });
 			component.PlayerSkeleton = skeleton;
-			// The new player has no clip, so the block below plays one.
+			ResourceHold.Replace(ref component.PlayerSkeletonHold, component.Skeleton.Handle);
+			// The new player has no clip, so the block below plays one; the old player's clips
+			// went with it.
 			component.PlayerClip = null;
+			ResourceHold.Drop(ref component.PlayerClipHold);
+			ResourceHold.Drop(ref component.PreviousClipHold);
 		}
 
 		// The CLIP changes independently of the skeleton: an editor's picks land one at a
@@ -245,6 +254,11 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 				// A clip changed mid play eases in when asked (SetClip's blend); the first clip,
 				// and the start time, start at once.
 				component.Player.CrossFadeTo(clip, component.ClipFade);
+				// What the player samples now, and the clip it fades from.
+				ResourceHold.Drop(ref component.PreviousClipHold);
+				component.PreviousClipHold = component.PlayerClipHold;
+				component.PlayerClipHold = null;
+				ResourceHold.Replace(ref component.PlayerClipHold, component.Clip.Handle);
 				if ((component.StartTime != 0.0f) && (component.ClipFade <= 0.0f))
 					component.Player.SetCurrentTime(component.StartTime);
 			}

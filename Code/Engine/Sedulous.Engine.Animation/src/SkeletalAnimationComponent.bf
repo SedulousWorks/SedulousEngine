@@ -41,6 +41,14 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 	public Skeleton PlayerSkeleton = null;
 	/// The clip last handed to the player, BORROWED.
 	public AnimationClip PlayerClip = null;
+	/// Keep what the player samples loaded, whatever the references name meanwhile: its skeleton,
+	/// the clip it was last handed, and the one before (a crossfade still samples it).
+	[Hidden]
+	public ResourceHold PlayerSkeletonHold = null;
+	[Hidden]
+	public ResourceHold PlayerClipHold = null;
+	[Hidden]
+	public ResourceHold PreviousClipHold = null;
 
 	/// The entities whose mesh receives the matrices. Empty means the owner.
 	[Scriptable]

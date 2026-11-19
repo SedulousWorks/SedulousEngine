@@ -21,6 +21,9 @@ struct OneShotRuntime
 	public bool Playing = false;
 	/// Its clip's id (nil for a clip made in code).
 	public Guid PlayingId = Guid();
+	/// Keeps the clip the overlay plays loaded, from its start until another one-shot starts or
+	/// the animator goes: the overlay samples it while it blends out, whatever Clip names by then.
+	public ResourceHold PlayingHold = null;
 
 	public this() {}
 }
@@ -65,6 +68,7 @@ static class OneShots
 		if (clip == null)
 			return;
 		overlay.PlayOneShot(clip, oneShot.Settings);
+		ResourceHold.Replace(ref oneShot.PlayingHold, oneShot.Clip.Handle);
 		oneShot.Playing = true;
 		oneShot.PlayingId = oneShot.Clip.Id;
 		oneShot.Pending = false;

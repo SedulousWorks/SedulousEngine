@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Animation;
 using Sedulous.Core;
+using Sedulous.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Profiler;
 using Sedulous.Scene;
@@ -57,6 +58,9 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 		DeleteAndNullify!(component.MeshEntities);
 		component.PlayerSkeleton = null;
 		component.PlayerGraph = null;
+		ResourceHold.Drop(ref component.PlayerSkeletonHold);
+		ResourceHold.Drop(ref component.PlayerGraphHold);
+		ResourceHold.Drop(ref component.OneShot.PlayingHold);
 	}
 
 	// ---- the parameters ----
@@ -186,6 +190,8 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 			component.Player.SetEventHandler(new (name, time) => { mEvents.Add(new ClipEventFired(owner, name)); });
 			component.PlayerSkeleton = skeleton;
 			component.PlayerGraph = graph;
+			ResourceHold.Replace(ref component.PlayerSkeletonHold, component.Skeleton.Handle);
+			ResourceHold.Replace(ref component.PlayerGraphHold, component.Graph.Handle);
 		}
 
 		if (!component.Active)
