@@ -42,6 +42,9 @@ struct Ref<T> where T : class
 	public T Get => (mDirect != null) ? mDirect : mProxy.Get;
 
 	public bool HasValue => Get != null;
+	/// The bound handle, or null when unbound (a direct override has none). Borrowed: what keeps
+	/// a product it reads beyond the call holds it (ResourceHold).
+	public ResourceHandle Handle => mProxy.Handle;
 	public bool IsBound => !mProxy.IsNull;
 	public ResourceState State => (mDirect != null) ? .Ready : mProxy.State;
 

@@ -25,4 +25,23 @@ class ResourceHold : SharedObject
 
 	/// The handle it holds, or null.
 	public ResourceHandle Handle => mHandle.Get;
+
+	/// Puts a hold on `handle` in `slot`, letting go of the one there: what a holder does when
+	/// what it reads changes.
+	public static void Replace(ref ResourceHold slot, ResourceHandle handle)
+	{
+		let held = new ResourceHold(handle);
+		Drop(ref slot);
+		slot = held;
+	}
+
+	/// Lets go of the hold in `slot`, if any.
+	public static void Drop(ref ResourceHold slot)
+	{
+		if (slot != null)
+		{
+			slot.Release();
+			slot = null;
+		}
+	}
 }
