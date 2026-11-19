@@ -14,6 +14,8 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Composition;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Geometry;
+using Sedulous.Materials;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -255,5 +257,61 @@ class SceneThumbnailTests
 		let stage = scope Scene("stage");
 		var framing = ThumbnailFraming();
 		Test.Assert(generator.Stage(Guid(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1), stage, resources, ref framing) == .Failed);
+	}
+
+	/// A product built for the test: a stage draws it whatever the record holds.
+	private class StubFactory<T> : IResourceFactory where T : class
+	{
+		public delegate T() Make ~ delete _;
+		public this(delegate T() make) { Make = make; }
+		public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<T>();
+		public Type CookedType => typeof(Object);
+		public Object Create(ResourceManager manager, Instance instance) => Make();
+	}
+
+	/// What a mesh or material thumbnail draws is the product itself, which no reference names:
+	/// it is held while it is staged, however long nothing else holds it, and released once
+	/// unstaged.
+	[Test]
+	public static void WhatAThumbnailDrawsIsHeldWhileItIsStaged()
+	{
+		let dir = Scratch(.. scope .());
+		RemoveDirectoryRecursive(dir);
+		CreateDirectory(dir);
+		defer RemoveDirectoryRecursive(dir);
+		let mount = scope NativeFileSystem(dir);
+		SerializerFactory factory = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let database = scope ContentDatabase(mount, factory, "asset");
+		let resources = scope ResourceManager(database);
+		let meshes = scope StubFactory<StaticMesh>(new () => new StaticMesh());
+		let materials = scope StubFactory<Material>(new () => MaterialPresets.CreatePbr("StubMaterial"));
+		resources.AddFactory(meshes);
+		resources.AddFactory(materials);
+		resources.SetUnusedFrames(2);
+		let meshId = database.RootGroup.CreateInstance("Mesh", "StubMesh").Id;
+		let materialId = database.RootGroup.CreateInstance("Material", "StubMaterial").Id;
+
+		void Check(ISceneThumbnailGenerator generator, Guid id)
+		{
+			let stage = scope Scene("stage");
+			stage.AddSystem<MeshComponentManager>();
+			stage.AddSystem<LightComponentManager>();
+			var framing = ThumbnailFraming();
+			Test.Assert(generator.Stage(id, stage, resources, ref framing) == .Ready);
+			let handle = resources.FindHandle(id);
+			let product = handle.Product;
+			Test.Assert(product != null);
+			// Staged again, as a page does while the picture is taken: still the one hold.
+			Test.Assert(generator.Stage(id, stage, resources, ref framing) == .Ready);
+			for (int i < 5)
+				resources.CollectGarbage();
+			Test.Assert(handle.Product === product, "held while it is staged");
+			generator.Unstage(stage);
+			for (int i < 3)
+				resources.CollectGarbage();
+			Test.Assert(handle.Product == null, "released once unstaged");
+		}
+		Check(scope MeshThumbnailGenerator(), meshId);
+		Check(scope MaterialThumbnailGenerator(), materialId);
 	}
 }

@@ -14,6 +14,9 @@ class MeshThumbnailGenerator : ISceneThumbnailGenerator
 {
 	private ThumbnailStageEntities mEntities = new .() ~ delete _;
 	private Proxy<StaticMesh> mProxy = default;
+	/// What the stage draws, held while it is staged: the stage reads the product directly, so
+	/// no reference names it.
+	private ResourceHold mHold = null ~ _?.Release();
 	private Material mMaterial = null ~ delete _;
 
 	public void AssetTypeNames(List<StringView> outNames)
@@ -34,6 +37,8 @@ class MeshThumbnailGenerator : ISceneThumbnailGenerator
 		let mesh = mProxy.Get;
 		if (mesh == null)
 			return ThumbnailStaging.StepForPending(mProxy);
+		if ((mHold == null) || (mHold.Handle !== mProxy.Handle))
+			ResourceHold.Replace(ref mHold, mProxy.Handle);
 		component.Mesh.SetId(.());
 		component.Mesh.SetDirect(mesh); // the cooked product, directly
 		if (mMaterial == null)
@@ -51,6 +56,7 @@ class MeshThumbnailGenerator : ISceneThumbnailGenerator
 	{
 		ThumbnailStaging.ClearDisplayMesh(stage, mEntities.Display);
 		mProxy = default;
+		ResourceHold.Drop(ref mHold);
 		mEntities.Deactivate(stage);
 	}
 }

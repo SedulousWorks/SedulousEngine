@@ -15,6 +15,9 @@ class MaterialThumbnailGenerator : ISceneThumbnailGenerator
 {
 	private ThumbnailStageEntities mEntities = new .() ~ delete _;
 	private Proxy<Material> mProxy = default;
+	/// What the stage draws, held while it is staged: the stage reads the product directly, so
+	/// no reference names it.
+	private ResourceHold mHold = null ~ _?.Release();
 	private StaticMesh mSphere = null ~ delete _;
 
 	public void AssetTypeNames(List<StringView> outNames) => outNames.Add("MaterialAsset");
@@ -33,6 +36,8 @@ class MaterialThumbnailGenerator : ISceneThumbnailGenerator
 		let material = mProxy.Get;
 		if (material == null)
 			return ThumbnailStaging.StepForPending(mProxy);
+		if ((mHold == null) || (mHold.Handle !== mProxy.Handle))
+			ResourceHold.Replace(ref mHold, mProxy.Handle);
 		component.Mesh.SetId(.());
 		component.Mesh.SetDirect(mSphere);
 		component.SetMaterial(material);
@@ -54,6 +59,7 @@ class MaterialThumbnailGenerator : ISceneThumbnailGenerator
 			}
 		}
 		mProxy = default;
+		ResourceHold.Drop(ref mHold);
 		mEntities.Deactivate(stage);
 	}
 }
