@@ -40,9 +40,11 @@ class GpuMeshCache
 		public GpuBufferAlloc Vertex;
 		public GpuBufferAlloc Index;
 		public GpuBufferAlloc Skin;
+		public GpuBufferAlloc Depth;
 		public uint64 VertexSize;
 		public uint64 IndexSize;
 		public uint64 SkinSize;
+		public uint64 DepthSize;
 	}
 
 	private struct Retired
@@ -50,9 +52,11 @@ class GpuMeshCache
 		public GpuBufferAlloc Vertex;
 		public GpuBufferAlloc Index;
 		public GpuBufferAlloc Skin;
+		public GpuBufferAlloc Depth;
 		public uint64 VertexSize;
 		public uint64 IndexSize;
 		public uint64 SkinSize;
+		public uint64 DepthSize;
 		public uint32 FramesLeft;
 	}
 
@@ -61,6 +65,8 @@ class GpuMeshCache
 	private GpuBufferPool mVertexPool ~ delete _;
 	private GpuBufferPool mIndexPool ~ delete _;
 	private GpuBufferPool mSkinPool ~ delete _;
+	/// Static meshes' depth streams (position + uv).
+	private GpuBufferPool mDepthPool ~ delete _;
 
 	/// Keyed by the mesh's IDENTITY, never its address: a freed mesh's address comes back
 	/// attached to a new one, which would then inherit the dead mesh's geometry.
@@ -77,6 +83,7 @@ class GpuMeshCache
 		mVertexPool = new GpuBufferPool(device, .Vertex | .CopyDst, cVertexChunk, "mesh.vertexPool");
 		mIndexPool = new GpuBufferPool(device, .Index | .CopyDst, cIndexChunk, "mesh.indexPool");
 		mSkinPool = new GpuBufferPool(device, .Vertex | .CopyDst, cVertexChunk, "mesh.skinPool");
+		mDepthPool = new GpuBufferPool(device, .Vertex | .CopyDst, cVertexChunk, "mesh.depthPool");
 	}
 
 	public ~this()
@@ -139,6 +146,17 @@ class GpuMeshCache
 				return .Err;
 		}
 
+		// A static mesh's depth stream: what its shadow and depth prepass draws read.
+		let depthStream = scope List<uint8>();
+		var depth = GpuBufferAlloc();
+		if (!mesh.IsSkinned)
+		{
+			GpuMesh.BuildDepthStream(mesh.Vertices, depthStream);
+			depth = mDepthPool.Allocate((uint64)depthStream.Count, cVertexAlign);
+			if (!depth.Ok)
+				return .Err;
+		}
+
 		var gpuMesh = GpuMesh();
 		gpuMesh.VertexBuffer = vertices.Buffer;
 		gpuMesh.VertexOffset = vertices.Offset;
@@ -152,7 +170,13 @@ class GpuMeshCache
 			gpuMesh.SkinOffset = skin.Offset;
 		}
 
-		Upload(mesh, gpuMesh, skinning, hasSkin);
+		if (depth.Ok)
+		{
+			gpuMesh.DepthBuffer = depth.Buffer;
+			gpuMesh.DepthOffset = depth.Offset;
+		}
+
+		Upload(mesh, gpuMesh, skinning, hasSkin, depthStream);
 
 		var entry = Entry();
 		entry.Gpu = gpuMesh;
@@ -167,6 +191,11 @@ class GpuMeshCache
 		{
 			entry.Skin = skin;
 			entry.SkinSize = (uint64)skinning.Length * sizeof(VertexSkinning);
+		}
+		if (depth.Ok)
+		{
+			entry.Depth = depth;
+			entry.DepthSize = (uint64)depthStream.Count;
 		}
 		mCache[mesh.Uid] = entry;
 		return .Ok(gpuMesh);
@@ -184,6 +213,7 @@ class GpuMeshCache
 				mVertexPool.Free(retired.Vertex, retired.VertexSize);
 				mIndexPool.Free(retired.Index, retired.IndexSize);
 				mSkinPool.Free(retired.Skin, retired.SkinSize);
+				mDepthPool.Free(retired.Depth, retired.DepthSize);
 				mRetired.RemoveAt(i);
 				continue;
 			}
@@ -215,6 +245,7 @@ class GpuMeshCache
 		mVertexPool.Clear();
 		mIndexPool.Clear();
 		mSkinPool.Clear();
+		mDepthPool.Clear();
 		mCache.Clear();
 		mRetired.Clear();
 	}
@@ -224,14 +255,15 @@ class GpuMeshCache
 	{
 		mRetired.Add(.()
 			{
-				Vertex = entry.Vertex, Index = entry.Index, Skin = entry.Skin,
+				Vertex = entry.Vertex, Index = entry.Index, Skin = entry.Skin, Depth = entry.Depth,
 				VertexSize = entry.VertexSize, IndexSize = entry.IndexSize, SkinSize = entry.SkinSize,
+				DepthSize = entry.DepthSize,
 				FramesLeft = mFramesInFlight
 			});
 		entry.Life.Forget();
 	}
 
-	private void Upload(StaticMesh mesh, GpuMesh gpuMesh, Span<VertexSkinning> skinning, bool hasSkin)
+	private void Upload(StaticMesh mesh, GpuMesh gpuMesh, Span<VertexSkinning> skinning, bool hasSkin, List<uint8> depthStream)
 	{
 		if (mQueue == null)
 			return;
@@ -250,6 +282,9 @@ class GpuMeshCache
 			batch.WriteBuffer(gpuMesh.SkinBuffer, gpuMesh.SkinOffset,
 				.((uint8*)skinning.Ptr, skinning.Length * sizeof(VertexSkinning)));
 		}
+
+		if (gpuMesh.DepthBuffer != null)
+			batch.WriteBuffer(gpuMesh.DepthBuffer, gpuMesh.DepthOffset, .(depthStream.Ptr, depthStream.Count));
 
 		batch.Submit().IgnoreError();
 	}

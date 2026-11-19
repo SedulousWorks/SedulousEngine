@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using Sedulous.Core;
 using Sedulous.Geometry;
 using Sedulous.RHI;
 using Sedulous.RHI.Null;
@@ -171,5 +173,51 @@ class GpuMeshCacheTests
 		// The cube's streams wait for the frames in flight.
 		Test.Assert(cache.RetiredCount == 1);
 		Test.Assert(cache.Size == 1);
+	}
+
+	/// A static mesh has a depth stream of its positions and uvs (what its shadow and depth
+	/// prepass draws read), a skinned one none.
+	[Test]
+	public static void AStaticMeshHasADepthStreamOfItsPositionsAndUvsASkinnedOneNone()
+	{
+		let harness = scope Harness();
+		let cache = scope GpuMeshCache(harness.Device);
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		Test.Assert(cache.GetOrUpload(cube) case .Ok(let uploaded));
+		Test.Assert(uploaded.DepthBuffer != null);
+
+		// Each vertex's position then uv, packed: 20 bytes, not the full 52.
+		let stream = scope List<uint8>();
+		GpuMesh.BuildDepthStream(cube.Vertices, stream);
+		Test.Assert(stream.Count == (int)cube.VertexCount * GpuMesh.DepthStreamStride);
+		var uvs = 0;
+		for (int i < cube.Vertices.Count)
+		{
+			let vertex = cube.Vertices[i];
+			let at = stream.Ptr + i * GpuMesh.DepthStreamStride;
+			Test.Assert(*(Float3*)at == vertex.Position);
+			Test.Assert(*(Float2*)(at + 12) == vertex.TexCoord);
+			if (vertex.TexCoord != .(0, 0))
+				uvs++;
+		}
+		Test.Assert(uvs > 0, "the cube's uvs are not all zero, so the check reads them");
+
+		// A skinned mesh's depth draws take its full stream and its skinning: no depth stream.
+		let skinned = new SkinnedMesh();
+		defer delete skinned;
+		for (uint32 i < 3)
+		{
+			skinned.Vertices.Add(StaticMeshVertex(.((float)i, 0.0f, 0.0f), .(0.0f, 1.0f, 0.0f),
+				.(0.0f, 0.0f), 0xFFFFFFFF, Float3(1.0f, 0.0f, 0.0f)));
+			var skin = VertexSkinning();
+			skin.Weights = .(1.0f, 0.0f, 0.0f, 0.0f);
+			skinned.Skinning.Add(skin);
+		}
+		skinned.Indices.Resize(3);
+		skinned.Indices.AddTriangle(0, 1, 2);
+		Test.Assert(cache.GetOrUpload(skinned) case .Ok(let deformed));
+		Test.Assert(deformed.DepthBuffer == null);
+		Test.Assert(deformed.SkinBuffer != null);
 	}
 }

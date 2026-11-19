@@ -117,6 +117,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Rendering: shadows and the depth prepass read a static mesh's position and uv alone, not its
+  whole vertex, which speeds up shadow drawing where it is bound by the triangles it pushes (a
+  large forest). Each static mesh keeps 20 more bytes a vertex on the GPU for it.
 - Editor: a scene view's gizmos cost what they draw. Every frame asked every entity about every
   component type, so a large scene paid for gizmos it did not draw; with Show Colliders, the LOD
   overlay and Entity Markers off it now visits only the selection. The Profiler shows each part of

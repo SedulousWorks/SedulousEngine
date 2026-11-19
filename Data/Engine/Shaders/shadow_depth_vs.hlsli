@@ -46,12 +46,21 @@ StructuredBuffer<InstanceData> Instances : register(t0, space1);
 #endif
 // Every input pins its location (SPIR-V; the semantics give DXIL the same): without them DXC numbers
 // them in order, and a non-instanced skinned variant's joints would take drawOffsets' 5.
+// DEPTH_STREAM: the mesh's slim depth stream (VertexLayoutType.DepthStream, 20 bytes) is bound
+// instead of the full vertex, so the pass reads only what it uses: position, and uv for a cut-out.
+// It keeps their locations. A surface shader's program reads the normal, tangent and colour too,
+// so it always takes the full vertex.
 struct VSInput {
+#if defined(DEPTH_STREAM) && !defined(SURFACE_PROGRAM)
+    [[vk::location(0)]] float3 position : TEXCOORD0;
+    [[vk::location(2)]] float2 uv       : TEXCOORD2;
+#else
     [[vk::location(0)]] float3 position : TEXCOORD0;
     [[vk::location(1)]] float3 normal   : TEXCOORD1;
     [[vk::location(2)]] float2 uv       : TEXCOORD2;
     [[vk::location(3)]] float4 color    : TEXCOORD3;
     [[vk::location(4)]] float4 tangent  : TEXCOORD4;   // xyz = tangent, w = TBN handedness (+-1)
+#endif
 #ifdef INSTANCED
     // Instance-stepped (MeshDrawOffsets, the forward pass's): x = index into Instances[],
     // y = the bone base, z = last frame's bone base, w = the draw's fade, a float by its bits (read

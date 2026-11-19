@@ -25,4 +25,7 @@ enum ShaderFlags : uint32
 	case Holes = 512;
 	/// A faded mesh: its fragments discard by a screen door pattern (a cutaway).
 	case Dither = 1024;
+	/// A depth only pass reading the mesh's slim position + uv stream
+	/// (VertexLayoutType.DepthStream) instead of the full 52 byte vertex.
+	case DepthStream = 2048;
 }

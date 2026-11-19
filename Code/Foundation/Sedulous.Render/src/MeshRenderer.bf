@@ -2234,18 +2234,40 @@ class MeshRenderer : Renderer
 		}
 	}
 
-	/// The depth like pipeline and material set (set two) of a draw of `material` onto `draw`;
-	/// false when no pipeline is had.
-	private bool DepthLikeDraw(RenderRecordContext context, Material material, bool instanced, bool pick,
-		bool skinned, ref ResolvedDraw draw)
+	/// The vertex stream a depth like draw's pipeline reads, set on `config` (from
+	/// DepthLikeFor): a skinned mesh's full stream and its skinning; else, when the mesh has a
+	/// depth stream (`depthStream`), a shadow or depth prepass draw of the built in program reads
+	/// that slim stream (VertexLayoutType.DepthStream, the DEPTH_STREAM variant), since it uses
+	/// only position and uv. A material's own program and the pick take the full vertex. True
+	/// when the draw reads the depth stream, which the caller then binds.
+	public static bool ChooseDepthLikeStream(ref PipelineConfig config, bool skinned, bool depthStream, bool pick)
 	{
-		let choice = DepthLikeFor(context, material, instanced, pick);
-		var config = choice.Config;
 		if (skinned)
 		{
 			config.VertexLayout = .SkinnedMesh;
 			config.ShaderFlags |= .Skinned;
+			return false;
 		}
+		// The built in shadow and prepass program reads only position (and uv for a cut-out):
+		// given the mesh's slim stream, its vertex fetch is 20 bytes, not the full 52. A shadow
+		// pass of a forest is bound by the triangles it pushes, so what each vertex fetches counts.
+		if (!depthStream || pick || (config.ShaderName != "shadow_depth"))
+			return false;
+		config.VertexLayout = .DepthStream;
+		config.ShaderFlags |= .DepthStream;
+		return true;
+	}
+
+	/// The depth like pipeline and material set (set two) of a draw of `material` onto `draw`;
+	/// false when no pipeline is had. With `depthStream` (the mesh has one), a shadow or depth
+	/// prepass draw of the built in program reads it, and `usesDepthStream` says so: the caller
+	/// binds the stream.
+	private bool DepthLikeDraw(RenderRecordContext context, Material material, bool instanced, bool pick,
+		bool skinned, bool depthStream, ref ResolvedDraw draw, out bool usesDepthStream)
+	{
+		let choice = DepthLikeFor(context, material, instanced, pick);
+		var config = choice.Config;
+		usesDepthStream = ChooseDepthLikeStream(ref config, skinned, depthStream, pick);
 		let plain = instanced ? mShadowPipelineLayoutInstanced : mShadowPipelineLayoutSingle;
 		var layout = plain;
 		IBindGroup materialSet = null;
@@ -2261,11 +2283,7 @@ class MeshRenderer : Renderer
 				materialSet = null;
 				config = pick ? PickConfigFor(context, instanced, false) : ShadowConfigFor(context, instanced, false);
 				config.CullMode = material.Pipeline.CullMode; // still the material's faces
-				if (skinned)
-				{
-					config.VertexLayout = .SkinnedMesh;
-					config.ShaderFlags |= .Skinned;
-				}
+				usesDepthStream = ChooseDepthLikeStream(ref config, skinned, depthStream, pick);
 			}
 		}
 		let pipeline = mPsoCache.GetPipeline(config, layout, pick ? context.ColorFormat : .Undefined);
@@ -2282,11 +2300,17 @@ class MeshRenderer : Renderer
 		List<DepthLikeRange> ranges, bool instanced, bool pick, bool skinned, List<ResolvedDraw> outDraws)
 	{
 		let stride = (mesh.IndexFormat == .UInt16) ? 2UL : 4UL;
+		let depthStream = mesh.DepthBuffer != null;
 		for (let range in ranges)
 		{
 			var draw = template;
-			if (!DepthLikeDraw(context, range.Material, instanced, pick, skinned, ref draw))
+			if (!DepthLikeDraw(context, range.Material, instanced, pick, skinned, depthStream, ref draw, let usesDepthStream))
 				continue;
+			if (usesDepthStream)
+			{
+				draw.VertexBuffer0 = mesh.DepthBuffer;
+				draw.VertexOffset0 = mesh.DepthOffset;
+			}
 			if (!range.Whole)
 			{
 				draw.IndexOffset = mesh.IndexOffset + (uint64)range.StartIndex * stride;

@@ -297,4 +297,46 @@ class WindTests
 		let kept = MeshRenderer.SlotConfigFor(item, meshConfig, glass, context, false);
 		Test.Assert(kept.ColorTargetCount == 5);
 	}
+
+	/// A shadow pass of a forest is bound by the triangles it pushes: the built in shadow and
+	/// prepass program reads each vertex from a static mesh's depth stream (position + uv, 20
+	/// bytes) instead of the full 52 byte vertex.
+	[Test]
+	public static void TheBuiltInDepthPassesReadAStaticMeshsSlimDepthStream()
+	{
+		let context = RenderRecordContext();
+		let leaves = MaterialPresets.CreatePbr("leaves");
+		defer delete leaves;
+		leaves.Pipeline.BlendMode = .Masked; // a cut-out: it reads the uv too
+		for (let masked in bool[2](false, true))
+		{
+			let material = masked ? leaves : null;
+			var shadow = MeshRenderer.DepthLikeFor(context, material, true, false).Config;
+			Test.Assert(MeshRenderer.ChooseDepthLikeStream(ref shadow, false, true, false));
+			Test.Assert(shadow.VertexLayout == .DepthStream);
+			Test.Assert(shadow.ShaderFlags.HasFlag(.DepthStream));
+			Test.Assert(VertexLayouts.Stride(shadow.VertexLayout) == GpuMesh.DepthStreamStride);
+		}
+
+		// A skinned mesh deforms from its full vertex and its skinning stream.
+		var skinned = MeshRenderer.DepthLikeFor(context, null, true, false).Config;
+		Test.Assert(!MeshRenderer.ChooseDepthLikeStream(ref skinned, true, true, false));
+		Test.Assert(skinned.VertexLayout == .SkinnedMesh);
+		Test.Assert(!skinned.ShaderFlags.HasFlag(.DepthStream));
+
+		// The pick, a material's own depth program (a surface shader reads the normal and
+		// tangent), and a mesh with no depth stream all take the full vertex.
+		var pick = MeshRenderer.DepthLikeFor(context, null, false, true).Config;
+		Test.Assert(!MeshRenderer.ChooseDepthLikeStream(ref pick, false, true, true));
+		Test.Assert(pick.VertexLayout == .Mesh);
+		let waves = MaterialPresets.CreatePbr("waves");
+		defer delete waves;
+		waves.DepthShaderName.Set("waves.depth");
+		var own = MeshRenderer.DepthLikeFor(context, waves, false, false).Config;
+		Test.Assert(!MeshRenderer.ChooseDepthLikeStream(ref own, false, true, false));
+		Test.Assert(own.VertexLayout == .Mesh);
+		var none = MeshRenderer.DepthLikeFor(context, null, false, false).Config;
+		Test.Assert(!MeshRenderer.ChooseDepthLikeStream(ref none, false, false, false));
+		Test.Assert(none.VertexLayout == .Mesh);
+	}
 }

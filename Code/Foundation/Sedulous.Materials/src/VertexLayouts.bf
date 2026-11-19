@@ -25,6 +25,11 @@ static class VertexLayouts
 		.(.Float32x3, 0, 0), .(.Float32x3, 12, 1), .(.Float32x2, 24, 2),
 		.(.Unorm8x4, 32, 3), .(.Float32x4, 36, 4));
 
+	/// Position at location 0 and uv at location 2, the full mesh layout's locations, so a depth
+	/// shader reads them by the same semantics from either stream.
+	private static VertexAttribute[2] cDepthStream = .(
+		.(.Float32x3, 0, 0), .(.Float32x2, 12, 2));
+
 	/// Joints packed as two uint32s, then weights. At locations SIX and SEVEN, past the per
 	/// instance offsets at five: the shaders pin every input's location, so a skinned
 	/// draw lines up whether it is instanced or not.
@@ -50,6 +55,7 @@ static class VertexLayouts
 		case .SkinnedMesh: return 52;
 		// The caller supplies its own, so there is nothing predefined to report.
 		case .Custom: return 0;
+		case .DepthStream: return 20;
 		}
 	}
 
@@ -61,6 +67,7 @@ static class VertexLayouts
 		case .PositionUVColor: return .(&cPositionUVColor[0], cPositionUVColor.Count);
 		case .MeshNoTangent: return .(&cMeshNoTangent[0], cMeshNoTangent.Count);
 		case .Mesh, .SkinnedMesh: return .(&cMesh[0], cMesh.Count);
+		case .DepthStream: return .(&cDepthStream[0], cDepthStream.Count);
 		case .None, .Custom: return .();
 		}
 	}

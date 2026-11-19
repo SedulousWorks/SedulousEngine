@@ -19,4 +19,8 @@ enum VertexLayoutType : uint8
 	/// The static stream, with the joints and weights arriving in a SEPARATE buffer.
 	case SkinnedMesh;
 	case Custom;
+	/// A mesh's depth only stream: float3 position (location 0) + float2 uv (location 2), 20
+	/// bytes, which the shadow and depth prepass draws read instead of the full vertex. Last,
+	/// so the stored values of the others (a material's vertex layout) keep their meaning.
+	case DepthStream;
 }
