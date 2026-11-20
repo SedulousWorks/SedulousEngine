@@ -5,7 +5,7 @@
 
 Guid kFxPuff = Guid::FromString("8fdf193a-2ba9-c44d-ab1d-b75071f66278");
 
-class Paper
+class Paper : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

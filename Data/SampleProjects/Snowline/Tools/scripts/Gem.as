@@ -9,7 +9,7 @@ Guid kGemSparkle = Guid::FromString("{{Prefab:GemSparkle}}");
 // Audio/GemChime (sounds.py): the chime of a gem taken.
 Guid kGemChime = Guid::FromString("{{GemChime}}");
 
-class Gem
+class Gem : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

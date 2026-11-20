@@ -18,7 +18,7 @@ float SmoothGlide(float t)
 	return t * t * (3.0f - 2.0f * t);
 }
 
-class Gallery
+class Gallery : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

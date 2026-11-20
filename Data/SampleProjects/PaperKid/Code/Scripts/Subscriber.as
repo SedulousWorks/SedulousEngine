@@ -13,7 +13,7 @@ Guid kLandSound = Guid::FromString("a178cf74-4e03-9e41-8ba7-625dab7a98ec");
 Guid kDeliveredSound = Guid::FromString("554f86eb-3e59-fe4b-adf7-670f7368d5e3");
 Guid kFxSparkle = Guid::FromString("f9f2812e-7302-1e41-b95c-15d8e38e49a2");
 
-class Subscriber
+class Subscriber : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

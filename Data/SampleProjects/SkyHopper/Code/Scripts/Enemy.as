@@ -16,7 +16,7 @@ Guid kStompStars = Guid::FromString("4690f883-70cf-d244-ac13-e9a94aefc730");
 // Audio/impactSoft_heavy_000 (Kenney Impact Sounds, CC0): an enemy stomped flat.
 Guid kSquashSound = Guid::FromString("411669a4-eadb-2c4b-b74d-a7d86338559c");
 
-class Enemy
+class Enemy : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

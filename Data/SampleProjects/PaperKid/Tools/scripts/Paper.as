@@ -5,7 +5,7 @@
 
 Guid kFxPuff = Guid::FromString("{{Prefab:FxPuff}}");
 
-class Paper
+class Paper : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

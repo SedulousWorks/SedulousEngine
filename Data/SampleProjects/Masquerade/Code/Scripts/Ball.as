@@ -41,7 +41,7 @@ const int kNoteTagged = 3;     // your hunter tagged you: a new costume, somewhe
 const int kNoteFlare = 4;      // someone's mask flares: a hunter, there
 const int kNoteFull = 6;       // every seat is a player's: you watch
 
-class Ball
+class Ball : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

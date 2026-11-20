@@ -2,7 +2,7 @@
 // Interact control does it. Out, its light is off and its flame and chimney stop glowing (their
 // materials swapped for dark ones, scene.Render.SetMaterial), so the room goes as dark as the
 // renderer and the light meter say. Lit at the start unless `lit` is off.
-class Lamp
+class Lamp : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

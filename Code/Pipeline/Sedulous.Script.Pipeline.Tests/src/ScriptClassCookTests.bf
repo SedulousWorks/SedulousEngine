@@ -562,7 +562,8 @@ static class ScriptClassCookTests
 		Test.Assert(template.Contains("class NewBehavior") && template.Contains("onUpdate"));
 	}
 
-	/// Each tier's starter declares its reserved class. That they compile against the engine
+	/// Each tier's starter declares its reserved class, deriving from its tier's behavior kind.
+	/// That they compile against the engine
 	/// surface is the MCP golden's to prove: this suite's cook binds the fixture surface, which
 	/// has no Scene.
 	[Test]
@@ -571,7 +572,7 @@ static class ScriptClassCookTests
 		Registered();
 		let cook = ScriptLanguageCooks.Find("angelscript");
 		for (let (tier, className) in scope (ScriptTier, StringView)[](
-			(.Behavior, "class NewBehavior"), (.Level, "class Level"), (.Game, "class Game")))
+			(.Behavior, "class NewBehavior : EntityBehavior"), (.Level, "class Level : SceneBehavior"), (.Game, "class Game : RunBehavior")))
 		{
 			let source = scope String();
 			cook.NewAssetTemplate(tier, "", source);

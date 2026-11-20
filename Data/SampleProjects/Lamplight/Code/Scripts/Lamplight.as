@@ -43,7 +43,7 @@ void setText(string id, string text)
 	}
 }
 
-class Game
+class Game : RunBehavior
 {
 	private bool m_inLevel = false;  // a level is being played (not the title, not the results)
 	private bool m_paused = false;

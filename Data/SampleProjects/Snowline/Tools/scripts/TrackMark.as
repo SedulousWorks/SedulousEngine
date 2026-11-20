@@ -1,7 +1,7 @@
 // TrackMark - one stretch of the board's track in the snow (Prefabs/TrackMark, effects.py): it
 // lies as it was dropped, fades over the end of its life and removes itself, so the track behind
 // the rider stays a few seconds long.
-class TrackMark
+class TrackMark : EntityBehavior
 {
 	Entity self;
 

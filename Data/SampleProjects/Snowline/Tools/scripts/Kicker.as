@@ -8,7 +8,7 @@
 // ("KickerLaunch", the speed in cm/s, after "KickerAngle", the lip's angle above level in tenths of
 // a degree): the entry speed less what the climb takes (v^2 = v0^2 - 2 g h), off the lip's angle.
 
-class Kicker
+class Kicker : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

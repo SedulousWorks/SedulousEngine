@@ -40,7 +40,7 @@ Guid kLandSound = Guid::FromString("{{Land}}");
 Guid kCrashSound = Guid::FromString("{{Crash}}");
 Guid kTreeHitSound = Guid::FromString("{{TreeHit}}");
 
-class Board
+class Board : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

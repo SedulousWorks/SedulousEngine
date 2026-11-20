@@ -3,7 +3,7 @@
 // "MedalBronze", each in hundredths of a second) for Snowline.as to judge a run by. Placed by
 // Tools/course.py at the course line's end, facing up the course, with its course's times.
 
-class Finish
+class Finish : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

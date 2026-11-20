@@ -9,7 +9,7 @@ Guid kGemSparkle = Guid::FromString("d8481501-8ba1-064c-b56f-503f47e264c5");
 // Audio/GemChime (sounds.py): the chime of a gem taken.
 Guid kGemChime = Guid::FromString("64c88944-0a22-4e45-8af5-39858c0ada37");
 
-class Gem
+class Gem : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

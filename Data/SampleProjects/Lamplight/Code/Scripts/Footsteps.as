@@ -2,7 +2,7 @@
 // of what the foot lands on (the physical material under it, PhysicsHit.Material) and a Noise for
 // whoever listens (the guards, P2): a Float4 of where it was and how loud, 0 to 1. Sneaking is
 // silent; a run is louder than a walk, and gravel louder than boards, grass softer.
-class Footsteps
+class Footsteps : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

@@ -2,7 +2,7 @@
 // the floor hears it and comes to where the thief was seen (a Noise there, loud enough for the whole
 // floor; a guard already giving chase keeps chasing). The game says so (Alarm). Once rung it rests
 // a while before it can ring again.
-class Alarm
+class Alarm : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

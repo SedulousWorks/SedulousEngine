@@ -133,7 +133,7 @@ const float kTallyFirst = 0.5f;   // the first row's moment after the finish (s)
 const float kTallyGap = 0.45f;    // between the rows (s)
 const float kControlsShown = 6.0f; // how long the controls show as a course starts (s)
 
-class Game
+class Game : RunBehavior
 {
 	private bool m_onTitle = false; // the title is up: nothing runs behind it
 	private bool m_onEnding = false; // the ending is up

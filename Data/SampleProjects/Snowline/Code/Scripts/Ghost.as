@@ -9,7 +9,7 @@
 // distance reaches `finishDistance` at the medal's time. It sets off with the rider ("RunStarted"),
 // and a new run ("RunRestart") starts it over.
 
-class Ghost
+class Ghost : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

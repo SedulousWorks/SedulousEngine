@@ -90,7 +90,7 @@ class AngelScriptCook : IScriptLanguageCook
 				// per scene, `scene` filled in by the engine; the handlers run by their names
 				// while the scene simulates. Print, Random, Math and the facades on `scene`
 				// (scene.Physics, scene.Audio, scene.Scripts, ...) are visible globally.
-				class Level
+				class Level : SceneBehavior
 				{
 					Scene@ scene;
 
@@ -106,7 +106,7 @@ class AngelScriptCook : IScriptLanguageCook
 				// The run's orchestrator: the reserved class `Game`, one per run. `Run` is the
 				// application run: load the opening scene from launch(), Run.LoadScene(sceneId),
 				// and use Run.Emit for run wide events; on<Event> handlers receive them.
-				class Game
+				class Game : RunBehavior
 				{
 					void launch() { Print("Game launched"); }
 					void update(float dt) {}
@@ -120,7 +120,7 @@ class AngelScriptCook : IScriptLanguageCook
 				// field, `[default, "description"]` in front of it, is a property the editor
 				// shows and sets; `self` and `scene` are filled in by the engine; `on` handlers
 				// run by their names.
-				class {CLASSNAME}
+				class {CLASSNAME} : EntityBehavior
 				{
 					Entity self;
 					Scene@ scene;

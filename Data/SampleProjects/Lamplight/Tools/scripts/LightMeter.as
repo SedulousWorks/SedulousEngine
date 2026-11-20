@@ -4,7 +4,7 @@
 // too, so as the meter empties his figure takes on a faint cold glow of its own (its materials'
 // EmissiveColor, for this mesh alone): seen by the camera, lighting nothing, so the meter and the
 // guards still read the dark.
-class LightMeter
+class LightMeter : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

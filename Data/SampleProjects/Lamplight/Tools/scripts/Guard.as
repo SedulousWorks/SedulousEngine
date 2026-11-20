@@ -18,7 +18,7 @@ const int kSuspicious = 1;
 const int kChase = 2;
 const int kSearch = 3;
 
-class Guard
+class Guard : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

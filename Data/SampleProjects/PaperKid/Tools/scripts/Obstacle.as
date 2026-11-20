@@ -1,7 +1,7 @@
 // Obstacle - something the bike crashes into: a car, a pedestrian, the street junk. When the bike
 // comes within reach it is told it crashed ("Crashed"), and this obstacle waits a moment before it
 // can be hit again, so one bump is one crash.
-class Obstacle
+class Obstacle : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

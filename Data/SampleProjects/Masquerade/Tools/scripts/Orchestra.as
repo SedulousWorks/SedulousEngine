@@ -14,7 +14,7 @@ Guid kWaltz = Guid::FromString("{{Audio:Waltz}}");
 Guid kAir = Guid::FromString("{{Audio:Air}}");
 Guid kDanceMusic = Guid::FromString("{{Audio:Dance}}");
 
-class Orchestra
+class Orchestra : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

@@ -6,7 +6,7 @@
 // hazard's own collider stops the player at its side, with the player's centre a metre above the
 // ground, and stood on top the centre is higher still (the spikes are 1.5 m tall: their centre
 // stands 2.5 m above their origin).
-class Hazard
+class Hazard : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

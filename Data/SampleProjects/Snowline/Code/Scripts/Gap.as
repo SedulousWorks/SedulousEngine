@@ -8,7 +8,7 @@
 // well, once it is past the crevasse's wall. A rider flying over is judged where it touches down,
 // so the distance is the one flown.
 
-class Gap
+class Gap : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

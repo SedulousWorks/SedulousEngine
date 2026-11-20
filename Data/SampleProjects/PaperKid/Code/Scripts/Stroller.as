@@ -4,7 +4,7 @@
 //
 // Its model is its first child. With a walk clip, the clip plays at the pace it moves (over the
 // metres the clip covers at speed 1); a car has none.
-class Stroller
+class Stroller : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

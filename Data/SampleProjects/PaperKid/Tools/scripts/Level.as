@@ -34,7 +34,7 @@ Node@ hud(string id)
 	return n !is null ? n : Gui.Root().Find(id);
 }
 
-class Level
+class Level : SceneBehavior
 {
 	Scene@ scene;
 

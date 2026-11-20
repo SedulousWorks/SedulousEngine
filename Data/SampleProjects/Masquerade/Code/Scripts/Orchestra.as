@@ -14,7 +14,7 @@ Guid kWaltz = Guid::FromString("2c804143-d88d-d746-9673-b9f637c7eb6a");
 Guid kAir = Guid::FromString("6440802e-0569-0848-bdc0-b92d789247af");
 Guid kDanceMusic = Guid::FromString("15d760b2-38be-4d42-bd04-23b49ae59ba7");
 
-class Orchestra
+class Orchestra : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

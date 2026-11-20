@@ -8,7 +8,7 @@
 // Its globals carry the rig's name: every behaviour compiles into one module here.
 const float kRigPi = 3.14159265f;
 
-class CameraRig
+class CameraRig : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

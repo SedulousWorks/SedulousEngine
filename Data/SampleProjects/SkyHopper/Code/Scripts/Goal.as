@@ -2,7 +2,7 @@
 // FX/FxConfetti: the celebration at the flag.
 Guid kConfetti = Guid::FromString("292a3bbc-dd5c-9847-b793-2147a3a3bdd8");
 
-class Goal
+class Goal : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

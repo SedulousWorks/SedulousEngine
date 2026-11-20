@@ -40,7 +40,7 @@ Guid kLandSound = Guid::FromString("26ab84be-85fc-9740-8f10-b59010685665");
 Guid kCrashSound = Guid::FromString("a63050c3-4f0b-4d4a-8802-895686b6d347");
 Guid kTreeHitSound = Guid::FromString("550d9682-7b83-4746-bde4-0f4cef53de99");
 
-class Board
+class Board : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

@@ -32,7 +32,7 @@ Guid kJumpSound = Guid::FromString("f0771aa4-37aa-8a47-92f1-43e708c441e0");
 Guid kHurtSound = Guid::FromString("4425182f-1d33-d244-a267-0d020575d807");
 Guid kFallSound = Guid::FromString("ba04916a-434c-684d-8c3d-00cbab83ca76");
 
-class PlayerController
+class PlayerController : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

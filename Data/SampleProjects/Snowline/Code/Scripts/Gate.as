@@ -9,7 +9,7 @@
 // hinge has no spring, and on an upright hinge gravity does not swing it back, so a flag once
 // brushed stayed turned, into the next run): the gate pushes it toward its rest angle, damped.
 
-class Gate
+class Gate : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

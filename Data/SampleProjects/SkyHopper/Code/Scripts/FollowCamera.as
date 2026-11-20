@@ -1,7 +1,7 @@
 // FollowCamera - a platformer camera: behind and above the player at a fixed offset, springing
 // after it and aiming just above it. The offset never turns, so the controls stay world
 // relative: forward is always away from the camera.
-class FollowCamera
+class FollowCamera : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

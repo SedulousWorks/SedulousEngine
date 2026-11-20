@@ -38,7 +38,7 @@ Guid kThrowRightClip = Guid::FromString("{{Clip:ThrowRight}}");
 const float kRideMetres = 4.4f;
 Guid kCrashSound = Guid::FromString("{{Crash}}");
 
-class Bike
+class Bike : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

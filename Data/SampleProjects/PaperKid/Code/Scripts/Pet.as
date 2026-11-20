@@ -9,7 +9,7 @@
 // It walks by the Walk clip's own travel: the model's animator moves this entity by the clip's
 // root motion (Entity mode, aimed here), so the feet never slide. Pet.as only steers (it turns the
 // way it wants to go) and sets the pace (the clip's speed), slower while still turning.
-class Pet
+class Pet : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

@@ -17,7 +17,7 @@ Node@ markersHud(string id)
 	return n !is null ? n : Gui.Root().Find(id);
 }
 
-class MapMarkers
+class MapMarkers : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

@@ -1,7 +1,7 @@
 // FollowCamera - the chase camera: it springs toward a seat behind and above the target and aims at
 // it. "Behind" is the camera's own lag: as the rider goes on, the camera falls back, so the ground
 // direction from the rider back to the camera already points the right way.
-class FollowCamera
+class FollowCamera : EntityBehavior
 {
 	Entity self;
 

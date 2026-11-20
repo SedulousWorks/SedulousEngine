@@ -13,7 +13,7 @@ Guid kCoinSound = Guid::FromString("cd3e0197-ff26-a740-8ad2-a7774508f0f8");
 double g_lookFrame = -1.0;
 float g_lookNearest = 0.0f;
 
-class Coin
+class Coin : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

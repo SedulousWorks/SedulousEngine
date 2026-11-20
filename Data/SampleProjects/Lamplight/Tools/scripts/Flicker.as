@@ -1,7 +1,7 @@
 // Flicker - a flame's light that will not hold still: its intensity wanders round what it was
 // authored at, two slow waves and a quick one, so a torch breathes rather than burns flat. Off (a
 // torch put out, Lamp.as) it stays off.
-class Flicker
+class Flicker : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

@@ -25,7 +25,7 @@ const int kGuestStroll = 0;
 const int kGuestGather = 1;
 const int kGuestDanceCue = 2;
 
-class Guest
+class Guest : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

@@ -83,7 +83,7 @@ enum Phase
 	Ended
 }
 
-class Game
+class Game : RunBehavior
 {
 	private Phase m_phase = Phase::Title;
 	private array<Guid> m_levels;

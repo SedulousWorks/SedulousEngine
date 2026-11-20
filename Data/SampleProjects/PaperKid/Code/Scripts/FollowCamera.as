@@ -2,7 +2,7 @@
 // it. "Behind" is the camera's own lag: as the bike rides on, the camera falls back, so the ground
 // direction from the bike back to the camera already points the right way. A crash ("BikeCrashed")
 // shakes it.
-class FollowCamera
+class FollowCamera : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

@@ -12,7 +12,7 @@
 // rider down in the snow never gets back the speed to outrun it.) It stops at the finish
 // ("RunFinished"), and a new run ("RunRestart") puts it back to wait.
 
-class Avalanche
+class Avalanche : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

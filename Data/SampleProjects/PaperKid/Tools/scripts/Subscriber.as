@@ -13,7 +13,7 @@ Guid kLandSound = Guid::FromString("{{PaperLand}}");
 Guid kDeliveredSound = Guid::FromString("{{Delivered}}");
 Guid kFxSparkle = Guid::FromString("{{Prefab:FxSparkle}}");
 
-class Subscriber
+class Subscriber : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

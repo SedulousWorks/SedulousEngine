@@ -20,7 +20,7 @@ const int kPlayerIdle = 0; // the clips, in the Guests entity's instanced skinni
 const int kPlayerWalk = 1;
 const int kPlayerDance = 3;
 
-class Player
+class Player : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

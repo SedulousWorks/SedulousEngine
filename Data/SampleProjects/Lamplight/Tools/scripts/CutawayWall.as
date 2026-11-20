@@ -3,7 +3,7 @@
 // thief's shoulders and a step ahead show too), and comes back when it no longer does. The fade is
 // the renderer's screen-door dither (MeshComponent.Fade), eased in and out; the piece keeps casting
 // its whole shadow, so what is behind it stays as dark as it was.
-class CutawayWall
+class CutawayWall : EntityBehavior
 {
 	Entity self;
 

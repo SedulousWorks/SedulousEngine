@@ -4,7 +4,7 @@
 //
 // The figure (Models/Town/PedestrianModel) turns toward where it walks, easing round rather than
 // snapping, and its Walk clip (two 0.65 m steps a second) plays at the pace it walks.
-class Pedestrian
+class Pedestrian : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

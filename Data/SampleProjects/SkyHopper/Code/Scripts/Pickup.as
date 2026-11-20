@@ -9,7 +9,7 @@ Guid kTakenSparkle = Guid::FromString("e93dd0c2-fe3e-7f43-a636-f9eae8fe7b7b");
 // Audio/powerUp7 (Kenney Digital Audio, CC0), played higher than a coin's.
 Guid kTakenSound = Guid::FromString("cd3e0197-ff26-a740-8ad2-a7774508f0f8");
 
-class Pickup
+class Pickup : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

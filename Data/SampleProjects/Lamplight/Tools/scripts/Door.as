@@ -6,7 +6,7 @@
 
 const float kDoorPi = 3.14159265f;
 
-class Door
+class Door : EntityBehavior
 {
 	Entity self;
 	Scene@ scene;

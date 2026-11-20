@@ -67,7 +67,7 @@ Node@ find(string id)
 void wire(string id, EventHandler@ handler) { find(id).On("click", handler); } // `on*` names are the engine's handlers
 void setText(string id, string text) { Label::Of(find(id)).Text = text; }
 
-class Game
+class Game : RunBehavior
 {
 	private bool m_inRound = false;
 	private bool m_paused = false;
