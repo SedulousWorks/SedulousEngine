@@ -34,3 +34,8 @@ __pycache__/
 
 # A project's caches (its cook database, import ledger, thumbnails, export builds), wherever it is.
 .cache/
+
+# What the editor writes into a sample's Code folder for an outside editor as the project opens (the
+# declarations, the VS Code files): generated from the engine, so not kept.
+Data/SampleProjects/*/Code/as.predefined
+Data/SampleProjects/*/Code/.vscode/

@@ -46,4 +46,18 @@ class CodeToolingFilesTests
 		// angel-lsp needs no settings: an empty object.
 		Test.Assert(settings.Text == "{}\n", settings.Text);
 	}
+
+	/// What the tooling writes is known by its name without building it: AngelScript's
+	/// declarations and the two VS Code files are tooling, a script and a file elsewhere are not.
+	[Test]
+	public static void TheFilesWrittenForAnOutsideEditorAreKnownByName()
+	{
+		ScriptSourceDocumentTests.EnsureCook();
+		Test.Assert(CodeTooling.IsToolingFile("as.predefined"));
+		Test.Assert(CodeTooling.IsToolingFile(".vscode/extensions.json"));
+		Test.Assert(CodeTooling.IsToolingFile(".vscode/settings.json"));
+		Test.Assert(!CodeTooling.IsToolingFile("Player.as"));
+		Test.Assert(!CodeTooling.IsToolingFile("Enemies/as.predefined"));
+		Test.Assert(!CodeTooling.IsToolingFile(".vscode/launch.json"));
+	}
 }

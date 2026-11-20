@@ -40,6 +40,16 @@ static class CodeTooling
 	/// Where Keep keeps what it wrote, in a project's cache folder.
 	public const String LedgerFile = "code-tooling.txt";
 
+	/// Whether `pathInCode`, a path under the Code folder with forward slashes ("as.predefined",
+	/// ".vscode/settings.json"), is a file written here for an outside editor: a language's
+	/// declarations or a VS Code file. It is not the project's code, whatever its extension.
+	public static bool IsToolingFile(StringView pathInCode)
+	{
+		if ((pathInCode == ".vscode/extensions.json") || (pathInCode == ".vscode/settings.json"))
+			return true;
+		return ScriptLanguageCooks.IsDeclarationsFile(pathInCode);
+	}
+
 	/// The tooling files for the registered script languages, appended to `outFiles` (the
 	/// caller's): each one's declarations, and with `vscode` the two VS Code files. A language
 	/// without a cook or declarations adds none.

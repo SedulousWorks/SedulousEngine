@@ -51,6 +51,19 @@ static class ScriptLanguageCooks
 		return null;
 	}
 
+	/// Whether `fileName` is the declarations file a registered language writes for an outside
+	/// editor (IScriptLanguageCook.DeclarationsFile).
+	public static bool IsDeclarationsFile(StringView fileName)
+	{
+		for (let entry in sEntries)
+		{
+			let declarations = entry.Cook.DeclarationsFile;
+			if (!declarations.IsEmpty && (declarations == fileName))
+				return true;
+		}
+		return false;
+	}
+
 	/// The language a file extension belongs to, empty when none claims it.
 	public static void LanguageOf(StringView suffix, String outLanguage)
 	{

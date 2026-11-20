@@ -60,6 +60,10 @@ interface IScriptLanguageCook
 	/// `outFileName` and its text into `outText`. False, both untouched, for a language without one.
 	bool Declarations(String outFileName, String outText) => false;
 
+	/// The file name Declarations writes, known without building it, so the editor can tell that
+	/// file in a Code folder from the project's scripts. Empty for a language without one.
+	StringView DeclarationsFile => default;
+
 	/// How many times Check has made the runtime it keeps for checks: once, and again each time
 	/// the surface changes. 0 for a language whose every check builds its own.
 	uint32 CheckRuntimeBuildCount => 0;

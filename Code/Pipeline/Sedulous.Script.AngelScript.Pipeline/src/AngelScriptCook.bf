@@ -61,6 +61,8 @@ class AngelScriptCook : IScriptLanguageCook
 		return written;
 	}
 
+	public StringView DeclarationsFile => AngelScriptRuntime.DeclarationsFile;
+
 	public int32 CookVersion => 1;
 
 	public uint64 SurfaceHash

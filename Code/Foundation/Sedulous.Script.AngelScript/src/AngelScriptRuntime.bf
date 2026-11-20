@@ -2208,11 +2208,15 @@ class AngelScriptRuntime : ScriptRuntime
 		ForgetBuilder(moduleName);
 	}
 
+	/// The declarations' file name in a project's Code folder, the one AngelScript editor
+	/// extensions read.
+	public const String DeclarationsFile = "as.predefined";
+
 	/// `as.predefined`, the file AngelScript editor extensions read, written from what the
 	/// engine registered: accessors marked as properties, a value's own fields as members.
 	public override void Declarations(String outFileName, String outText)
 	{
-		outFileName.Append("as.predefined");
+		outFileName.Append(DeclarationsFile);
 		outText.Append(StringView(AS.asc_engine_declarations(mEngine)));
 	}
 

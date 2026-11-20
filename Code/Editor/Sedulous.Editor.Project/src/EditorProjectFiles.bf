@@ -329,6 +329,10 @@ extension EditorProject
 		{
 			if (!SourcePath.AfterFolder(path, SourcePath.CodeFolder, let rest) || rest.IsEmpty)
 				continue;
+			// Written here for an outside editor (a language's declarations, whose extension a
+			// code importer may take): not the project's code.
+			if (CodeTooling.IsToolingFile(rest))
+				continue;
 			let onDisk = SourceFile(path, .. scope .());
 			if (!FileExists(onDisk))
 				continue; // removed: its asset, if any, finds its file missing

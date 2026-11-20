@@ -49,6 +49,9 @@ class AdoptedLanguageCook : IScriptLanguageCook
 
 	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden,
 		IScriptIncludeReader includes = null) => true;
+
+	/// Its declarations take the language's own extension, as a language's may.
+	public StringView DeclarationsFile => "engine.d.ad";
 }
 
 /// A project's files follow its asset groups: Sources/<group>/, Code/<group>/ for code.
@@ -260,7 +263,8 @@ static class ProjectFilePlacementTests
 
 	/// A script made in an outside editor under Code/ becomes an asset where it lies: in the group
 	/// its folder names (made), its file not copied; a second report adopts nothing more; a file no
-	/// code importer takes, one outside Code/, and one removed are left alone.
+	/// code importer takes, one outside Code/, one removed, and the language's declarations
+	/// written there for an outside editor are left alone.
 	[Test]
 	public static void NewCodeUnderCodeBecomesAnAssetWhereItLies()
 	{
@@ -279,8 +283,10 @@ static class ProjectFilePlacementTests
 		CreateDirectory(code);
 		WriteText(PathJoin(code, "Enemies/Boss.ad", .. scope .()), "class Boss {}");
 		WriteText(PathJoin(code, "Notes.txt", .. scope .()), "not code");
-		String[4] changed = .("Code/Enemies/Boss.ad", "Code/Notes.txt", "Code/Gone.ad", "Models/Crate.png");
+		WriteText(PathJoin(code, "engine.d.ad", .. scope .()), "class Declared {}");
+		String[5] changed = .("Code/Enemies/Boss.ad", "Code/Notes.txt", "Code/Gone.ad", "Models/Crate.png", "Code/engine.d.ad");
 		Test.Assert(project.AdoptNewCode(changed, importers) == 1);
+		Test.Assert(project.SourceDb.RootGroup.GetInstance("engine.d") == null, "the declarations are not adopted");
 
 		let enemies = project.SourceDb.RootGroup.GetGroup("Enemies");
 		Test.Assert(enemies != null);
