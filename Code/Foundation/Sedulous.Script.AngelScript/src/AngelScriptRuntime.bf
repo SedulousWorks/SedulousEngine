@@ -210,6 +210,34 @@ class AngelScriptRuntime : ScriptRuntime
 		AS.asc_engine_register_script_array(mEngine, 1);
 		DeclareInlineKinds();
 		DeclareCoroutines();
+		DeclareBehaviorKinds();
+	}
+
+	/// The behavior kinds a class derives from (`class Game : RunBehavior`). A script class
+	/// cannot derive from a class the application registers, so each kind is an interface with
+	/// no methods: a marker, since every handler is optional.
+	private void DeclareBehaviorKinds()
+	{
+		for (let kind in BehaviorKinds.All)
+			AS.asc_engine_register_interface(mEngine, scope String(BehaviorKinds.TypeName(kind)).CStr());
+	}
+
+	/// The kind `className` in `moduleName` derives from: the kind interface it implements (one
+	/// at most; the first in Run, Scene, Entity order should it implement several). None when it
+	/// implements none, or there is no such class.
+	public BehaviorKind KindOf(StringView moduleName, StringView className)
+	{
+		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);
+		let type = (module != null) ? AS.asc_module_get_type_info_by_name(module, scope String(className).CStr()) : null;
+		if (type == null)
+			return .None;
+		for (let kind in BehaviorKinds.All)
+		{
+			let kindType = AS.asc_engine_get_type_info_by_name(mEngine, scope String(BehaviorKinds.TypeName(kind)).CStr());
+			if ((kindType != null) && (AS.asc_typeinfo_implements(type, kindType) != 0))
+				return kind;
+		}
+		return .None;
 	}
 
 	private AS.Context* AcquireContext()

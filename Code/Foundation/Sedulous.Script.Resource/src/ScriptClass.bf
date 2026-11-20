@@ -26,6 +26,8 @@ class ScriptClass
 	/// that compiles. BORROWED: the resource manager owns it, and the factory's bind of it recorded
 	/// the edge, so a rebuilt assembly rebuilds this class too.
 	public ScriptAssembly Assembly = null;
+	/// The behavior kind the class derives from (ScriptClassSource.Kind).
+	public BehaviorKind Kind = .None;
 
 	/// A utility module: source with no behaviour class to instantiate.
 	public bool IsModule => ClassName.IsEmpty;
@@ -87,6 +89,7 @@ class ScriptClass
 			Handlers.Add(new String(h));
 		UsesCoroutines = source.UsesCoroutines;
 		AssemblyId = source.Assembly;
+		Kind = source.Kind;
 		Assembly = null; // bound by the factory, through the manager
 		ProfileName.Set("Script ");
 		ProfileName.Append(ClassName.IsEmpty ? "(module)" : ClassName);

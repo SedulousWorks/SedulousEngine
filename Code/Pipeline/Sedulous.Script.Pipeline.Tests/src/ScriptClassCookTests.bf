@@ -78,7 +78,7 @@ static class ScriptClassCookTests
 			context.Sources = mount;
 			context.Output = instance;
 			let builder = scope ScriptClassAssetBuilder();
-			Test.Assert(builder.Version == 7, "the shell's 6 plus the cook's 1");
+			Test.Assert(builder.Version == 8, "the shell's 7 plus the cook's 1");
 			Test.Assert(builder.Build(asset, context) case .Ok, "cooked");
 		}
 
@@ -576,6 +576,30 @@ static class ScriptClassCookTests
 			let source = scope String();
 			cook.NewAssetTemplate(tier, "", source);
 			Test.Assert(source.Contains(className), scope $"{tier}");
+		}
+	}
+
+	/// A class records the kind it derives from, beside another interface it implements; one
+	/// deriving from none records None.
+	[Test]
+	public static void AClassRecordsTheKindItDerivesFrom()
+	{
+		let surface = scope ScriptSurface();
+		FixtureSurface.Populate(surface);
+		let cook = scope AngelScriptCook(surface);
+		(StringView source, StringView asset, StringView className, BehaviorKind kind)[4] cases = .(
+			("class Game : RunBehavior { void onStart() {} }", "Game.as", "Game", .Run),
+			("class Arena : SceneBehavior { void onUpdate(float dt) {} }", "Arena.as", "Arena", .Scene),
+			("interface Hurtable { void hurt(); }\nclass Mover : EntityBehavior, Hurtable { void hurt() {} void onUpdate(float dt) {} }", "Mover.as", "Mover", .Entity),
+			("class Helper { int twice(int x) { return x * 2; } }", "Helper.as", "Helper", .None));
+		for (let c in cases)
+		{
+			let problems = scope List<String>();
+			defer { ClearAndDeleteItems(problems); }
+			let record = scope ScriptClassSource();
+			record.Kind = .Scene; // overwritten
+			Test.Assert(cook.Cook(c.source, c.asset, c.className, record, problems), problems.IsEmpty ? scope String(c.asset) : problems[0]);
+			Test.Assert(record.Kind == c.kind, scope String()..AppendF("{}: {}", c.asset, record.Kind));
 		}
 	}
 }

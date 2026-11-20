@@ -13,9 +13,9 @@ namespace Sedulous.Script.Resource;
 /// without a VM, and the RUNTIME dispatch handlers without probing for them per frame.
 ///
 /// Data version 1: each property's replicated flag; 2: the included files; 3: the assembly a
-/// class is built into. A record cooked before is in another layout; the strict reader refuses
-/// it and the script recooks.
-[Serializable(3)]
+/// class is built into; 4: the behavior kind its class derives from. A record cooked before is
+/// in another layout; the strict reader refuses it and the script recooks.
+[Serializable(4)]
 class ScriptClassSource
 {
 	/// The backend id, "angelscript".
@@ -37,4 +37,7 @@ class ScriptClassSource
 	/// together: the cooked ScriptAssemblySource's id, which the factory binds. Nil for a class
 	/// that cooks alone.
 	public Guid Assembly;
+	/// The behavior kind `ClassName` derives from; None for a module or a class deriving from no
+	/// kind.
+	public BehaviorKind Kind = .None;
 }

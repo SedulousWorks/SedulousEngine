@@ -43,6 +43,7 @@ static class ScriptClassResourceTests
 		source.Handlers.Add(new String("onStart"));
 		source.Handlers.Add(new String("onUpdate"));
 		source.UsesCoroutines = true;
+		source.Kind = .Entity;
 		return source;
 	}
 
@@ -84,6 +85,7 @@ static class ScriptClassResourceTests
 		Test.Assert(read.Properties[3].Default.Text == "hello");
 		Test.Assert((read.Handlers.Count == 2) && (read.Handlers[1] == "onUpdate"));
 		Test.Assert(read.UsesCoroutines);
+		Test.Assert(read.Kind == .Entity);
 	}
 
 	[Test]
@@ -103,6 +105,7 @@ static class ScriptClassResourceTests
 		Test.Assert(product.FindProperty("label").Default.Text == "hello");
 		Test.Assert(product.FindProperty("label").Default.Text !== source.Properties[3].Default.Text, "the product owns its copy");
 		Test.Assert(product.ProfileName == "Script Mover");
+		Test.Assert(product.Kind == .Entity);
 
 		source.ClassName.Clear();
 		product.From(source);
@@ -131,13 +134,13 @@ static class ScriptClassResourceTests
 	}
 
 	/// A record cooked before each property carried its replicated flag (no data version), before
-	/// it carried its included files (version 1), or before it named its assembly (version 2), is
-	/// in another layout. Read as this one it misread its counts (it could hold the editor for
+	/// it carried its included files (version 1), before it named its assembly (version 2), or
+	/// before it recorded its behavior kind (version 3), is in another layout. Read as this one it misread its counts (it could hold the editor for
 	/// minutes opening a scene); the data version refuses it, and the script recooks.
 	[Test]
-	public static void ARecordCookedBeforeTheReplicatedFlagTheIncludesOrTheAssemblyIsRefused()
+	public static void ARecordCookedBeforeTheReplicatedFlagTheIncludesTheAssemblyOrTheKindIsRefused()
 	{
-		Test.Assert(ScriptClassSource.DataVersion == 3);
+		Test.Assert(ScriptClassSource.DataVersion == 4);
 
 		let old = scope UnversionedScriptRecord();
 		old.Language.Set("angelscript");

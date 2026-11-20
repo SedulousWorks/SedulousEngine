@@ -177,9 +177,11 @@ class AngelScriptCook : IScriptLanguageCook
 			ClearAndDeleteItems!(outRecord.Properties);
 			ClearAndDeleteItems!(outRecord.Handlers);
 			outRecord.UsesCoroutines = source.Contains("startCoroutine");
+			outRecord.Kind = .None;
 			return true;
 		}
 		outRecord.ClassName.Set(name);
+		outRecord.Kind = runtime.KindOf(cModule, name);
 		let harvestProblems = scope List<String>();
 		defer { ClearAndDeleteItems(harvestProblems); }
 		let harvested = ScriptHarvest.Harvest(runtime, cModule, name, outRecord, harvestProblems);
