@@ -116,8 +116,11 @@ abstract class ScriptRuntime
 	/// initializer runs, and no module is kept. For checking code as it is typed, where a
 	/// compile that ran it would run whatever is half written. `includes` are the files it
 	/// includes, each a section named by its path (a language without an include directive
-	/// ignores them). False on a compile error, with the messages in Problems.
-	public virtual bool Check(StringView sectionName, StringView source, Span<ScriptSection> includes = default) => false;
+	/// ignores them). False on a compile error, with the messages in Problems. `outKinds`, when
+	/// given, gets the kind each of `classes` derives from, read before the module goes (None
+	/// for one it does not declare).
+	public virtual bool Check(StringView sectionName, StringView source, Span<ScriptSection> includes = default,
+		Span<String> classes = default, List<BehaviorKind> outKinds = null) => false;
 
 	/// Calls a global function of a module by its declaration, `float f(int, int)` say.
 	/// False when it is not there, or the call failed; the reason is in Problems.

@@ -671,14 +671,24 @@ class ApplicationRun : RunBase, IRunInput
 	/// Compiles and launches the game script: the class's constructor, then `launch()` when
 	/// it has one; `update(dt)` each tick and `exit()` at the stop, all optional, its
 	/// `on<Event>` handlers subscribed to the run bus. False when the class did not load or
-	/// instantiate, logged. A second start stops the first.
+	/// instantiate, logged. A class of another kind than RunBehavior is refused, ScriptFault
+	/// saying which kind it is. A second start stops the first.
 	public bool StartRunBehavior(ScriptClass scriptClass)
 	{
 		StopRunBehavior();
 		mScriptFault.Clear();
 		if (scriptClass == null)
 			return false;
-		let game = mRunHost.Instantiate(scriptClass);
+		if (scriptClass.Kind != .Run)
+		{
+			if (scriptClass.Kind == .None)
+				mScriptFault.AppendF("'{}' declares no behavior class: the run behavior derives from RunBehavior (class Game : RunBehavior)", scriptClass.SourceName);
+			else
+				mScriptFault.AppendF("'{}' derives from {}: the run behavior derives from RunBehavior", scriptClass.ClassName, BehaviorKinds.TypeName(scriptClass.Kind));
+			GlobalLog(.Error, scope $"Run: {mScriptFault}");
+			return false;
+		}
+		let game = mRunHost.Instantiate(scriptClass, .Run);
 		if (game == null)
 		{
 			GlobalLog(.Error, scope $"Run: the game script '{scriptClass.ClassName}' did not instantiate");

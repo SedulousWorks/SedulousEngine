@@ -28,12 +28,13 @@ static class ScriptToolsTests
 		let cook = ScriptLanguageCooks.Find("angelscript");
 		Test.Assert(cook != null);
 		// The harvest names `on` handlers; the game's launch/update/exit are invoked by
-		// name by the run and are not handlers, so the Game starter proves its class only.
+		// name by the run and are not handlers, so the run starter proves its class only. Each
+		// starter's class is named after its asset.
 		for (let (tier, className, handler) in scope (ScriptTier, StringView, StringView)[](
-			(.Behavior, "NewBehavior", "onUpdate"), (.Level, "Level", "onStart"), (.Game, "Game", "")))
+			(.Behavior, "Coin", "onUpdate"), (.Level, "Arena", "onStart"), (.Game, "Heist", "")))
 		{
 			let starter = scope String();
-			cook.NewAssetTemplate(tier, "", starter);
+			cook.NewAssetTemplate(tier, className, starter);
 			let ok = CallOk(server, "script_validate", With(With(With(Obj(), "source", starter), "language", "angelscript"), "name", "Starter.as"));
 			defer delete ok;
 			Test.Assert(ok.Get("valid").AsBool(), scope $"{tier}: {ok.Get("errors").ToString(.. scope .())}");
@@ -135,11 +136,11 @@ static class ScriptToolsTests
 		Test.Assert(File.ReadAllText(scope String(spaced.Get("sourceFile").AsString()), spacedSource) case .Ok);
 		Test.Assert(spacedSource.Contains("class _3dPlayerController"), spacedSource);
 
-		// The game tier seeds the reserved class.
+		// The game tier seeds a run behavior named after the asset.
 		let game = CallOk(server, "script_create", With(With(With(Obj(), "name", "Main"), "language", "angelscript"), "tier", "game"));
 		defer delete game;
 		let gameSource = scope String();
 		Test.Assert(File.ReadAllText(scope String(game.Get("sourceFile").AsString()), gameSource) case .Ok);
-		Test.Assert(gameSource.Contains("class Game"));
+		Test.Assert(gameSource.Contains("class Main : RunBehavior"), gameSource);
 	}
 }

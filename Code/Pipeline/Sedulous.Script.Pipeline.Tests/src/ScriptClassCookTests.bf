@@ -46,7 +46,7 @@ static class ScriptClassCookTests
 		CreateDirectory(scope $"{cRoot}/scripts");
 		let source = """
 			// The mover.
-			class Mover
+			class Mover : EntityBehavior
 			{
 				Entity self;
 				[2.5, "How fast"] float speed;
@@ -119,7 +119,7 @@ static class ScriptClassCookTests
 		CreateDirectory(scope $"{root}/scripts/lib");
 		CreateDirectory(scope $"{root}/common");
 		Test.Assert(File.WriteAllText(scope $"{root}/scripts/Player.as",
-			"#include \"lib/Base.as\"\nclass Player : Base\n{\n\tint lives = 3;\n}\n") case .Ok);
+			"#include \"lib/Base.as\"\nclass Player : Base, EntityBehavior\n{\n\tint lives = 3;\n}\n") case .Ok);
 		Test.Assert(File.WriteAllText(scope $"{root}/scripts/lib/Base.as",
 			"#include \"../../common/Math.as\"\nclass Base\n{\n\tint ticks = 0;\n\tvoid onUpdate(float dt) { ticks = twice(ticks); }\n}\n") case .Ok);
 		Test.Assert(File.WriteAllText(scope $"{root}/common/Math.as", "int twice(int x) { return x * 2; }\n") case .Ok);
@@ -232,25 +232,25 @@ static class ScriptClassCookTests
 		let record = scope ScriptClassSource();
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
-		Test.Assert(!cook.Cook("class Broken { void onStart() { Nope(); } }", "Broken.as", "", record, problems));
+		Test.Assert(!cook.Cook("class Broken : EntityBehavior { void onStart() { Nope(); } }", "Broken.as", "", record, problems));
 		Test.Assert(!problems.IsEmpty && problems[0].Contains("Broken.as"), problems[0]);
 
-		// Several classes and none named as asked is a failure naming them, not a guess.
+		// Two behavior classes is a failure naming them, not a guess.
 		ClearAndDeleteItems(problems);
-		Test.Assert(!cook.Cook("class Fine {}\nclass Also {}\n", "Fine.as", "Other", record, problems));
-		Test.Assert(problems.Back.Contains("'Other'") && problems.Back.Contains("Fine, Also"), problems.Back);
+		Test.Assert(!cook.Cook("class Fine : EntityBehavior {}\nclass Also : SceneBehavior {}\n", "Fine.as", "Fine", record, problems));
+		Test.Assert(problems.Back.Contains("behavior classes Fine, Also"), problems.Back);
 
 		// A script reaching beyond the surface it is cooked against is refused here.
 		ClearAndDeleteItems(problems);
-		Test.Assert(!cook.Cook("class Reach { void onStart() { PhysicsSceneSystem@ p; } }", "Reach.as", "", record, problems));
+		Test.Assert(!cook.Cook("class Reach : EntityBehavior { void onStart() { PhysicsSceneSystem@ p; } }", "Reach.as", "", record, problems));
 
 		// An annotated field of a type a property cannot be is refused, by name, rather than
 		// silently dropped; so is a Guid without its asset tag.
 		ClearAndDeleteItems(problems);
-		Test.Assert(!cook.Cook("class Odd { [0] array<int> list; }", "Odd.as", "", record, problems));
+		Test.Assert(!cook.Cook("class Odd : EntityBehavior { [0] array<int> list; }", "Odd.as", "", record, problems));
 		Test.Assert(problems.Back.Contains("Odd.as") && problems.Back.Contains("'list'") && problems.Back.Contains("unsupported"), problems.Back);
 		ClearAndDeleteItems(problems);
-		Test.Assert(!cook.Cook("class Untagged { [null] Guid clip; }", "Untagged.as", "", record, problems));
+		Test.Assert(!cook.Cook("class Untagged : EntityBehavior { [null] Guid clip; }", "Untagged.as", "", record, problems));
 		Test.Assert(problems.Back.Contains("'clip'"), problems.Back);
 	}
 
@@ -268,7 +268,7 @@ static class ScriptClassCookTests
 		let faulting = """
 			int Zero() { return 0; }
 			int boom = 10 / Zero();
-			class Mover
+			class Mover : EntityBehavior
 			{
 				[4.5] float speed;
 			}
@@ -350,7 +350,7 @@ static class ScriptClassCookTests
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
 		let className = scope String();
-		Test.Assert(cook.Check("class Shade { int f() { int a = 1; { int a = 2; return a; } } }\n", "Shade.as", "Shade", className, problems, default));
+		Test.Assert(cook.Check("class Shade : EntityBehavior { int f() { int a = 1; { int a = 2; return a; } } }\n", "Shade.as", "Shade", className, problems, default));
 		Test.Assert(problems.Count == 1, problems.IsEmpty ? "" : problems[0]);
 		Test.Assert(ScriptProblems.IsWarning(problems[0]), problems[0]);
 		Test.Assert(className == "Shade");
@@ -373,7 +373,7 @@ static class ScriptClassCookTests
 			}
 			""";
 		let usesThing = """
-			class Holder
+			class Holder : EntityBehavior
 			{
 				Thing@ held;
 			}
@@ -425,9 +425,51 @@ static class ScriptClassCookTests
 		Test.Assert(ScriptClasses.Preferred(asset, .. scope .()) == "Battle.2");
 		asset.ClassName.Set("Battle");
 		Test.Assert(ScriptClasses.Preferred(asset, .. scope .()) == "Battle");
-		Test.Assert(ScriptClasses.StarterClassName(.Level, "Mover") == "Level");
-		Test.Assert(ScriptClasses.StarterClassName(.Game, "Mover") == "Game");
-		Test.Assert(ScriptClasses.StarterClassName(.Behavior, "Mover") == "Mover");
+	}
+
+	/// The class a script plays is the one deriving from a kind, whatever its name or place;
+	/// classes deriving from none make a module of helpers; two behavior classes is a problem
+	/// naming them.
+	[Test]
+	public static void TheClassAScriptPlaysIsTheOneDerivingFromAKind()
+	{
+		let declared = scope List<String>() { "EffectDef", "Fighter", "Battle" };
+		let played = scope String();
+		let problem = scope String();
+		BehaviorKind kind;
+		Test.Assert(ScriptClasses.ChooseBehavior(declared, scope List<BehaviorKind>() { .None, .None, .Scene }, played, out kind, problem));
+		Test.Assert((played == "Battle") && (kind == .Scene) && problem.IsEmpty);
+		Test.Assert(ScriptClasses.ChooseBehavior(declared, scope List<BehaviorKind>() { .Run, .None, .None }, played, out kind, problem));
+		Test.Assert((played == "EffectDef") && (kind == .Run));
+		Test.Assert(ScriptClasses.ChooseBehavior(declared, scope List<BehaviorKind>() { .None, .None, .None }, played, out kind, problem));
+		Test.Assert(played.IsEmpty && (kind == .None) && problem.IsEmpty, "helpers only: a module");
+		Test.Assert(!ScriptClasses.ChooseBehavior(declared, scope List<BehaviorKind>() { .None, .Entity, .Entity }, played, out kind, problem));
+		Test.Assert(played.IsEmpty && (kind == .None) && problem.Contains("behavior classes Fighter, Battle"), problem);
+	}
+
+	/// The cook and the check play the behavior class beside its helpers, named however the
+	/// file is, and refuse a file with two.
+	[Test]
+	public static void TheCookAndTheCheckPlayTheBehaviorClassBesideItsHelpers()
+	{
+		Registered();
+		let cook = ScriptLanguageCooks.Find("angelscript");
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems(problems); }
+		let source = "class Stats { int hp; }\nclass Hero : EntityBehavior { Stats stats; void onUpdate(float dt) {} }\nclass Damage { int amount; }\n";
+		let record = scope ScriptClassSource();
+		Test.Assert(cook.Cook(source, "Player.as", "Stats", record, problems), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert((record.ClassName == "Hero") && (record.Kind == .Entity), scope String(record.ClassName));
+		let className = scope String();
+		Test.Assert(cook.Check(source, "Player.as", "Stats", className, problems, default), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(className == "Hero");
+		let hidden = scope StringView[]("Sedulous.Script.Fixture.Vec2");
+		Test.Assert(cook.Check(source, "Player.as", "", className, problems, hidden));
+		Test.Assert(className == "Hero", "the check with types hidden chooses the same");
+
+		let two = "class Hero : EntityBehavior {}\nclass Arena : SceneBehavior {}\n";
+		Test.Assert(!cook.Check(two, "Two.as", "Hero", className, problems, default));
+		Test.Assert(className.IsEmpty && problems.Back.Contains("behavior classes Hero, Arena"), problems.Back);
 	}
 
 	/// An imported script plays the class its file is named for, wherever its copy lands: kept
@@ -451,8 +493,8 @@ static class ScriptClassCookTests
 			Test.Assert(CreateDirectory(folder));
 		let first = PathJoin(one, "Battle.as", .. scope .());
 		let second = PathJoin(two, "Battle.as", .. scope .());
-		Test.Assert(File.WriteAllText(first, "class EffectDef { int turns; }\nclass Battle { void onStart() {} }\n") case .Ok);
-		Test.Assert(File.WriteAllText(second, "class EffectDef { int turns; }\nclass Fighter { int hp; }\nclass Battle { void onUpdate(float dt) {} }\n") case .Ok);
+		Test.Assert(File.WriteAllText(first, "class EffectDef { int turns; }\nclass Battle : EntityBehavior { void onStart() {} }\n") case .Ok);
+		Test.Assert(File.WriteAllText(second, "class EffectDef { int turns; }\nclass Fighter { int hp; }\nclass Battle : EntityBehavior { void onUpdate(float dt) {} }\n") case .Ok);
 
 		let mount = scope NativeFileSystem(dbRoot);
 		SerializerFactory serializers = scope (stream, mode) => new BinarySerializerContext(stream, mode);
@@ -518,9 +560,11 @@ static class ScriptClassCookTests
 		Test.Assert(CookClass(kept, played));
 		Test.Assert(played == "Battle");
 
-		// Nothing recorded: Battle.2 names no class of the three, and the cook says so.
+		// Nothing recorded: it plays the one class of the three that derives from a kind.
 		kept.ClassName.Clear();
-		Test.Assert(!CookClass(kept, played));
+		played.Clear();
+		Test.Assert(CookClass(kept, played));
+		Test.Assert(played == "Battle");
 
 		// A class chosen by hand survives a re-import of the same file (under its asset's name,
 		// as the editor's reimport asks for it).
@@ -562,7 +606,8 @@ static class ScriptClassCookTests
 		Test.Assert(template.Contains("class NewBehavior") && template.Contains("onUpdate"));
 	}
 
-	/// Each tier's starter declares its reserved class, deriving from its tier's behavior kind.
+	/// Each tier's starter declares its class named after the asset, deriving from its tier's
+	/// behavior kind.
 	/// That they compile against the engine
 	/// surface is the MCP golden's to prove: this suite's cook binds the fixture surface, which
 	/// has no Scene.
@@ -571,12 +616,13 @@ static class ScriptClassCookTests
 	{
 		Registered();
 		let cook = ScriptLanguageCooks.Find("angelscript");
-		for (let (tier, className) in scope (ScriptTier, StringView)[](
-			(.Behavior, "class NewBehavior : EntityBehavior"), (.Level, "class Level : SceneBehavior"), (.Game, "class Game : RunBehavior")))
+		for (let (tier, name, className) in scope (ScriptTier, StringView, StringView)[](
+			(.Behavior, "Coin", "class Coin : EntityBehavior"), (.Level, "Arena", "class Arena : SceneBehavior"), (.Game, "Heist", "class Heist : RunBehavior")))
 		{
 			let source = scope String();
-			cook.NewAssetTemplate(tier, "", source);
+			cook.NewAssetTemplate(tier, name, source);
 			Test.Assert(source.Contains(className), scope $"{tier}");
+			Test.Assert(!source.Contains("{CLASSNAME}"), scope $"{tier}");
 		}
 	}
 

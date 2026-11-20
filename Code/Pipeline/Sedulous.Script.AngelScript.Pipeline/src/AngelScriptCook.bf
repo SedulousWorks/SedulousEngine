@@ -86,11 +86,11 @@ class AngelScriptCook : IScriptLanguageCook
 		{
 		case .Level:
 			outSource.Append("""
-				// The scene's own script: set it on the scene's Script settings. One instance
-				// per scene, `scene` filled in by the engine; the handlers run by their names
-				// while the scene simulates. Print, Random, Math and the facades on `scene`
+				// A scene behavior, one per scene: set it on the scene's Script settings.
+				// `scene` is filled in by the engine; the handlers run by their names while the
+				// scene simulates. Print, Random, Math and the facades on `scene`
 				// (scene.Physics, scene.Audio, scene.Scripts, ...) are visible globally.
-				class Level : SceneBehavior
+				class {CLASSNAME} : SceneBehavior
 				{
 					Scene@ scene;
 
@@ -103,10 +103,11 @@ class AngelScriptCook : IScriptLanguageCook
 				""");
 		case .Game:
 			outSource.Append("""
-				// The run's orchestrator: the reserved class `Game`, one per run. `Run` is the
-				// application run: load the opening scene from launch(), Run.LoadScene(sceneId),
-				// and use Run.Emit for run wide events; on<Event> handlers receive them.
-				class Game : RunBehavior
+				// A run behavior, the game's orchestrator, one per run: set it as the project's.
+				// `Run` is the application run: load the opening scene from launch(),
+				// Run.LoadScene(sceneId), and use Run.Emit for run wide events; on<Event>
+				// handlers receive them.
+				class {CLASSNAME} : RunBehavior
 				{
 					void launch() { Print("Game launched"); }
 					void update(float dt) {}
@@ -131,8 +132,8 @@ class AngelScriptCook : IScriptLanguageCook
 				}
 
 				""");
-			outSource.Replace("{CLASSNAME}", className.IsEmpty ? "NewBehavior" : className);
 		}
+		outSource.Replace("{CLASSNAME}", className.IsEmpty ? "NewBehavior" : className);
 	}
 
 	public void ListIncludes(StringView source, List<String> outPaths) => AngelScriptRuntime.IncludesOf(source, outPaths);
@@ -167,8 +168,17 @@ class AngelScriptCook : IScriptLanguageCook
 		if (!ok)
 			return false;
 
+		// The class it plays is the one deriving from a kind, read from the classes this file
+		// declares as compiled (an included file's classes are its own file's).
+		let declared = scope List<String>();
+		defer { ClearAndDeleteItems!(declared); }
+		ScriptClasses.ListClasses(source, declared);
+		let kinds = scope List<BehaviorKind>();
+		for (let declaredClass in declared)
+			kinds.Add(runtime.KindOf(cModule, declaredClass));
 		let name = scope String();
-		if (!ChooseClass(source, sourceName, className, name, problems))
+		BehaviorKind kind;
+		if (!ChooseClass(sourceName, declared, kinds, name, out kind, problems))
 			return false;
 		if (name.IsEmpty)
 		{
@@ -181,7 +191,7 @@ class AngelScriptCook : IScriptLanguageCook
 			return true;
 		}
 		outRecord.ClassName.Set(name);
-		outRecord.Kind = runtime.KindOf(cModule, name);
+		outRecord.Kind = kind;
 		let harvestProblems = scope List<String>();
 		defer { ClearAndDeleteItems(harvestProblems); }
 		let harvested = ScriptHarvest.Harvest(runtime, cModule, name, outRecord, harvestProblems);
@@ -202,6 +212,11 @@ class AngelScriptCook : IScriptLanguageCook
 		let sections = scope List<ScriptSection>();
 		for (let included in found)
 			sections.Add(.(included.Path, included.Source));
+		let declared = scope List<String>();
+		defer { ClearAndDeleteItems!(declared); }
+		ScriptClasses.ListClasses(source, declared);
+		let kinds = scope List<BehaviorKind>();
+		BehaviorKind kind;
 		if (hidden.IsEmpty)
 		{
 			// The whole surface: the shared runtime, the script in a module of its own, discarded
@@ -210,7 +225,7 @@ class AngelScriptCook : IScriptLanguageCook
 			let ran = mChecks.Run(scope [&] (runtime) =>
 				{
 					using (ProfileScope("Script.Cook.Compile"))
-						ok = runtime.Check(sourceName, source, sections);
+						ok = runtime.Check(sourceName, source, sections, declared, kinds);
 					for (let p in runtime.Problems)
 						problems.Add(new String(p));
 					ClearAndDeleteItems!(runtime.Problems);
@@ -220,7 +235,7 @@ class AngelScriptCook : IScriptLanguageCook
 				problems.Add(new $"{sourceName}: no AngelScript runtime to check it in");
 			if (!ok)
 				return false;
-			return ChooseClass(source, sourceName, className, outClassName, problems);
+			return ChooseClass(sourceName, declared, kinds, outClassName, out kind, problems);
 		}
 
 		AngelScriptRuntime runtime;
@@ -232,25 +247,22 @@ class AngelScriptCook : IScriptLanguageCook
 
 		bool ok;
 		using (ProfileScope("Script.Cook.Compile"))
-			ok = runtime.Check(sourceName, source, sections);
+			ok = runtime.Check(sourceName, source, sections, declared, kinds);
 		for (let p in runtime.Problems)
 			problems.Add(new String(p));
 		outClassName.Clear();
 		if (!ok)
 			return false;
-		return ChooseClass(source, sourceName, className, outClassName, problems);
+		return ChooseClass(sourceName, declared, kinds, outClassName, out kind, problems);
 	}
 
-	/// The class `source` plays, by `className` (empty: the one named like `sourceName`'s
-	/// file), into `outClass`; false with the problem when it declares several and none so named.
-	private static bool ChooseClass(StringView source, StringView sourceName, StringView className, String outClass, List<String> problems)
+	/// The behavior class among the `declared` classes (`kinds` theirs), into `outClass` with its
+	/// kind; false with the problem when several derive from a kind.
+	private static bool ChooseClass(StringView sourceName, List<String> declared, List<BehaviorKind> kinds, String outClass,
+		out BehaviorKind outKind, List<String> problems)
 	{
-		let declared = scope List<String>();
-		defer { ClearAndDeleteItems!(declared); }
-		ScriptClasses.ListClasses(source, declared);
-		let preferred = ScriptClasses.PreferredFor(className, sourceName, .. scope .());
 		let problem = scope String();
-		if (ScriptClasses.Choose(declared, preferred, outClass, problem))
+		if (ScriptClasses.ChooseBehavior(declared, kinds, outClass, out outKind, problem))
 			return true;
 		problems.Add(new $"{sourceName}: {problem}");
 		return false;

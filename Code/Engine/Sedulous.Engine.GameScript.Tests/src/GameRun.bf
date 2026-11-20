@@ -135,8 +135,9 @@ class GameRun
 		return instance.Id;
 	}
 
-	/// Compiles and harvests a class through the run's own runtime: what the cook produces.
-	public ScriptClass Class(StringView className, StringView source)
+	/// Compiles and harvests a class through the run's own runtime: what the cook produces, of
+	/// the behavior kind `kind` (an entity's behavior is Entity).
+	public ScriptClass Class(StringView className, StringView source, BehaviorKind kind = .Run)
 	{
 		let runtime = Instance.RunHost.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
@@ -148,6 +149,7 @@ class GameRun
 		let record = scope ScriptClassSource();
 		record.Language.Set(AngelScriptBackend.cLanguage);
 		record.ClassName.Set(className);
+		record.Kind = kind;
 		record.SourceName.Set("Game.as");
 		record.Source.Set(source);
 		Test.Assert(ScriptHarvest.Harvest(runtime, module, className, record), "harvested");

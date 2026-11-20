@@ -456,7 +456,7 @@ class ScriptSceneSystem : SceneSystem
 
 		using (ProfileScope(scriptClass.ProfileName))
 		{
-			behavior.Instance = mHost.Instantiate(scriptClass);
+			behavior.Instance = mHost.Instantiate(scriptClass, .Entity);
 		}
 		behavior.BoundClass = scriptClass;
 		behavior.Started = false;
@@ -744,7 +744,7 @@ class ScriptSceneSystem : SceneSystem
 			return;
 		if (mLevel == null)
 		{
-			mLevel = mHost.Instantiate(levelClass);
+			mLevel = mHost.Instantiate(levelClass, .Scene);
 			mLevelClass = levelClass;
 			ResourceHold.Replace(ref mLevelHold, mSettings.Script.Handle);
 			mLevelStarted = false;

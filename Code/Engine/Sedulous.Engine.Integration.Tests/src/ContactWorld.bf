@@ -104,7 +104,7 @@ class ContactWorld
 	}
 
 	/// Compiles and harvests a class through the run's own runtime, as the fixture in
-	/// Engine.Script.Tests does.
+	/// Engine.Script.Tests does: an entity's behavior.
 	public ScriptClass Class(StringView className, StringView source)
 	{
 		let runtime = Scripts.Host.EnsureRuntime(AngelScriptBackend.cLanguage);
@@ -117,6 +117,7 @@ class ContactWorld
 		let record = scope ScriptClassSource();
 		record.Language.Set(AngelScriptBackend.cLanguage);
 		record.ClassName.Set(className);
+		record.Kind = .Entity;
 		record.SourceName.Set("Test.as");
 		record.Source.Set(source);
 		Test.Assert(ScriptHarvest.Harvest(runtime, module, className, record), "harvested");

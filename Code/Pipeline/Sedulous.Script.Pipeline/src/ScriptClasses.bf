@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Pipeline.Importer;
+using Sedulous.Script;
 
 namespace Sedulous.Script.Pipeline;
 
@@ -74,6 +75,41 @@ static class ScriptClasses
 		return false;
 	}
 
+	/// The behavior class a script plays: the one among `declared` that derives from a kind
+	/// (`kinds[i]` is `declared[i]`'s), into `outClass`, its kind in `outKind`. Classes that
+	/// derive from none make a module of helpers: true, `outClass` empty, kind None. Several
+	/// that derive from a kind is no guess: false, `outProblem` naming them, since a script
+	/// holds one behavior class.
+	public static bool ChooseBehavior(List<String> declared, List<BehaviorKind> kinds, String outClass, out BehaviorKind outKind,
+		String outProblem)
+	{
+		outClass.Clear();
+		outKind = .None;
+		let names = scope String();
+		int count = 0;
+		for (int i < declared.Count)
+		{
+			let kind = (i < kinds.Count) ? kinds[i] : BehaviorKind.None;
+			if (kind == .None)
+				continue;
+			if (count == 0)
+			{
+				outClass.Set(declared[i]);
+				outKind = kind;
+			}
+			count++;
+			if (!names.IsEmpty)
+				names.Append(", ");
+			names.Append(declared[i]);
+		}
+		if (count <= 1)
+			return true;
+		outClass.Clear();
+		outKind = .None;
+		outProblem.AppendF("it declares the behavior classes {}: a script holds one, so move the others to scripts of their own", names);
+		return false;
+	}
+
 	/// The class preferred for a source: `className` when given (an asset's recorded class),
 	/// else the one named like `sourceName`'s file.
 	public static void PreferredFor(StringView className, StringView sourceName, String outClass)
@@ -86,18 +122,6 @@ static class ScriptClasses
 
 	/// The class a script asset prefers: the one it records, else the one named like its file.
 	public static void Preferred(ScriptClassAsset asset, String outClass) => PreferredFor(asset.ClassName, asset.FileName.Value, outClass);
-
-	/// The class a new script's starter declares: a behaviour's is named after its asset
-	/// (`behaviourClass`), the level and game tiers' are reserved.
-	public static StringView StarterClassName(ScriptTier tier, StringView behaviourClass)
-	{
-		switch (tier)
-		{
-		case .Level: return "Level";
-		case .Game: return "Game";
-		case .Behavior: return behaviourClass;
-		}
-	}
 
 	/// `source` with its comments dropped and its string literals blanked, so a `class` in
 	/// either is not taken for a declaration.

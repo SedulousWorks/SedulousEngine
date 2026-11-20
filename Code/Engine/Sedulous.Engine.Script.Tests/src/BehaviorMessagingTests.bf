@@ -155,7 +155,7 @@ static class BehaviorMessagingTests
 				void onStart() { starts++; }
 				void onOrbCollected(int value) { score += value; }
 			}
-			""");
+			""", "Test.as", .Scene);
 		play.Scripts.Settings.Script.SetDirect(level);
 		let a = play.AddBehavior(orb, "a");
 		let b = play.AddBehavior(orb, "b");

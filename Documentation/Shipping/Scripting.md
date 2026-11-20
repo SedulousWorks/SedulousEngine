@@ -10,23 +10,38 @@ Scripts are AngelScript. Each script asset declares its language, so a second ba
 join later without changing the assets. The bound surface is described per backend by
 `script_api`, spelled the way that language writes it.
 
-## The three script tiers
+## The three kinds of behavior
 
-- **Behavior**: attached to an entity through a Script component. One class per script; the
-  engine fills in its `Entity self` and `Scene@ scene` fields. This is where most gameplay
-  lives.
-- **Level**: the per scene script, the reserved class `Level`, set on the scene's script
-  settings. One instance per scene with `scene` filled in. Use it for scene wide
-  orchestration: spawning, win conditions, sequencing.
-- **Game**: the run's orchestrator, the reserved class `Game`, set as the project's startup
-  script. It runs for the whole game run, across scene loads, and reaches the run through
-  the `Run` service: `Run.LoadScene(sceneId)`, `Run.RequestExit()`, `Run.Emit(...)`.
+A class the engine runs is a **behavior**, and declares its kind by deriving from it. A script
+holds one behavior class, of any name; other classes beside it are its helpers.
+
+- **EntityBehavior**: attached to an entity through a Script component. The engine fills in
+  its `Entity self` and `Scene@ scene` fields. This is where most gameplay lives.
+- **SceneBehavior**: one per scene, set on the scene's script settings, with `scene` filled
+  in. Use it for scene wide orchestration: spawning, win conditions, sequencing.
+- **RunBehavior**: the run's orchestrator, set as the project's startup script. It runs for
+  the whole game run, across scene loads, and reaches the run through the `Run` service:
+  `Run.LoadScene(sceneId)`, `Run.RequestExit()`, `Run.Emit(...)`.
   A load destroys the level it replaces: a scene, entity, component or `scene.Physics` style
   handle a member kept from it reads as gone afterwards (an entity is not valid and has no
   name, the scene is empty, `scene.Physics` is null) and every call through it does nothing.
   A debug menu can show the profiler overlay with `Run.SetProfilerOverlay(true)`;
   `Run.ProfilerAvailable()` says whether this build and app have one (never in a shipped
   build), so the menu can hide its entry. Both compile in every build.
+
+```angelscript
+class Coin : EntityBehavior
+{
+    Entity self;
+    Scene@ scene;
+    void onStart() {}
+}
+```
+
+A behavior can also derive from a base class of its own (`class Mover : Base, EntityBehavior`).
+A script whose classes derive from no kind is not a behavior: it is a module of helpers, and is
+refused where a behavior is set (a Script component, a scene's script settings, the project's
+startup script). A script with two behavior classes does not cook.
 
 ## Lifecycle and events
 
@@ -366,8 +381,6 @@ property with its description as the tooltip and saves per instance values over 
 
 ## Gotchas
 
-- The class names `Game` and `Level` are reserved for their tiers; do not use them for a
-  behavior.
 - `script_validate` compiles; it does not run, and neither does the cook. A global variable's
   initialiser runs when the game loads the script, so one that faults fails that load, not the
   cook; keep it to plain values.

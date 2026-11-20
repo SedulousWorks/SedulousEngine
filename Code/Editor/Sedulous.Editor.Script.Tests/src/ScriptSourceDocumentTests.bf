@@ -57,7 +57,7 @@ class ScriptSourceDocumentTests
 		doc.SetSource("""
 			int Zero() { return 0; }
 			int boom = 10 / Zero();
-			class Mover
+			class Mover : EntityBehavior
 			{
 				[4.5] float speed;
 				Entity self;

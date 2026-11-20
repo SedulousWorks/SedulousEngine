@@ -50,6 +50,7 @@ static class NetworkIdentityScriptTests
 		let record = scope ScriptClassSource();
 		record.Language.Set(Sedulous.Script.AngelScript.AngelScriptBackend.cLanguage);
 		record.ClassName.Set("Tweaker");
+		record.Kind = .Entity;
 		record.SourceName.Set("Tweaker.as");
 		record.Source.Set("""
 			class Tweaker

@@ -756,7 +756,7 @@ static class ExportDriverTests
 		let fx = scope ExportProjectFixture("scratch_export_script");
 		Sedulous.Pipeline.Registration.PipelineRegistration.RegisterPipelineTypes();
 		defer Sedulous.Pipeline.Registration.PipelineRegistration.Teardown();
-		let source = "class Game\n{\n\tvoid launch() {}\n\tvoid update(float dt) {}\n}\n";
+		let source = "class Game : RunBehavior\n{\n\tvoid launch() {}\n\tvoid update(float dt) {}\n}\n";
 		Test.Assert(WriteFile(PathJoin(fx.Project.SourcesRoot(.. scope .()), "Game.as", .. scope .()), .((uint8*)source.Ptr, source.Length)) case .Ok);
 		let scriptInstance = fx.Project.SourceDb.RootGroup.CreateInstance("Game", typeof(Sedulous.Script.Pipeline.ScriptClassAsset).GetFullName(.. scope .()));
 		let asset = scope Sedulous.Script.Pipeline.ScriptClassAsset();

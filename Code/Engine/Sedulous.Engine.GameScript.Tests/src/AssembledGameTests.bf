@@ -94,6 +94,7 @@ static class AssembledGameTests
 		let game = scope ScriptClass();
 		game.Language.Set(AssembledRuntime.cLanguage);
 		game.ClassName.Set("Game");
+		game.Kind = .Run;
 		game.SourceName.Set("Game.asm");
 		game.Source.Set("(the source, never compiled)");
 		game.Assembly = assembly;

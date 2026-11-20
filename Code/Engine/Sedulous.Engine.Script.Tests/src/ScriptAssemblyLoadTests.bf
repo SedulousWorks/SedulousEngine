@@ -94,12 +94,13 @@ static class ScriptAssemblyLoadTests
 		let mover = scope ScriptClass();
 		mover.Language.Set(ImageRuntime.cLanguage);
 		mover.ClassName.Set("Mover");
+		mover.Kind = .Entity;
 		mover.SourceName.Set("Game/Mover.si");
 		mover.Source.Set("class Mover (the source, never compiled)");
 		mover.Assembly = assembly;
 
 		let host = scope ScriptRunHost();
-		let instance = host.Instantiate(mover);
+		let instance = host.Instantiate(mover, .Entity);
 		Test.Assert(instance != null, "made from the loaded image");
 		let runtime = host.Runtime as ImageRuntime;
 		Test.Assert(runtime != null);

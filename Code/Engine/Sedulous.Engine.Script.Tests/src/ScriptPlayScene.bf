@@ -76,8 +76,9 @@ class ScriptPlayScene
 	private List<Scene> mExtraScenes = new .();
 
 	/// Compiles `source` as `sourceName`, harvests `className` from it, and answers the
-	/// product. The class is owned here, as a resource manager would own it.
-	public ScriptClass Class(StringView className, StringView source, StringView sourceName = "Test.as")
+	/// product, of the behavior kind `kind` (a Level's is Scene). The class is owned here, as a
+	/// resource manager would own it.
+	public ScriptClass Class(StringView className, StringView source, StringView sourceName = "Test.as", BehaviorKind kind = .Entity)
 	{
 		let runtime = Host.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
@@ -90,6 +91,7 @@ class ScriptPlayScene
 		let record = scope ScriptClassSource();
 		record.Language.Set(AngelScriptBackend.cLanguage);
 		record.ClassName.Set(className);
+		record.Kind = kind;
 		record.SourceName.Set(sourceName);
 		record.Source.Set(source);
 		Test.Assert(ScriptHarvest.Harvest(runtime, module, className, record), "harvested");

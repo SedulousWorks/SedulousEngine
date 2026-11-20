@@ -102,6 +102,7 @@ class AnimationWorld
 		let record = scope ScriptClassSource();
 		record.Language.Set(AngelScriptBackend.cLanguage);
 		record.ClassName.Set(className);
+		record.Kind = .Entity;
 		record.SourceName.Set("Test.as");
 		record.Source.Set(source);
 		Test.Assert(ScriptHarvest.Harvest(runtime, module, className, record), "harvested");

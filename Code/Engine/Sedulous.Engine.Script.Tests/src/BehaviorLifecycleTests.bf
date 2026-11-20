@@ -314,13 +314,14 @@ static class BehaviorLifecycleTests
 		let broken = scope ScriptClass();
 		broken.Language.Set(AngelScriptBackend.cLanguage);
 		broken.ClassName.Set("Broken");
+		broken.Kind = .Entity;
 		broken.SourceName.Set("Broken.as");
 		broken.Source.Set("class Broken { void f() { this does not compile } }");
 		let later = play.Class("Later", "class Later { int n = 3; }", "Later.as");
-		Test.Assert(play.Host.Instantiate(good) != null);
-		Test.Assert(play.Host.Instantiate(broken) == null);
-		Test.Assert(play.Host.Instantiate(later) != null, "a class after the broken one loads");
-		Test.Assert(play.Host.Instantiate(good) != null, "and one before it still does");
+		Test.Assert(play.Host.Instantiate(good, .Entity) != null);
+		Test.Assert(play.Host.Instantiate(broken, .Entity) == null);
+		Test.Assert(play.Host.Instantiate(later, .Entity) != null, "a class after the broken one loads");
+		Test.Assert(play.Host.Instantiate(good, .Entity) != null, "and one before it still does");
 		Test.Assert(play.Host.ModuleOf("Broken").IsEmpty, "the broken class is not kept");
 		Test.Assert(play.Host.ModuleOf("Good") != play.Host.ModuleOf("Later"), "each in its own module");
 	}
@@ -334,6 +335,7 @@ static class BehaviorLifecycleTests
 		let tripler = scope ScriptClass();
 		tripler.Language.Set(AngelScriptBackend.cLanguage);
 		tripler.ClassName.Set("Tripler");
+		tripler.Kind = .Entity;
 		tripler.SourceName.Set("Scripts/Tripler.as");
 		tripler.Source.Set("#include \"Lib.as\"\nclass Tripler { int get() { return thrice(2); } }\n");
 		let lib = new ScriptIncludedSource();
@@ -341,14 +343,14 @@ static class BehaviorLifecycleTests
 		lib.Source.Set("int thrice(int x) { return x * 3; }\n");
 		tripler.Includes.Add(lib);
 
-		let made = play.Host.Instantiate(tripler);
+		let made = play.Host.Instantiate(tripler, .Entity);
 		Test.Assert(made != null);
 		var r = ScriptValue.Nil;
 		Test.Assert(play.Host.Runtime.Invoke(made, "get", default, ref r) && (r.AsInt == 6));
 
 		let generation = play.Host.Generation;
 		lib.Source.Set("int thrice(int x) { return x * 30; }\n");
-		let again = play.Host.Instantiate(tripler);
+		let again = play.Host.Instantiate(tripler, .Entity);
 		Test.Assert(again != null);
 		Test.Assert(play.Host.Generation > generation, "the edited include loaded again");
 		Test.Assert(play.Host.Runtime.Invoke(again, "get", default, ref r) && (r.AsInt == 60));
@@ -361,9 +363,9 @@ static class BehaviorLifecycleTests
 	{
 		let play = scope ScriptPlayScene();
 		let v1 = play.Class("Keeper", "int kSeen = 1;\nclass Keeper { int read() { return kSeen; } }");
-		let old = play.Host.Instantiate(v1);
+		let old = play.Host.Instantiate(v1, .Entity);
 		let v2 = play.Class("Keeper", "int kSeen = 2;\nclass Keeper { int read() { return kSeen; } }");
-		let fresh = play.Host.Instantiate(v2);
+		let fresh = play.Host.Instantiate(v2, .Entity);
 		Test.Assert((old != null) && (fresh != null));
 		Test.Assert(play.Host.ReplacedModuleCount == 1, "kept: the old instance reads its module's globals");
 		var r = ScriptValue.Nil;
@@ -428,7 +430,7 @@ static class BehaviorLifecycleTests
 		Test.Assert(play.Host.EnsureClassLoaded(other), "a new class loads past a freed product");
 
 		let rebuilt = play.Class("Walker", "class Walker { Entity self; Scene@ scene; int steps = 2; }", "Walker.as");
-		let walker = play.Host.Instantiate(rebuilt);
+		let walker = play.Host.Instantiate(rebuilt, .Entity);
 		Test.Assert(walker != null);
 		var steps = ScriptValue.Nil;
 		Test.Assert(play.Host.Runtime.GetProperty(walker, "steps", ref steps));

@@ -264,9 +264,20 @@ class ScriptRunHost
 	}
 
 	/// An instance of the class, its module loaded or reloaded as needed. Null on failure,
-	/// logged.
-	public ScriptObject Instantiate(ScriptClass scriptClass)
+	/// logged, and for a class not of the kind `kind` the place it is set takes (a scene's
+	/// Level slot a SceneBehavior, an entity's an EntityBehavior, the run's a RunBehavior).
+	public ScriptObject Instantiate(ScriptClass scriptClass, BehaviorKind kind)
 	{
+		if (scriptClass.Kind != kind)
+		{
+			let what = scope String();
+			if (scriptClass.Kind == .None)
+				what.Append("declares no behavior class");
+			else
+				what.AppendF("derives from {}", BehaviorKinds.TypeName(scriptClass.Kind));
+			GlobalLog(.Error, scope $"Script: '{scriptClass.SourceName}' {what}: it is set where a class deriving from {BehaviorKinds.TypeName(kind)} goes");
+			return null;
+		}
 		if (!EnsureClassLoaded(scriptClass))
 			return null;
 		let instance = mRuntime.Instantiate(ModuleOf(scriptClass.ClassName), scriptClass.ClassName);

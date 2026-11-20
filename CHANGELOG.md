@@ -119,6 +119,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Scripts (breaking): a behavior declares its kind by deriving from it, `EntityBehavior`,
+  `SceneBehavior` or `RunBehavior` (`class Coin : EntityBehavior`), and may have any name. The
+  reserved names `Game` and `Level` are gone, and a script's other classes are its helpers. A
+  project's scripts add the base their class needs: a script without one is refused where a
+  behavior is set, and one with two behavior classes does not cook.
 - Rendering: each of the sun's shadow cascades draws only the casters whose shadow lands on what it
   shades, and a shadow ends at the scene's bounds (a tree's at the ground), so most casters are drawn
   into one cascade, not all four. The Profiler counts the casters each cascade draws ("Shadow casters

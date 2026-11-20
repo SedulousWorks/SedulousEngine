@@ -139,7 +139,7 @@ static class GameScriptTests
 				bool done = false;
 				void onUpdate(float dt) { if (!done) { done = true; scene.Scripts.Emit("Score", 3); } }
 			}
-			""");
+			""", .Entity);
 		Test.Assert(run.Instance.StartRunBehavior(game));
 
 		// A scene the instance created: its behaviours run on the instance's host, and its
@@ -174,7 +174,7 @@ static class GameScriptTests
 				Scene@ scene;
 				void onPing(int value) { scene.Scripts.Emit("Score", value); }
 			}
-			""");
+			""", .Entity);
 		Test.Assert(run.Instance.StartRunBehavior(game));
 
 		let level = run.Instance.CreateScene("level");
@@ -332,6 +332,28 @@ static class GameScriptTests
 		Test.Assert(run.Instance.ScriptFault.IsEmpty);
 		run.Instance.StopRunBehavior();
 		Test.Assert(run.Instance.ScriptFault.IsEmpty, "a clean stop is not a fault");
+	}
+
+	/// The run's behavior is a RunBehavior: a class of another kind, or a script that declares
+	/// none, is refused before anything runs, and the fault says what it is and what it needs.
+	[Test]
+	public static void AClassThatIsNotARunBehaviorIsRefusedAsTheRunsBehavior()
+	{
+		let run = scope GameRun("scratch_game_run_kind");
+		let mover = run.Class("Mover", "class Mover { int made = 0; Mover() { made++; } void launch() {} }", .Entity);
+		Test.Assert(!run.Instance.StartRunBehavior(mover));
+		Test.Assert(!run.Instance.RunBehaviorRunning);
+		Test.Assert(run.Instance.ScriptFault.Contains("derives from EntityBehavior"), scope String(run.Instance.ScriptFault));
+
+		let helpers = run.Class("Helpers", "class Helpers { Helpers() {} }", .None);
+		Test.Assert(!run.Instance.StartRunBehavior(helpers));
+		Test.Assert(run.Instance.ScriptFault.Contains("declares no behavior class"), scope String(run.Instance.ScriptFault));
+
+		// The same source as a RunBehavior starts.
+		let game = run.Class("Game", "class Game { Game() {} void launch() {} }");
+		Test.Assert(run.Instance.StartRunBehavior(game), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.ScriptFault.IsEmpty);
+		run.Instance.StopRunBehavior();
 	}
 
 	[Test]

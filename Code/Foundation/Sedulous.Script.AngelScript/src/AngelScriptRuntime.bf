@@ -2151,7 +2151,8 @@ class AngelScriptRuntime : ScriptRuntime
 
 	/// Through a builder of its own, so `[metadata]` checks as it compiles, into a module
 	/// discarded before any of it could be called.
-	public override bool Check(StringView sectionName, StringView source, Span<ScriptSection> includes = default)
+	public override bool Check(StringView sectionName, StringView source, Span<ScriptSection> includes = default,
+		Span<String> classes = default, List<BehaviorKind> outKinds = null)
 	{
 		let builder = AS.asc_builder_create();
 		if (builder == null)
@@ -2173,7 +2174,14 @@ class AngelScriptRuntime : ScriptRuntime
 				return false;
 		}
 		// A build runs no global initializer (they run in CompileModule, after it).
-		return AS.asc_builder_build(builder) >= 0;
+		if (AS.asc_builder_build(builder) < 0)
+			return false;
+		if (outKinds != null)
+		{
+			for (let className in classes)
+				outKinds.Add(KindOf(cCheckModule, className));
+		}
+		return true;
 	}
 
 	private const String cCheckModule = "__check";

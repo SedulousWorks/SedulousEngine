@@ -18,24 +18,23 @@ interface IScriptLanguageCook
 	/// them; nought: none.
 	uint64 SurfaceHash => 0;
 
-	/// The source a new asset of this language and tier starts with. A behaviour's class is
-	/// `className` (a valid identifier: ScriptCreators.ClassNameFor makes one); the level and
-	/// game tiers keep their reserved class names and ignore it.
+	/// The source a new asset of this language and tier starts with, its class `className` (a
+	/// valid identifier: ScriptCreators.ClassNameFor makes one), deriving from the tier's kind.
 	void NewAssetTemplate(ScriptTier tier, StringView className, String outSource);
 
 	/// Compiles `source` and harvests the class it plays into the record, reporting anything
-	/// wrong into `problems`. The class is ScriptClasses.Choose's by `className` (the asset's
-	/// recorded class; empty: the one named like `sourceName`'s file): that one, else the
-	/// source's only class. False when the source does not compile, or declares several classes
-	/// and none so named.
+	/// wrong into `problems`. The class is the one deriving from a behavior kind
+	/// (ScriptClasses.ChooseBehavior), its kind recorded; one whose classes derive from none is a
+	/// module of helpers. False when the source does not compile, or declares several behavior
+	/// classes. `className` is no longer read.
 	/// The files the source includes are read through `includes` (null: none can be, so a script
 	/// that includes one fails), and recorded in the record's Includes.
 	bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems,
 		IScriptIncludeReader includes = null);
 
 	/// Compile checks `source` as Cook would, WITHOUT running any of it and without the
-	/// harvest: the problems into `problems`, the class it plays (chosen by `className` as Cook
-	/// chooses it; empty when it declares none) into `outClassName`. For checking a script as it
+	/// harvest: the problems into `problems`, the class it plays (chosen as Cook chooses it; empty
+	/// when none derives from a kind) into `outClassName`. For checking a script as it
 	/// is typed. False when it does not compile or the class cannot be chosen. Against the
 	/// surface less the `hidden` types (by full name): a platform without a plugin lacks that
 	/// plugin's types, and a script that uses one does not compile there.

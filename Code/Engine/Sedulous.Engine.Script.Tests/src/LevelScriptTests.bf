@@ -38,11 +38,39 @@ static class LevelScriptTests
 		return (int)v.AsInt;
 	}
 
+	/// A scene's script slot takes a SceneBehavior and an entity's slot an EntityBehavior: a class
+	/// of another kind set in either is refused, and nothing of it runs.
+	[Test]
+	public static void EachSlotTakesOnlyItsOwnKindOfBehavior()
+	{
+		let play = scope ScriptPlayScene("world");
+		let entityKind = play.Class("Level", cLevel, "Test.as", .Entity);
+		play.Scripts.Settings.Script.SetDirect(entityKind);
+		let sceneKind = play.Class("Level", cLevel, "Other.as", .Scene);
+		let e = play.AddBehavior(sceneKind);
+		play.Start();
+		play.Step(2);
+		Test.Assert(play.Scripts.Level == null, "an EntityBehavior is no Level");
+		Test.Assert(play.BehaviorOf(e).Instance == null, "a SceneBehavior is no entity's behavior");
+		Test.Assert(play.Scripts.InstanceCount == 0);
+
+		// Each in its own slot runs.
+		let other = scope ScriptPlayScene("world2");
+		other.Scripts.Settings.Script.SetDirect(other.Class("Level", cLevel, "Test.as", .Scene));
+		let f = other.AddBehavior(other.Class("Level", cLevel, "Other.as", .Entity));
+		other.Start();
+		other.Step();
+		Test.Assert(other.Scripts.Level != null);
+		Test.Assert(other.BehaviorOf(f).Instance != null);
+		other.Stop();
+		play.Stop();
+	}
+
 	[Test]
 	public static void ALevelRunsItsLifecycleSimGated()
 	{
 		let play = scope ScriptPlayScene("world");
-		let level = play.Class("Level", cLevel);
+		let level = play.Class("Level", cLevel, "Test.as", .Scene);
 		play.Scripts.Settings.Script.SetDirect(level);
 		play.Scripts.Settings.SetOverride(ScriptPropertyNames.HashOf("gravity"), .Float(2));
 
@@ -76,7 +104,7 @@ static class LevelScriptTests
 	public static void TwoScenesSharingALevelClassGetIndependentObjects()
 	{
 		let play = scope ScriptPlayScene("a");
-		let level = play.Class("Level", cLevel);
+		let level = play.Class("Level", cLevel, "Test.as", .Scene);
 		let b = play.AddScene("b");
 		play.Scripts.Settings.Script.SetDirect(level);
 		b.GetSystem<ScriptSceneSystem>().Settings.Script.SetDirect(level);
@@ -96,8 +124,8 @@ static class LevelScriptTests
 	public static void AFaultingLevelDisablesThatSceneOnly()
 	{
 		let play = scope ScriptPlayScene("a");
-		let good = play.Class("Level", cLevel);
-		let bad = play.Class("BadLevel", "class BadLevel { int updates = 0; void onUpdate(float dt) { updates++; int[] x; x[9] = 1; } }");
+		let good = play.Class("Level", cLevel, "Test.as", .Scene);
+		let bad = play.Class("BadLevel", "class BadLevel { int updates = 0; void onUpdate(float dt) { updates++; int[] x; x[9] = 1; } }", "Test.as", .Scene);
 		let b = play.AddScene("b");
 		play.Scripts.Settings.Script.SetDirect(bad);
 		b.GetSystem<ScriptSceneSystem>().Settings.Script.SetDirect(good);
