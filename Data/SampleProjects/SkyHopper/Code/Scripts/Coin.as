@@ -34,7 +34,7 @@ class Coin : EntityBehavior
 	{
 		m_player = scene.FindEntityByName("Player");
 		m_home = self.GetLocalTransform().Position;
-		scene.Scripts.Emit("CoinRegistered", 1);
+		scene.Behaviors.Emit("CoinRegistered", 1);
 	}
 
 	void onUpdate(float dt)
@@ -50,7 +50,7 @@ class Coin : EntityBehavior
 		{
 			// A coin still in reach takes the look back next frame.
 			AimIkComponent::of(m_player).Active = false;
-			scene.Scripts.Emit("CoinCollected", value);
+			scene.Behaviors.Emit("CoinCollected", value);
 			scene.Prefabs.Spawn(kCoinSparkle, self.GetWorldPosition());
 			Audio.PlayOneShot(kCoinSound, AudioBus::Effects, 0.7f);
 			self.Destroy();
@@ -61,7 +61,7 @@ class Coin : EntityBehavior
 	private void look(float distance)
 	{
 		AimIkComponent@ aim = AimIkComponent::of(m_player);
-		double frame = scene.Scripts.Elapsed;
+		double frame = scene.Behaviors.Elapsed;
 		if (frame != g_lookFrame)
 		{
 			g_lookFrame = frame;

@@ -15,9 +15,9 @@ join later without changing the assets. The bound surface is described per backe
 A class the engine runs is a **behavior**, and declares its kind by deriving from it. A script
 holds one behavior class, of any name; other classes beside it are its helpers.
 
-- **EntityBehavior**: attached to an entity through a Script component. The engine fills in
+- **EntityBehavior**: attached to an entity through a Behavior component. The engine fills in
   its `Entity self` and `Scene@ scene` fields. This is where most gameplay lives.
-- **SceneBehavior**: one per scene, set on the scene's script settings, with `scene` filled
+- **SceneBehavior**: one per scene, set in the scene's Scene Behavior settings, with `scene` filled
   in. Use it for scene wide orchestration: spawning, win conditions, sequencing.
 - **RunBehavior**: the run's orchestrator, set as the project's startup script. It runs for
   the whole game run, across scene loads, and reaches the run through the `Run` service:
@@ -40,7 +40,7 @@ class Coin : EntityBehavior
 
 A behavior can also derive from a base class of its own (`class Mover : Base, EntityBehavior`).
 A script whose classes derive from no kind is not a behavior: it is a module of helpers, and is
-refused where a behavior is set (a Script component, a scene's script settings, the project's
+refused where a behavior is set (a Behavior component, a scene's Scene Behavior settings, the project's
 startup script). A script with two behavior classes does not cook.
 
 ## Lifecycle and events
@@ -68,8 +68,8 @@ each has the ones its scope needs:
   script updates before its entities' behaviors.
 - `on<Event>(...)`: named events. Physics contacts, an animation's one-shot ending
   (`onAnimationFinished`) and its clip events (`onAnimationEvent`) arrive as events; any script
-  can send one: `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors, and
-  `scene.Scripts.Emit("Name", payload)` or `Run.Emit(...)` to everyone listening. A scene's
+  can send one: `scene.Behaviors.Send(entity, "Name", payload)` to one entity's behaviors, and
+  `scene.Behaviors.Emit("Name", payload)` or `Run.Emit(...)` to everyone listening. A scene's
   event bus IS its run's bus (a game's, or a scene page's Simulate): one bus per run, heard by
   every behaviour, each Level and the Game. Emit an event once; emitting it through both calls
   delivers it twice. A payload is a float, an int, a bool, a string, an entity, a `Float3` (a
@@ -236,8 +236,8 @@ empty, writes are dropped. An asset field takes the asset's guid (`sprite.Textur
 A prefab is still the way to make something with many parts at once (`scene.Prefabs.Spawn`);
 `addTo` is for one component on an entity that is already there.
 
-Components with nothing for gameplay code are not script types: the script component itself
-(use `scene.Scripts`), the networked transform (replication drives it), and a navigation
+Components with nothing for gameplay code are not script types: the behavior component itself
+(use `scene.Behaviors`), the networked transform (replication drives it), and a navigation
 zone's bake settings. A network identity is one, read only. A navigation agent reports why it
 is or is not moving, read only: `CrowdState` (walking, off the mesh, or not in a crowd),
 `CrowdTargetState` (where its move request has got to: requesting, valid, failed),

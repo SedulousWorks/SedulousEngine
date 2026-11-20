@@ -98,7 +98,7 @@ class Enemy : EntityBehavior
 		bool airborne = !CharacterComponent::of(m_player).Grounded;
 		if (airborne && (fallSpeed >= stompSpeed))
 		{
-			scene.Scripts.Emit("EnemyDefeated", 1);
+			scene.Behaviors.Emit("EnemyDefeated", 1);
 			m_player.Send("Bounce");
 			scene.Prefabs.Spawn(kStompStars, here + Float3(0.0f, 0.4f, 0.0f));
 			Audio.PlayOneShot(kSquashSound);

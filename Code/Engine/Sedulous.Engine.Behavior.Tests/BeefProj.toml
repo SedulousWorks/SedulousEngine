@@ -1,0 +1,21 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Behavior.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.Behavior.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Messaging" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Script.Scene" = "*"
+"Sedulous.Script.Resource" = "*"
+"Sedulous.Script.AngelScript" = "*"
+"Sedulous.Engine.Behavior" = "*"
+"Sedulous.Engine.Composition" = "*"
+"Sedulous.Net.Replication" = "*"

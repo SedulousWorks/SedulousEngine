@@ -42,7 +42,7 @@ class Gate : EntityBehavior
 	void onStart()
 	{
 		m_rider = scene.FindEntityByName("Rider");
-		scene.Scripts.Emit("GateRegistered", index);
+		scene.Behaviors.Emit("GateRegistered", index);
 		Entity gate = self.GetFirstChild(); // the GateRed or GateBlue prefab's root
 		if (gate.IsValid())
 		{
@@ -76,7 +76,7 @@ class Gate : EntityBehavior
 		{
 			m_crossed = true;
 			bool between = across >= -halfWidth && across <= halfWidth;
-			scene.Scripts.Emit(between ? "GatePassed" : "GateMissed", index);
+			scene.Behaviors.Emit(between ? "GatePassed" : "GateMissed", index);
 		}
 		m_lastAlong = along;
 		m_seen = true;

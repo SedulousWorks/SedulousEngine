@@ -73,6 +73,6 @@ class Footsteps : EntityBehavior
 			m_heard++;
 		}
 		float level = noise * loudness;
-		scene.Scripts.Emit("Noise", Float4(foot.X, foot.Y, foot.Z, Min(level, 1.0f)));
+		scene.Behaviors.Emit("Noise", Float4(foot.X, foot.Y, foot.Z, Min(level, 1.0f)));
 	}
 }

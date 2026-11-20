@@ -33,7 +33,7 @@ class Subscriber : EntityBehavior
 		Audio.PlayOneShot(kDeliveredSound, AudioBus::Effects, 0.8f);
 		Input.Rumble(0.1f, 0.45f, 0.1f); // a delivery's tap
 		scene.Prefabs.Spawn(kFxSparkle, self.GetLocalTransform().Position + Float3(0.0f, 0.3f, 0.0f));
-		scene.Scripts.Emit("Delivered", value);
+		scene.Behaviors.Emit("Delivered", value);
 		Entity marker = self.FindChildByName("Marker");
 		if (marker.IsValid())
 		{

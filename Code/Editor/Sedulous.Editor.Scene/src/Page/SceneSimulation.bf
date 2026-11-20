@@ -5,7 +5,7 @@ using Sedulous.Resource;
 using Sedulous.Run;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
@@ -17,11 +17,11 @@ class SimulationRun : RunBase
 {
 	/// OWNED: the run's scripts, registered among its services so its scenes' behaviours bind to
 	/// it; its scripts find this run's services through it.
-	private ScriptRunHost mScripts = new .() ~ delete _;
+	private BehaviorRunHost mScripts = new .() ~ delete _;
 
 	public this(StringView name) : base(name)
 	{
-		Register<ScriptRunHost>(mScripts);
+		Register<BehaviorRunHost>(mScripts);
 		mScripts.OwningRun = this;
 	}
 
@@ -34,7 +34,7 @@ class SimulationRun : RunBase
 		mScripts.Teardown();
 	}
 
-	public ScriptRunHost Scripts => mScripts;
+	public BehaviorRunHost Scripts => mScripts;
 }
 
 /// Edit mode Simulate over a page's scene: a snapshot taken, the scene started and run, the page's

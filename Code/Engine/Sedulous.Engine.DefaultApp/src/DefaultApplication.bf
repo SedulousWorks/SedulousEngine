@@ -19,7 +19,7 @@ using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Script.Facades;
 using Sedulous.Script;
 using Sedulous.Script.AngelScript;
@@ -415,7 +415,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		// Scripting: the backend, and the run's surface. The COMPLETE runtime surface, from
 		// the composition root, never a hand picked subset: a list kept here would drift.
 		AngelScriptBackend.Register();
-		let scripts = host.Subsystems.AddSubsystem<ScriptSubsystem>();
+		let scripts = host.Subsystems.AddSubsystem<BehaviorSubsystem>();
 		scripts.Configure = new (runtime) =>
 			{
 				runtime.Bind(mScriptSurface);
@@ -502,7 +502,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// gets the app's activation, and an exit reaches the host.
 	private void WireInstanceScripting(ApplicationRun instance, IApplicationHost host)
 	{
-		if (let scripts = host.Subsystems.GetSubsystem<ScriptSubsystem>())
+		if (let scripts = host.Subsystems.GetSubsystem<BehaviorSubsystem>())
 			scripts.ConfigureHost(instance.RunHost);
 		instance.SetSceneLoader(new (sceneId) =>
 			{

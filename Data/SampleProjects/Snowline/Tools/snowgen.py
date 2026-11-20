@@ -172,15 +172,14 @@ class Doc:
         self.components.append(record(owner, wire, **values))
 
     def script(self, owner, *behaviors):
-        """behaviors: (script guid, {property: value}) pairs."""
-        items = ['<string name="script">%s</string><bool name="enabled">true</bool><f32 name="updateInterval">0</f32>'
+        """behaviors: (class guid, {property: value}) pairs."""
+        items = ['<string name="class">%s</string><bool name="enabled">true</bool><f32 name="updateInterval">0</f32>'
                  '<array name="overrides" count="%d">%s</array>' % (g, len(o), "".join(override(k, v) for k, v in o.items()))
                  for g, o in behaviors]
-        self.components.append(record(owner, "script", behaviors=items))
+        self.components.append(record(owner, "behavior", behaviors=items))
 
     def level_script(self, guid, **overrides):
-        # The level script's block shares its system id (script) with the Script component.
-        self.settings.append(settings("SceneScriptSettings", script=guid,
+        self.settings.append(settings("sceneBehavior", **{"class": guid},
                                       overrides=[override(k, v) for k, v in overrides.items()]))
 
     def instance(self, prefab, pos=(0, 0, 0), rot=(0, 0, 0, 1), scale=(1, 1, 1), parent=None, ops=()):

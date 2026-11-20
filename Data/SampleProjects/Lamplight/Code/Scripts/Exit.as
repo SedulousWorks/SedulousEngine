@@ -11,6 +11,6 @@ class Exit : EntityBehavior
 	{
 		if (!thief.IsValid() || !other.IsValid() || other != thief)
 			return;
-		scene.Scripts.Emit("Escaped", self.GetWorldPosition());
+		scene.Behaviors.Emit("Escaped", self.GetWorldPosition());
 	}
 }

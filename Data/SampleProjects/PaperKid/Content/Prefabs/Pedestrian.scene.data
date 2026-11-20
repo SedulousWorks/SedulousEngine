@@ -27,14 +27,14 @@
 	<array name="components" count="2">
 		<object>
 			<string name="owner">b98a8c10-658b-584b-a2cc-21868674a3f2</string>
-			<string name="type">script</string>
+			<string name="type">behavior</string>
 			<object name="data">
 				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
+					<u64 name="type">17472135722874785959</u64>
 					<u32 name="version">1</u32>
 				</array>
 				<array name="behaviors" count="2">
-					<string name="script">9d34372f-a305-0a40-98fb-1578a4d48d24</string>
+					<string name="class">9d34372f-a305-0a40-98fb-1578a4d48d24</string>
 					<bool name="enabled">true</bool>
 					<f32 name="updateInterval">0</f32>
 					<array name="overrides" count="1">
@@ -42,7 +42,7 @@
 						<u8 name="kind">8</u8>
 						<string name="id">dc829861-918f-7a44-8cf2-7765a517ea85</string>
 					</array>
-					<string name="script">d2ca3802-da98-a348-84dc-7ad1116059ac</string>
+					<string name="class">d2ca3802-da98-a348-84dc-7ad1116059ac</string>
 					<bool name="enabled">true</bool>
 					<f32 name="updateInterval">0</f32>
 					<array name="overrides" count="1">

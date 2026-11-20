@@ -5,7 +5,7 @@ using Sedulous.Net.Replication;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.GUI;
@@ -32,7 +32,7 @@ static class EngineSceneCompositionTests
 		// Each of these is the kind that goes missing from a tool's private copy of the list.
 		Test.Assert(scratch.HasSystem<PropertyAnimatorComponentManager>());
 		Test.Assert(scratch.HasSystem<PostProcessSystem>());
-		Test.Assert(scratch.HasSystem<ScriptComponentManager>());
+		Test.Assert(scratch.HasSystem<BehaviorComponentManager>());
 		Test.Assert(scratch.HasSystem<GuiCanvasComponentManager>());
 		Test.Assert(scratch.HasSystem<AudioSourceComponentManager>());
 		Test.Assert(scratch.HasSystem<NetworkComponentManager>());

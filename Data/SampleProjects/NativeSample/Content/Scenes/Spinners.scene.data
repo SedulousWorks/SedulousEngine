@@ -822,13 +822,13 @@
 	</array>
 	<array name="systemSettings" count="5">
 		<object>
-			<string name="system">script</string>
+			<string name="system">sceneBehavior</string>
 			<array name="dataVersions" count="1">
-				<u64 name="type">12464980982266880842</u64>
+				<u64 name="type">10812655053158480213</u64>
 				<u32 name="version">1</u32>
 			</array>
 			<object name="settings">
-				<string name="script">00000000-0000-0000-0000-000000000000</string>
+				<string name="class">00000000-0000-0000-0000-000000000000</string>
 				<bool name="enabled">true</bool>
 				<array name="overrides" count="0"/>
 			</object>

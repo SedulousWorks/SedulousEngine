@@ -386,7 +386,7 @@ class Ball : EntityBehavior
 	{
 		int owner = ownerOf(seat);
 		if (owner == 0)
-			scene.Scripts.Emit("Note", what);
+			scene.Behaviors.Emit("Note", what);
 		else if (owner > 0)
 			Net.RpcNumberTo(owner, "note", double(what));
 	}
@@ -486,26 +486,26 @@ class Ball : EntityBehavior
 		if (reach != m_reachTold)
 		{
 			m_reachTold = reach;
-			scene.Scripts.Emit("InReach", reach ? 1 : 0);
+			scene.Behaviors.Emit("InReach", reach ? 1 : 0);
 		}
 		// The hunter whose mark you are, near: the game says so, quietly.
 		bool near = !over && seat >= 0 && hunterNear(seat);
 		if (near != m_nearTold)
 		{
 			m_nearTold = near;
-			scene.Scripts.Emit("HunterNear", near ? 1 : 0);
+			scene.Behaviors.Emit("HunterNear", near ? 1 : 0);
 		}
 		m_hud -= d;
 		if (m_hud <= 0.0f && seat >= 0)
 		{
 			m_hud = 0.25f;
-			scene.Scripts.Emit("Hud", Float4(float(scoreOf(seat)), timeLeft, float(costumeOf(targetOf(seat))),
+			scene.Behaviors.Emit("Hud", Float4(float(scoreOf(seat)), timeLeft, float(costumeOf(targetOf(seat))),
 			                                 float(rank(seat))));
 		}
 		if (!over && m_overTold)
 		{
 			m_overTold = false;
-			scene.Scripts.Emit("RoundStart", 0); // a new round: the host started another
+			scene.Behaviors.Emit("RoundStart", 0); // a new round: the host started another
 		}
 		if (over && !m_overTold)
 		{
@@ -517,7 +517,7 @@ class Ball : EntityBehavior
 				if (h != seat)
 					others.insertLast(float(scoreOf(h)));
 			}
-			scene.Scripts.Emit("RoundOver", Float4(float(seat >= 0 ? scoreOf(seat) : 0), others[0], others[1],
+			scene.Behaviors.Emit("RoundOver", Float4(float(seat >= 0 ? scoreOf(seat) : 0), others[0], others[1],
 			                                       others[2]));
 		}
 	}
@@ -583,7 +583,7 @@ class Ball : EntityBehavior
 	void onNetNote(int sender, double what)
 	{
 		if (Net.IsClient)
-			scene.Scripts.Emit("Note", int(what));
+			scene.Behaviors.Emit("Note", int(what));
 	}
 
 	// The host: a player has joined. They take a bot's seat with a score of their own, from zero: a

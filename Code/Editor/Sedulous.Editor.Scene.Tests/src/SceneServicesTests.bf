@@ -9,7 +9,7 @@ using Sedulous.Shell;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Script.Resource;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -121,12 +121,12 @@ class SceneServicesTests
 			let authored = scope Sedulous.Scene.Scene("authored");
 			EngineSceneComposition.AddAllSceneManagers(authored);
 			let spawner = authored.CreateEntity("Spawner");
-			let scripts = authored.GetSystem<ScriptComponentManager>();
+			let scripts = authored.GetSystem<BehaviorComponentManager>();
 			Test.Assert(scripts.AddBehavior(spawner, dropper.Id));
 			let behavior = scripts.Get(spawner).Behaviors[0];
 			behavior.SetOverride(ScriptPropertyNames.HashOf("drop"), .Asset(pickup.Id));
 			behavior.SetOverride(ScriptPropertyNames.HashOf("target"), .Entity(unused.Id));
-			authored.GetSystem<ScriptSceneSystem>().Settings.SetOverride(ScriptPropertyNames.HashOf("music"), .Asset(theme.Id));
+			authored.GetSystem<BehaviorSystem>().Settings.SetOverride(ScriptPropertyNames.HashOf("music"), .Asset(theme.Id));
 			Test.Assert(SceneStorage.SaveScene(authored, level) case .Ok);
 		}
 
@@ -179,7 +179,7 @@ class SceneServicesTests
 			let author = scope Sedulous.Scene.Scene("Crate");
 			EngineSceneComposition.AddAllSceneManagers(author);
 			let body = author.CreateEntity("Body");
-			let scripts = author.GetSystem<ScriptComponentManager>();
+			let scripts = author.GetSystem<BehaviorComponentManager>();
 			Test.Assert(scripts.AddBehavior(body, dropper.Id));
 			scripts.Get(body).Behaviors[0].SetOverride(drop, .Asset(inPrefab.Id));
 			let payload = scope MemoryStream();
@@ -195,7 +195,7 @@ class SceneServicesTests
 			defer delete payload;
 			let placed = PrefabSpawn.Spawn(authored, payload, crate.Id);
 			Test.Assert(placed.IsAssigned && (authored.PrefabInstanceCount == 1));
-			let behavior = authored.GetSystem<ScriptComponentManager>().Get(placed).Behaviors[0];
+			let behavior = authored.GetSystem<BehaviorComponentManager>().Get(placed).Behaviors[0];
 			let inherited = behavior.FindOverride(drop);
 			Test.Assert((inherited != null) && (inherited.Value.Id == inPrefab.Id), "the placement starts as the prefab");
 			behavior.SetOverride(drop, .Asset(onPlacement.Id));

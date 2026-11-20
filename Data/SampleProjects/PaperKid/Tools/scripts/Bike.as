@@ -124,7 +124,7 @@ class Bike : EntityBehavior
 		Input.Rumble(0.9f, 0.5f, 0.35f); // the jolt of a crash
 		// Road dust off the wheels (the bike's centre is 0.9 above them).
 		scene.Prefabs.Spawn(kFxDust, self.GetLocalTransform().Position + Float3(0.0f, -0.8f, 0.0f));
-		scene.Scripts.Emit("BikeCrashed", 1);
+		scene.Behaviors.Emit("BikeCrashed", 1);
 	}
 
 	// The block is cleared: confetti bursts over the rider, and hangs in the slow motion after.
@@ -172,7 +172,7 @@ class Bike : EntityBehavior
 				startThrowClip();
 				Audio.PlayOneShot(kThrowSound, AudioBus::Effects, 0.8f, Random.Range(0.9f, 1.15f));
 				Input.Rumble(0.0f, 0.25f, 0.05f); // the flick of a throw
-				scene.Scripts.Emit("PaperThrown", 1);
+				scene.Behaviors.Emit("PaperThrown", 1);
 			}
 		}
 		animateKid(dt);

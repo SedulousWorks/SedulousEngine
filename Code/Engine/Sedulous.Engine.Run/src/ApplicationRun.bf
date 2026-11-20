@@ -20,7 +20,7 @@ using Sedulous.Scene.Resource;
 using Sedulous.Script;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Input; // InputFacade
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Script.Facades;
 
 namespace Sedulous.Engine.Run;
@@ -109,7 +109,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// instance's scenes' behaviours share. The subsystem wires it like its own; its scripts find
 	/// this run's services (`Run`, `Input`, `Save`, `Net`, `Http`) through it, before the
 	/// application's.
-	private ScriptRunHost mRunHost = new .() ~ delete _;
+	private BehaviorRunHost mRunHost = new .() ~ delete _;
 	/// OWNED: `Input` to this run's scripts, over this run's action runtime alone.
 	private InputFacade mInputFacade = null ~ delete _;
 	/// OWNED: this run's save, and `Save` to its scripts over it.
@@ -171,7 +171,7 @@ class ApplicationRun : RunBase, IRunInput
 		Register<ActionRuntime>(mInputRuntime);
 		Register<IRunInput>(this); // the input subsystem drives it as the frame begins
 		Register<RunSave>(mSave);
-		Register<ScriptRunHost>(mRunHost);
+		Register<BehaviorRunHost>(mRunHost);
 		Register<HttpFacade>(mHttpFacade);
 		Register<RenderQualityFacade>(mQualityFacade);
 	}
@@ -515,7 +515,7 @@ class ApplicationRun : RunBase, IRunInput
 
 	/// This run's script host. The subsystem wires it; the instance's scenes' behaviours
 	/// and its game script run on it.
-	public ScriptRunHost RunHost => mRunHost;
+	public BehaviorRunHost RunHost => mRunHost;
 
 	public void SetSceneLoader(SceneLoader loader)
 	{
@@ -699,7 +699,7 @@ class ApplicationRun : RunBase, IRunInput
 		mGameClass = scriptClass;
 		mRunHost.HasGameScriptHold = true;
 		SubscribeGameHandlers(scriptClass);
-		InvokeGame(ScriptSceneSystem.cOnStart, default);
+		InvokeGame(BehaviorSystem.cOnStart, default);
 		GlobalLog(.Information, scope $"Run: game script '{scriptClass.ClassName}' launched");
 		return mGame != null;
 	}
@@ -720,7 +720,7 @@ class ApplicationRun : RunBase, IRunInput
 		mSave.Flush();
 		if (mGame != null)
 		{
-			InvokeGame(ScriptSceneSystem.cOnStop, default);
+			InvokeGame(BehaviorSystem.cOnStop, default);
 			if ((mGame != null) && (mRunHost.Runtime != null))
 			{
 				mRunHost.Runtime.CancelCoroutinesFor(mGame);
@@ -783,7 +783,7 @@ class ApplicationRun : RunBase, IRunInput
 		if (mGame != null)
 		{
 			var args = ScriptValue[1](.FromFloat(orchestrator));
-			InvokeGame(ScriptSceneSystem.cOnUpdate, .(&args[0], 1));
+			InvokeGame(BehaviorSystem.cOnUpdate, .(&args[0], 1));
 		}
 		mRunHost.Advance(gameplay);
 	}
@@ -828,7 +828,7 @@ class ApplicationRun : RunBase, IRunInput
 	{
 		for (let handler in scriptClass.Handlers)
 		{
-			let eventName = ScriptSceneSystem.EventNameOf(handler, .. scope .());
+			let eventName = BehaviorSystem.EventNameOf(handler, .. scope .());
 			if (eventName.IsEmpty || mGameSubscriptions.ContainsKey(eventName))
 				continue;
 			let name = new String(eventName);

@@ -179,7 +179,7 @@ class Player : EntityBehavior
 			m_moving = false;
 		}
 		if (tag)
-			scene.Scripts.Emit("Tag", owner()); // Ball.as finds the seat
+			scene.Behaviors.Emit("Tag", owner()); // Ball.as finds the seat
 		activity = m_moving ? kPlayerWalk : (dance ? kPlayerDance : kPlayerIdle);
 		playClip();
 	}

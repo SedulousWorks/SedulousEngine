@@ -11,7 +11,7 @@ using Sedulous.Script.Resource;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Composition;
 using Sedulous.Engine.Integration;
 
@@ -27,7 +27,7 @@ class AnimationWorld
 	public SubsystemManager Context = new .();
 	public SceneSubsystem Scenes;
 	public AnimationSubsystem Animations;
-	public ScriptSubsystem Scripts;
+	public BehaviorSubsystem Scripts;
 	public ScriptAnimationBridge Bridge = new .();
 	public SceneManager Manager = new .();
 	public RunBase SceneRun = new .("animations");
@@ -52,13 +52,13 @@ class AnimationWorld
 
 		Scenes = Context.AddSubsystem<SceneSubsystem>();
 		Animations = Context.AddSubsystem<AnimationSubsystem>();
-		Scripts = Context.AddSubsystem<ScriptSubsystem>();
+		Scripts = Context.AddSubsystem<BehaviorSubsystem>();
 		Scripts.Configure = new (runtime) =>
 			{
 				runtime.Bind(mSurface);
 				ClearAndDeleteItems!(runtime.Problems);
 			};
-		mScriptModule = .("script", => ScriptScene.AddScriptSceneManagers, null);
+		mScriptModule = .("behavior", => BehaviorScene.AddBehaviorSceneManagers, null);
 		mAnimationModule = .("animation", => AnimationScene.AddAnimationSceneManagers, null);
 		var modules = SceneModule*[2](&mScriptModule, &mAnimationModule);
 		Scenes.SetComposition(SceneComposition.Build(modules));
@@ -113,20 +113,20 @@ class AnimationWorld
 		return product;
 	}
 
-	public ScriptBehavior Attach(EntityHandle entity, ScriptClass scriptClass)
+	public AttachedBehavior Attach(EntityHandle entity, ScriptClass scriptClass)
 	{
-		let components = Scene.GetSystem<ScriptComponentManager>();
+		let components = Scene.GetSystem<BehaviorComponentManager>();
 		var component = components.Get(entity);
 		if (component == null)
 			component = components.Add(entity);
-		let behavior = new ScriptBehavior();
-		behavior.Script.SetDirect(scriptClass);
+		let behavior = new AttachedBehavior();
+		behavior.BehaviorClass.SetDirect(scriptClass);
 		component.Behaviors.Add(behavior);
 		return behavior;
 	}
 
-	public ScriptBehavior BehaviorOf(EntityHandle entity)
-		=> Scene.GetSystem<ScriptComponentManager>().Get(entity).Behaviors[0];
+	public AttachedBehavior BehaviorOf(EntityHandle entity)
+		=> Scene.GetSystem<BehaviorComponentManager>().Get(entity).Behaviors[0];
 
 	public ScriptValue Prop(EntityHandle entity, StringView name)
 	{
@@ -172,7 +172,7 @@ static class AnimationBridgeTests
 		bridge.OnOneShotEnded(.(null, .Invalid, Guid()));
 
 		let animation = scope AnimationSubsystem();
-		let scripts = scope ScriptSubsystem();
+		let scripts = scope BehaviorSubsystem();
 		bridge.Install(animation, scripts);
 		Test.Assert(bridge.Installed);
 		bridge.Install(animation, scripts); // re-points cleanly

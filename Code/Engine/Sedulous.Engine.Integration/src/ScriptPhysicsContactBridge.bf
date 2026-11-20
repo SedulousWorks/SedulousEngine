@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Physics;
 using Sedulous.Engine.Physics;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 
 namespace Sedulous.Engine.Integration;
 
@@ -16,7 +16,7 @@ class ScriptPhysicsContactBridge : IContactListener
 {
 	/// BORROWED, both.
 	private PhysicsSubsystem mPhysics = null;
-	private ScriptSubsystem mScripts = null;
+	private BehaviorSubsystem mScripts = null;
 
 	public ~this()
 	{
@@ -27,7 +27,7 @@ class ScriptPhysicsContactBridge : IContactListener
 
 	/// Points `physics` contacts at `scripts`. Calling again re-points cleanly, the prior
 	/// registration dropped first, so re-wiring is safe.
-	public void Install(PhysicsSubsystem physics, ScriptSubsystem scripts)
+	public void Install(PhysicsSubsystem physics, BehaviorSubsystem scripts)
 	{
 		Uninstall();
 		if ((physics == null) || (scripts == null))

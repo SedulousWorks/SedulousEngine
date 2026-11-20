@@ -233,7 +233,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mServices.Runs.Add(run); // it leaves the registry as it is destroyed, with the page
 		if (host != null)
 		{
-			if (let scripts = host.Subsystems.GetSubsystem<Sedulous.Engine.Script.ScriptSubsystem>())
+			if (let scripts = host.Subsystems.GetSubsystem<Sedulous.Engine.Behavior.BehaviorSubsystem>())
 				scripts.ConfigureHost(run.Scripts); // the surface and services, before its first runtime
 		}
 

@@ -250,7 +250,7 @@ class PlayerController : EntityBehavior
 		playAnim(0);
 		m_respawning = respawnDelay;
 		m_invulnerable = respawnDelay + graceTime;
-		scene.Scripts.Emit("PlayerDied", m_deaths);
+		scene.Behaviors.Emit("PlayerDied", m_deaths);
 	}
 
 	private void showModel(bool shown)

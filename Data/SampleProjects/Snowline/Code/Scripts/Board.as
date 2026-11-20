@@ -112,7 +112,7 @@ class Board : EntityBehavior
 		m_yaw = startYaw();
 		// The run starts with the rider's first frame: the clock (Snowline.as) and the medal ghosts
 		// count from here, so a rider level with a ghost crosses the line on its medal's time.
-		scene.Scripts.Emit("RunStarted", 0);
+		scene.Behaviors.Emit("RunStarted", 0);
 	}
 
 	// The skinned mesh the graph sits on: the model's root, its rig, the mesh under it. Found on
@@ -490,10 +490,10 @@ class Board : EntityBehavior
 			off = wrap(off - 3.14159f); // landing switch: judged against riding backward
 		bool clean = Abs(off) <= DegreesToRadians(landTolerance);
 		int halfTurns = int(Abs(spun) / 3.14159f + 0.5f);
-		scene.Scripts.Emit("TrickAir", int(air * 100.0f + 0.5f));
-		scene.Scripts.Emit("TrickSpin", halfTurns * 180);
-		scene.Scripts.Emit("TrickGrab", int(grabbed * 100.0f + 0.5f));
-		scene.Scripts.Emit("TrickLanded", clean ? 1 : 0);
+		scene.Behaviors.Emit("TrickAir", int(air * 100.0f + 0.5f));
+		scene.Behaviors.Emit("TrickSpin", halfTurns * 180);
+		scene.Behaviors.Emit("TrickGrab", int(grabbed * 100.0f + 0.5f));
+		scene.Behaviors.Emit("TrickLanded", clean ? 1 : 0);
 		if (clean)
 		{
 			Audio.PlayOneShot(kLandSound, AudioBus::Effects, 0.9f);
@@ -508,7 +508,7 @@ class Board : EntityBehavior
 	{
 		Audio.PlayOneShot(kCrashSound, AudioBus::Effects, 1.0f);
 		m_crash = crashTime;
-		scene.Scripts.Emit("RiderCrashed", 1);
+		scene.Behaviors.Emit("RiderCrashed", 1);
 		return Float3(v.X * crashKeep, v.Y, v.Z * crashKeep);
 	}
 
@@ -553,7 +553,7 @@ class Board : EntityBehavior
 		if (dx * dx + dz * dz < 0.25f)
 			return; // this one again
 		m_lastTrunk = p;
-		scene.Scripts.Emit("NearMiss", 1);
+		scene.Behaviors.Emit("NearMiss", 1);
 	}
 
 	private float wrap(float a)

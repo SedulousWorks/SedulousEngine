@@ -220,7 +220,7 @@ class ApplicationRunTests
 		Test.Assert(RunServices.Get<NetworkController>(run) === instance.Network);
 		Test.Assert(RunServices.Get<ActionRuntime>(run) === instance.InputRuntime);
 		Test.Assert(RunServices.Get<RunSave>(run) === instance.Saves);
-		Test.Assert(RunServices.Get<Sedulous.Engine.Script.ScriptRunHost>(run) === instance.RunHost);
+		Test.Assert(RunServices.Get<Sedulous.Engine.Behavior.BehaviorRunHost>(run) === instance.RunHost);
 		Test.Assert(RunServices.Get<Sedulous.Http.Script.HttpFacade>(run) === instance.Http);
 
 		instance.Start();

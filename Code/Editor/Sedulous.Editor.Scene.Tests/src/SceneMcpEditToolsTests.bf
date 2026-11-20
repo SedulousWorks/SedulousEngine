@@ -197,16 +197,16 @@ class SceneMcpEditToolsTests
 			Test.Assert(missing.Error.StartsWith("no prefab"), missing.Error);
 		}
 
-		// A script on an entity: entity_inspect lists the behaviour the component holds (its
+		// A behavior on an entity: entity_inspect lists the behaviour the component holds (its
 		// class is not cooked here, so its properties would be named by hash).
 		{
 			let script = Guid.Create();
 			let target = page.EditContext.Resolve(Guid.Parse(platformId));
-			let scripts = page.EditContext.FindManager(typeof(Sedulous.Engine.Script.ScriptComponent));
-			page.EditContext.AddComponent(Guid.Parse(platformId), typeof(Sedulous.Engine.Script.ScriptComponent));
-			let component = (Sedulous.Engine.Script.ScriptComponent*)scripts.GetComponentAddress(target);
-			let behavior = new Sedulous.Engine.Script.ScriptBehavior();
-			behavior.Script = .(script);
+			let scripts = page.EditContext.FindManager(typeof(Sedulous.Engine.Behavior.BehaviorComponent));
+			page.EditContext.AddComponent(Guid.Parse(platformId), typeof(Sedulous.Engine.Behavior.BehaviorComponent));
+			let component = (Sedulous.Engine.Behavior.BehaviorComponent*)scripts.GetComponentAddress(target);
+			let behavior = new Sedulous.Engine.Behavior.AttachedBehavior();
+			behavior.BehaviorClass = .(script);
 			component.Behaviors.Add(behavior);
 			let inspected = Call(server, "entity_inspect", "{\"entity\":\"Platform\"}");
 			defer delete inspected;
@@ -214,12 +214,13 @@ class SceneMcpEditToolsTests
 			let components = inspected.Payload.Get("entity").Get("components");
 			JsonValue behaviors = null;
 			for (int i < components.Count)
-				if (components.At(i).Get("type").AsString() == "script")
+				if (components.At(i).Get("type").AsString() == "behavior")
 					behaviors = components.At(i).Get("behaviors");
 			Test.Assert((behaviors != null) && (behaviors.Count == 1));
-			Test.Assert(behaviors.At(0).Get("script").AsString() == script.ToString(.. scope .()));
+			Test.Assert(behaviors.At(0).Get("class").AsString() == script.ToString(.. scope .()));
+			Test.Assert(behaviors.At(0).Get("className").IsNull); // not cooked
 			Test.Assert(behaviors.At(0).Get("enabled").AsBool());
-			let refused = Call(server, "behavior_add", scope $"{{\"entity\":\"Platform\",\"script\":\"{script}\"}}");
+			let refused = Call(server, "behavior_add", scope $"{{\"entity\":\"Platform\",\"class\":\"{script}\"}}");
 			defer delete refused;
 			Test.Assert(refused.Error.Contains("is not a cooked script class"), refused.Error);
 		}

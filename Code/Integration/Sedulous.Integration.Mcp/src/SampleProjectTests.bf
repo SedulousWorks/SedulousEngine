@@ -8,7 +8,7 @@ using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Script.Resource;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
@@ -166,19 +166,19 @@ static class SampleProjectTests
 			EngineSceneComposition.AddAllSceneManagers(scene);
 			if (!(SceneStorage.LoadScene(instance, scene) case .Ok))
 				continue;
-			let scripts = scene.GetSystem<ScriptComponentManager>();
+			let scripts = scene.GetSystem<BehaviorComponentManager>();
 			for (let component in scripts.Dense)
 			{
 				for (let behavior in component.Behaviors)
-					count += CheckDeclared(project, instance.Name, behavior.Script.Id, behavior.Overrides);
+					count += CheckDeclared(project, instance.Name, behavior.BehaviorClass.Id, behavior.Overrides);
 			}
 			for (let system in scene.Systems)
 			{
-				if (system.SettingsType != typeof(SceneScriptSettings))
+				if (system.SettingsType != typeof(SceneBehaviorSettings))
 					continue;
-				let level = (SceneScriptSettings)Internal.UnsafeCastToObject(system.SettingsInstance);
-				if (level.Script.Id != Guid.Empty)
-					count += CheckDeclared(project, instance.Name, level.Script.Id, level.Overrides);
+				let level = (SceneBehaviorSettings)Internal.UnsafeCastToObject(system.SettingsInstance);
+				if (level.BehaviorClass.Id != Guid.Empty)
+					count += CheckDeclared(project, instance.Name, level.BehaviorClass.Id, level.Overrides);
 			}
 		}
 		for (let child in group.Groups)

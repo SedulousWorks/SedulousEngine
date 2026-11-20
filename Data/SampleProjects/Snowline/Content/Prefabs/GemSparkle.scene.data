@@ -27,14 +27,14 @@
 	<array name="components" count="2">
 		<object>
 			<string name="owner">8da88aa7-4815-58f3-97f6-e53b5c0e20a7</string>
-			<string name="type">script</string>
+			<string name="type">behavior</string>
 			<object name="data">
 				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
+					<u64 name="type">17472135722874785959</u64>
 					<u32 name="version">1</u32>
 				</array>
 				<array name="behaviors" count="1">
-					<string name="script">148654c9-bb40-4644-8530-d977a02243c7</string>
+					<string name="class">148654c9-bb40-4644-8530-d977a02243c7</string>
 					<bool name="enabled">true</bool>
 					<f32 name="updateInterval">0</f32>
 					<array name="overrides" count="1">

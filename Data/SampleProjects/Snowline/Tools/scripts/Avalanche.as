@@ -63,7 +63,7 @@ class Avalanche : EntityBehavior
 			Entity rumble = child("Rumble");
 			scene.Audio.SetVolume(rumble, 0.0f, 0.0f);
 			scene.Audio.Play(rumble);
-			scene.Scripts.Emit("AvalancheReleased", int(lead));
+			scene.Behaviors.Emit("AvalancheReleased", int(lead));
 		}
 		if (m_passing >= 0.0f)
 		{
@@ -82,8 +82,8 @@ class Avalanche : EntityBehavior
 		float gap = rider - follow.Distance;
 		if (gap <= reach)
 		{
-			scene.Scripts.Emit("AvalancheCaught", 1);
-			scene.Scripts.Emit("AvalancheGap", 0);
+			scene.Behaviors.Emit("AvalancheCaught", 1);
+			scene.Behaviors.Emit("AvalancheGap", 0);
 			Input.Rumble(1.0f, 0.6f, 0.6f);
 			m_passing = passSeconds;
 			return;
@@ -92,7 +92,7 @@ class Avalanche : EntityBehavior
 		if (metres != m_lastGap)
 		{
 			m_lastGap = metres;
-			scene.Scripts.Emit("AvalancheGap", metres);
+			scene.Behaviors.Emit("AvalancheGap", metres);
 		}
 		// Louder and harder on the pad the closer it is: faint at hearFrom, loudest at reach.
 		float near = 1.0f - (gap - reach) / (hearFrom - reach);

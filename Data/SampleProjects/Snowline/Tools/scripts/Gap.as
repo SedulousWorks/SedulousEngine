@@ -53,9 +53,9 @@ class Gap : EntityBehavior
 	{
 		m_armed = false;
 		if (along < short)
-			scene.Scripts.Emit("GapShort", int(along * 100.0f + 0.5f));
+			scene.Behaviors.Emit("GapShort", int(along * 100.0f + 0.5f));
 		else
-			scene.Scripts.Emit("GapCleared", int(along * 100.0f + 0.5f));
+			scene.Behaviors.Emit("GapCleared", int(along * 100.0f + 0.5f));
 	}
 
 	// A new run: the gap waits for the rider again.

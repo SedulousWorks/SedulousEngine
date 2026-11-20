@@ -10,7 +10,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Camera;
 using Sedulous.Core.IO;
 using Sedulous.Script.Resource;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Navigation;
 using Sedulous.Editor.Navigation;
 using Sedulous.Editor.App;
@@ -1254,18 +1254,18 @@ static class SceneMcpTools
 				}
 				// The behaviours are a hidden list the reflected fields leave out: what each one
 				// runs and what its properties are set to, named from its cooked class.
-				if (type == typeof(ScriptComponent))
-					component.Set("behaviors", BehaviorsJson((ScriptComponent*)address, scene, resources));
+				if (type == typeof(BehaviorComponent))
+					component.Set("behaviors", BehaviorsJson((BehaviorComponent*)address, scene, resources));
 				components.Add(component);
 			});
 		json.Set("components", components);
 		return json;
 	}
 
-	/// A Script component's behaviours: each one's script (its guid, and its class when the
-	/// class is cooked), whether it runs, and its property overrides by name (by hash, #n, when
+	/// A Behavior component's behaviours: each one's class (its script asset's guid, and its
+	/// className when the class is cooked), whether it runs, and its property overrides by name (by hash, #n, when
 	/// the class is not at hand to name them).
-	private static JsonValue BehaviorsJson(ScriptComponent* component, Sedulous.Scene.Scene scene, ResourceManager resources)
+	private static JsonValue BehaviorsJson(BehaviorComponent* component, Sedulous.Scene.Scene scene, ResourceManager resources)
 	{
 		let list = JsonValue.MakeArray();
 		if ((component == null) || (component.Behaviors == null))
@@ -1273,11 +1273,11 @@ static class SceneMcpTools
 		for (let behavior in component.Behaviors)
 		{
 			let json = JsonValue.MakeObject();
-			let id = behavior.Script.Id;
-			json.Set("script", FieldJson.GuidJson(id));
-			let scriptClass = (behavior.Script.Get != null) ? behavior.Script.Get
+			let id = behavior.BehaviorClass.Id;
+			json.Set("class", FieldJson.GuidJson(id));
+			let scriptClass = (behavior.BehaviorClass.Get != null) ? behavior.BehaviorClass.Get
 				: (((resources != null) && id.IsSet) ? resources.Bind<ScriptClass>(id).Get : null);
-			json.Set("class", (scriptClass != null) ? JsonValue.MakeString(scriptClass.ClassName) : JsonValue.MakeNull());
+			json.Set("className", (scriptClass != null) ? JsonValue.MakeString(scriptClass.ClassName) : JsonValue.MakeNull());
 			json.Set("enabled", JsonValue.MakeBool(behavior.Enabled));
 			let properties = JsonValue.MakeObject();
 			for (let o in behavior.Overrides)
@@ -1291,7 +1291,7 @@ static class SceneMcpTools
 			// properties, where `properties` holds what is authored.
 			if ((behavior.Instance != null) && (scriptClass != null))
 			{
-				let system = scene.GetSystem<ScriptSceneSystem>();
+				let system = scene.GetSystem<BehaviorSystem>();
 				let runtime = ((system != null) && (system.Host != null)) ? system.Host.Runtime : null;
 				if (runtime != null)
 				{

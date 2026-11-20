@@ -6,7 +6,7 @@ using Sedulous.Messaging;
 using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Engine.Run;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Script.Facades;
 using Sedulous.Engine.Input; // InputFacade
 using Sedulous.Runtime; // the application's services
@@ -137,7 +137,7 @@ static class GameScriptTests
 				Entity self;
 				Scene@ scene;
 				bool done = false;
-				void onUpdate(float dt) { if (!done) { done = true; scene.Scripts.Emit("Score", 3); } }
+				void onUpdate(float dt) { if (!done) { done = true; scene.Behaviors.Emit("Score", 3); } }
 			}
 			""", .Entity);
 		Test.Assert(run.Instance.StartRunBehavior(game));
@@ -145,11 +145,11 @@ static class GameScriptTests
 		// A scene the instance created: its behaviours run on the instance's host, and its
 		// bus IS the run bus.
 		let level = run.Instance.CreateScene("level");
-		let components = level.GetSystem<ScriptComponentManager>();
+		let components = level.GetSystem<BehaviorComponentManager>();
 		Test.Assert(components != null, "the run's scenes compose the script managers");
 		let e = level.CreateEntity("e");
-		let behavior = new ScriptBehavior();
-		behavior.Script.SetDirect(shouter);
+		let behavior = new AttachedBehavior();
+		behavior.BehaviorClass.SetDirect(shouter);
 		components.Add(e).Behaviors.Add(behavior);
 		level.Start();
 		level.SetSimulationEnabled(true);
@@ -172,16 +172,16 @@ static class GameScriptTests
 			{
 				Entity self;
 				Scene@ scene;
-				void onPing(int value) { scene.Scripts.Emit("Score", value); }
+				void onPing(int value) { scene.Behaviors.Emit("Score", value); }
 			}
 			""", .Entity);
 		Test.Assert(run.Instance.StartRunBehavior(game));
 
 		let level = run.Instance.CreateScene("level");
-		let components = level.GetSystem<ScriptComponentManager>();
+		let components = level.GetSystem<BehaviorComponentManager>();
 		let e = level.CreateEntity("e");
-		let behavior = new ScriptBehavior();
-		behavior.Script.SetDirect(listener);
+		let behavior = new AttachedBehavior();
+		behavior.BehaviorClass.SetDirect(listener);
 		components.Add(e).Behaviors.Add(behavior);
 		level.Start();
 		level.SetSimulationEnabled(true);

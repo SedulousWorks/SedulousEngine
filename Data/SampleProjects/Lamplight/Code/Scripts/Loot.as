@@ -28,9 +28,9 @@ class Loot : EntityBehavior
 			return;
 		Audio.PlayOneShot3DPath(target ? "Audio/Taken" : "Audio/Coins", a);
 		if (target)
-			scene.Scripts.Emit("Taken", value);
+			scene.Behaviors.Emit("Taken", value);
 		else
-			scene.Scripts.Emit("Loot", value);
+			scene.Behaviors.Emit("Loot", value);
 		self.Destroy();
 	}
 }

@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Input;
 using Sedulous.Script;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 
 namespace Sedulous.Editor.Play;
 
@@ -52,7 +52,7 @@ extension GameEditorPage
 	{
 		if (!mRunning || (mScene == null))
 			return false;
-		let level = mScene.GetSystem<ScriptSceneSystem>();
+		let level = mScene.GetSystem<BehaviorSystem>();
 		return (level != null) && level.GetLevelProperty(name, ref value);
 	}
 

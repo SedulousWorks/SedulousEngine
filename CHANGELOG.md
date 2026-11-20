@@ -121,6 +121,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 - Scripts: a run behavior's handlers take the names the other kinds use: `launch`, `update` and
   `exit` are now `onStart`, `onUpdate` and `onStop`.
+- Scripts: `scene.Scripts` is `scene.Behaviors`, and its `AddBehavior` takes a `behaviorClass`.
+  Editor: the Script component is the Behavior component, with a Class row, and the scene's Scene
+  Script settings are Scene Behavior settings. MCP: `behavior_add` takes `class`, and an entity's
+  behaviors show their `class` asset and `className`. A scene stores the component as `behavior`
+  and the settings as `sceneBehavior`; the sample projects are migrated.
 - Editor and MCP: a script asset no longer has a Class Name setting, and `script_validate` no
   longer takes `className`: the class a script plays is the one deriving from a kind, and
   `script_validate` returns its `kind` beside its `className`.

@@ -82,7 +82,7 @@ class Guard : EntityBehavior
 			if (awareness >= 1.0f)
 			{
 				m_state = kChase;
-				scene.Scripts.Emit("Spotted", 0); // the game counts it (Lamplight.as)
+				scene.Behaviors.Emit("Spotted", 0); // the game counts it (Lamplight.as)
 			}
 			else if (awareness < 0.25f)
 			{
@@ -96,7 +96,7 @@ class Guard : EntityBehavior
 			if (flatDistance(self.GetWorldPosition(), t) <= catchDistance)
 			{
 				// Caught: once (stand down now; the event reaches everyone next frame).
-				scene.Scripts.Emit("Caught", self.GetWorldPosition());
+				scene.Behaviors.Emit("Caught", self.GetWorldPosition());
 				standDown();
 			}
 			else if (awareness < 0.5f)

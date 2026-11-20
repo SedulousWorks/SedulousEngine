@@ -264,8 +264,8 @@
                     <Panel class="type-cell" tooltip="AudioReverbZoneComponent"><Image class="row-icon cat-audio" src="Editor/Icons/Types/AudioReverbZoneComponent.svg"/><Label class="type-name" text="Audio Reverb Zone"/></Panel>
                 </Panel>
                 <Panel class="type-group"><Label class="type-group-name" text="Scripting"/>
-                    <Panel class="type-cell" tooltip="ScriptComponent"><Image class="row-icon cat-scripting" src="Editor/Icons/Types/ScriptComponent.svg"/><Label class="type-name" text="Script"/></Panel>
-                    <Panel class="type-cell" tooltip="SceneScriptSettings"><Image class="row-icon cat-scripting" src="Editor/Icons/Types/SceneScriptSettings.svg"/><Label class="type-name" text="Scene Script Settings"/></Panel>
+                    <Panel class="type-cell" tooltip="BehaviorComponent"><Image class="row-icon cat-scripting" src="Editor/Icons/Types/BehaviorComponent.svg"/><Label class="type-name" text="Script"/></Panel>
+                    <Panel class="type-cell" tooltip="SceneBehaviorSettings"><Image class="row-icon cat-scripting" src="Editor/Icons/Types/SceneBehaviorSettings.svg"/><Label class="type-name" text="Scene Script Settings"/></Panel>
                 </Panel>
                 <Panel class="type-group"><Label class="type-group-name" text="Animation"/>
                     <Panel class="type-cell" tooltip="SkeletalAnimationComponent"><Image class="row-icon cat-animation" src="Editor/Icons/Types/SkeletalAnimationComponent.svg"/><Label class="type-name" text="Skeletal Animation"/></Panel>

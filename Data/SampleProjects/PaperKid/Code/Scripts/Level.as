@@ -61,7 +61,7 @@ class Level : SceneBehavior
 	{
 		m_timeLeft = timeLimit;
 		m_papersLeft = papers;
-		scene.Scripts.Emit("PapersLeft", m_papersLeft);
+		scene.Behaviors.Emit("PapersLeft", m_papersLeft);
 		updateHud();
 	}
 
@@ -70,9 +70,9 @@ class Level : SceneBehavior
 		if (!m_trafficSet)
 		{
 			m_trafficSet = true;
-			scene.Scripts.Emit("TrafficSpeed", trafficSpeed);
-			scene.Scripts.Emit("PedestrianSpeed", pedestrianSpeed);
-			scene.Scripts.Emit("BlockRing", ring);
+			scene.Behaviors.Emit("TrafficSpeed", trafficSpeed);
+			scene.Behaviors.Emit("PedestrianSpeed", pedestrianSpeed);
+			scene.Behaviors.Emit("BlockRing", ring);
 		}
 		if (m_ended)
 		{
@@ -116,7 +116,7 @@ class Level : SceneBehavior
 			return;
 		}
 		m_papersLeft -= 1;
-		scene.Scripts.Emit("PapersLeft", m_papersLeft);
+		scene.Behaviors.Emit("PapersLeft", m_papersLeft);
 		if (m_papersLeft == 0)
 		{
 			m_graceLeft = paperGrace;
@@ -182,11 +182,11 @@ class Level : SceneBehavior
 		updateHud();
 		if (cleared)
 		{
-			scene.Scripts.Emit("QuotaMet", int(m_timeLeft));
+			scene.Behaviors.Emit("QuotaMet", int(m_timeLeft));
 		}
 		else
 		{
-			scene.Scripts.Emit("LevelFailed", reason);
+			scene.Behaviors.Emit("LevelFailed", reason);
 		}
 	}
 

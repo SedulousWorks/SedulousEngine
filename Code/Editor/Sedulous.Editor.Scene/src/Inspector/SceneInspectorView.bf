@@ -587,7 +587,7 @@ class SceneInspectorView
 		return (extras != null) && extras.Run(name);
 	}
 
-	/// A section's extras' source `index` (a script component's behaviours, a block's collision
+	/// A section's extras' source `index` (a behavior component's behaviours, a block's collision
 	/// groups); null: none.
 	public IPropertySource ExtraSource(StringView title, int index)
 	{

@@ -53,8 +53,8 @@ class Kicker : EntityBehavior
 			// The lip's angle above level: its angle on the ramp less how far the kicker tips down
 			// the slope it stands on.
 			float tilt = RadiansToDegrees(Atan2(-forward.Y, flat));
-			scene.Scripts.Emit("KickerAngle", int((lipAngle - tilt) * 10.0f + 0.5f));
-			scene.Scripts.Emit("KickerLaunch", int(speed * 100.0f + 0.5f));
+			scene.Behaviors.Emit("KickerAngle", int((lipAngle - tilt) * 10.0f + 0.5f));
+			scene.Behaviors.Emit("KickerLaunch", int(speed * 100.0f + 0.5f));
 			m_entrySpeed = -1.0f;
 		}
 		if (along > lip + 2.0f)

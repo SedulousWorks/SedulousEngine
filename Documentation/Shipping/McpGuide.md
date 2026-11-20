@@ -349,11 +349,11 @@ one whose prefab is not in the project.
 
 To build ON AN OPEN PAGE instead, live and undoable (the editor host): `entity_create`,
 `entity_update` (name, parent, active, transform), `entity_delete`, `component_add`,
-`component_remove`, `prefab_spawn`, `behavior_add` and `behavior_set` (a script behaviour's
-properties by name, typed by its cooked class), with `component_set` for a component's fields.
-Each call is one undo step, the page dirty after and nothing saved; an entity is named by guid,
-name or slash path; each answers the entity as `entity_inspect` shows it, a Script component's
-`behaviors` included. The user watches the level take shape and can undo any step; `file.save`
+`component_remove`, `prefab_spawn`, `behavior_add` (its `class` the behavior's script asset) and
+`behavior_set` (a behavior's properties by name, typed by its cooked class), with `component_set`
+for a component's fields. Each call is one undo step, the page dirty after and nothing saved; an
+entity is named by guid, name or slash path; each answers the entity as `entity_inspect` shows it,
+a Behavior component's `behaviors` (each its `class` asset and `className`) included. The user watches the level take shape and can undo any step; `file.save`
 (action_execute) keeps it. XML suits a whole level written at once, these tools an edit.
 
 **A game's look (render profiles)**: a scene's `environment` and `postprocess` settings take

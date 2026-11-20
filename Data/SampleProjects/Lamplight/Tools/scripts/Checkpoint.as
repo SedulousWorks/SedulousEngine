@@ -14,6 +14,6 @@ class Checkpoint : EntityBehavior
 		if (m_reached || !thief.IsValid() || !other.IsValid() || other != thief)
 			return;
 		m_reached = true;
-		scene.Scripts.Emit("Checkpoint", self.GetWorldPosition());
+		scene.Behaviors.Emit("Checkpoint", self.GetWorldPosition());
 	}
 }

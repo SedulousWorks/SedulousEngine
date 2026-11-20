@@ -10,7 +10,7 @@ using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Scene;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Composition;
 using Sedulous.Engine.Integration;
 
@@ -27,7 +27,7 @@ class ContactWorld
 	public SubsystemManager Context = new .();
 	public SceneSubsystem Scenes;
 	public PhysicsSubsystem Physics;
-	public ScriptSubsystem Scripts;
+	public BehaviorSubsystem Scripts;
 	public ScriptPhysicsContactBridge Bridge = new .();
 	public SceneManager Manager = new .();
 	/// The scene's run: its bus is the scene's.
@@ -53,13 +53,13 @@ class ContactWorld
 
 		Scenes = Context.AddSubsystem<SceneSubsystem>();
 		Physics = Context.AddSubsystem<PhysicsSubsystem>();
-		Scripts = Context.AddSubsystem<ScriptSubsystem>();
+		Scripts = Context.AddSubsystem<BehaviorSubsystem>();
 		Scripts.Configure = new (runtime) =>
 			{
 				runtime.Bind(mSurface);
 				ClearAndDeleteItems!(runtime.Problems);
 			};
-		mScriptModule = .("script", => ScriptScene.AddScriptSceneManagers, null);
+		mScriptModule = .("behavior", => BehaviorScene.AddBehaviorSceneManagers, null);
 		mPhysicsModule = .("physics", => PhysicsScene.AddPhysicsSceneManagers, null);
 		var modules = SceneModule*[2](&mScriptModule, &mPhysicsModule);
 		Scenes.SetComposition(SceneComposition.Build(modules));
@@ -104,7 +104,7 @@ class ContactWorld
 	}
 
 	/// Compiles and harvests a class through the run's own runtime, as the fixture in
-	/// Engine.Script.Tests does: an entity's behavior.
+	/// Engine.Behavior.Tests does: an entity's behavior.
 	public ScriptClass Class(StringView className, StringView source)
 	{
 		let runtime = Scripts.Host.EnsureRuntime(AngelScriptBackend.cLanguage);
@@ -128,20 +128,20 @@ class ContactWorld
 		return product;
 	}
 
-	public ScriptBehavior Attach(EntityHandle entity, ScriptClass scriptClass)
+	public AttachedBehavior Attach(EntityHandle entity, ScriptClass scriptClass)
 	{
-		let components = Scene.GetSystem<ScriptComponentManager>();
+		let components = Scene.GetSystem<BehaviorComponentManager>();
 		var component = components.Get(entity);
 		if (component == null)
 			component = components.Add(entity);
-		let behavior = new ScriptBehavior();
-		behavior.Script.SetDirect(scriptClass);
+		let behavior = new AttachedBehavior();
+		behavior.BehaviorClass.SetDirect(scriptClass);
 		component.Behaviors.Add(behavior);
 		return behavior;
 	}
 
-	public ScriptBehavior BehaviorOf(EntityHandle entity)
-		=> Scene.GetSystem<ScriptComponentManager>().Get(entity).Behaviors[0];
+	public AttachedBehavior BehaviorOf(EntityHandle entity)
+		=> Scene.GetSystem<BehaviorComponentManager>().Get(entity).Behaviors[0];
 
 	public ScriptValue Prop(EntityHandle entity, StringView name)
 	{

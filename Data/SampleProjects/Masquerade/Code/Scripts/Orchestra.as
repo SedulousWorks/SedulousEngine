@@ -49,7 +49,7 @@ class Orchestra : EntityBehavior
 		if (cue != m_told) // every peer tells its own ball when the (replicated) cue changes
 		{
 			m_told = cue;
-			scene.Scripts.Emit("Cue", cue);
+			scene.Behaviors.Emit("Cue", cue);
 			Audio.PlayMusic(cue == kOrchestraGather ? kAir : (cue == kOrchestraDance ? kDanceMusic : kWaltz),
 			                kOrchestraCrossfade, kOrchestraMusicVolume);
 		}

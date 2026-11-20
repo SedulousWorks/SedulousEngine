@@ -7,7 +7,7 @@ using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Resource;
 using Sedulous.Script.Resource;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
@@ -97,10 +97,10 @@ static class SceneMcpEditTools
 			let schema = scope SchemaBuilder();
 			schema.Str("page", cPage);
 			schema.Str("entity", cEntity, true);
-			schema.Str("script", "the script class asset's guid (asset_list: type ScriptClassAsset); it must be cooked", true);
+			schema.Str("class", "the behavior's script asset guid (asset_list: type ScriptClassAsset), an EntityBehavior; it must be cooked", true);
 			PropertiesArg(schema);
 			server.RegisterTool("behavior_add",
-				"Attach a script behaviour to an entity on a scene page, adding its Script component when it has none, with `properties` set over the class's defaults: one undo step. The class must be cooked (asset_cook): its properties and their types come from the cooked class. Returns the entity as entity_inspect shows it and the behaviour's index.",
+				"Attach a behavior (an EntityBehavior class) to an entity on a scene page, adding its Behavior component when it has none, with `properties` set over the class's defaults: one undo step. The class must be cooked (asset_cook): its properties and their types come from the cooked class. Returns the entity as entity_inspect shows it and the behavior's index.",
 				schema.Build(), .Creates,
 				new (arguments, outResult, outError) => AddBehavior(context, arguments, outResult, outError));
 		}
@@ -299,7 +299,7 @@ static class SceneMcpEditTools
 			return false;
 		if (!RequiredEntity(edit, arguments, "entity", outError, let id))
 			return false;
-		if (!McpGuid(arguments, "script", outError, let script))
+		if (!McpGuid(arguments, "class", outError, let script))
 			return false;
 		let scriptClass = CookedClass(context, script, outError);
 		if (scriptClass == null)
@@ -311,24 +311,24 @@ static class SceneMcpEditTools
 			return false;
 
 		let handle = edit.Resolve(id);
-		let scripts = edit.FindManager(typeof(ScriptComponent));
+		let scripts = edit.FindManager(typeof(BehaviorComponent));
 		if (scripts == null)
 		{
-			outError.Append("this scene has no script components");
+			outError.Append("this scene has no behavior components");
 			return false;
 		}
 		BeginStep(edit);
 		if (!scripts.HasComponent(handle))
-			edit.AddComponent(id, typeof(ScriptComponent));
+			edit.AddComponent(id, typeof(BehaviorComponent));
 		int index = -1;
-		let target = scope ComponentTarget(edit, id, typeof(ScriptComponent));
+		let target = scope ComponentTarget(edit, id, typeof(BehaviorComponent));
 		target.Mutate(scope [&index, &script, &values](p) =>
 			{
-				let c = (ScriptComponent*)p;
+				let c = (BehaviorComponent*)p;
 				if (c.Behaviors == null)
 					return;
-				let behavior = new ScriptBehavior();
-				behavior.Script = Ref<ScriptClass>(script);
+				let behavior = new AttachedBehavior();
+				behavior.BehaviorClass = Ref<ScriptClass>(script);
 				for (let v in values)
 					behavior.SetOverride(v.hash, Owned(v.value));
 				c.Behaviors.Add(behavior);
@@ -337,7 +337,7 @@ static class SceneMcpEditTools
 		EndStep(edit);
 		if (index < 0)
 		{
-			outError.Append("the behaviour was not added (the Script component would not take it)");
+			outError.Append("the behaviour was not added (the Behavior component would not take it)");
 			return false;
 		}
 		Answer(context, page, edit, id, outResult);
@@ -353,15 +353,15 @@ static class SceneMcpEditTools
 		if (!RequiredEntity(edit, arguments, "entity", outError, let id))
 			return false;
 		let handle = edit.Resolve(id);
-		let scripts = edit.FindManager(typeof(ScriptComponent));
-		let component = ((scripts != null) && scripts.HasComponent(handle)) ? (ScriptComponent*)scripts.GetComponentAddress(handle) : null;
+		let scripts = edit.FindManager(typeof(BehaviorComponent));
+		let component = ((scripts != null) && scripts.HasComponent(handle)) ? (BehaviorComponent*)scripts.GetComponentAddress(handle) : null;
 		let index = (int)(arguments.Get("index")?.AsInt() ?? 0);
 		if ((component == null) || (component.Behaviors == null) || (index < 0) || (index >= component.Behaviors.Count))
 		{
-			outError.AppendF("'{}' has no behaviour {} (entity_inspect lists its Script component's)", edit.Scene.GetEntityName(handle), index);
+			outError.AppendF("'{}' has no behaviour {} (entity_inspect lists its Behavior component's)", edit.Scene.GetEntityName(handle), index);
 			return false;
 		}
-		let scriptClass = CookedClass(context, component.Behaviors[index].Script.Id, outError);
+		let scriptClass = CookedClass(context, component.Behaviors[index].BehaviorClass.Id, outError);
 		if (scriptClass == null)
 			return false;
 		let values = scope List<(uint64 hash, ScriptPropertyValue value)>();
@@ -370,10 +370,10 @@ static class SceneMcpEditTools
 			return false;
 		let enabledArg = arguments.Get("enabled");
 		BeginStep(edit);
-		let target = scope ComponentTarget(edit, id, typeof(ScriptComponent));
+		let target = scope ComponentTarget(edit, id, typeof(BehaviorComponent));
 		target.Mutate(scope [&index, &values, &enabledArg](p) =>
 			{
-				let c = (ScriptComponent*)p;
+				let c = (BehaviorComponent*)p;
 				if ((c.Behaviors == null) || (index >= c.Behaviors.Count))
 					return;
 				for (let v in values)

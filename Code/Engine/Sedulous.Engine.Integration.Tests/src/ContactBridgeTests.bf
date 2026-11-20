@@ -4,7 +4,7 @@ using Sedulous.Physics;
 using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Engine.Physics;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Integration;
 
 namespace Sedulous.Engine.Integration.Tests;

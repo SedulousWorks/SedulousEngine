@@ -18,7 +18,7 @@ class Pebble : EntityBehavior
 			return;
 		m_landed = true;
 		Audio.PlayOneShot3DPath("Audio/StepStone2", point);
-		scene.Scripts.Emit("Noise", Float4(point.X, point.Y, point.Z, loudness));
+		scene.Behaviors.Emit("Noise", Float4(point.X, point.Y, point.Z, loudness));
 	}
 
 	void onUpdate(float dt)

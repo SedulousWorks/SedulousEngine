@@ -16,7 +16,7 @@ using Sedulous.Engine.Render; // LightComponent, InstanceMemberComponent
 using Sedulous.Engine.Composition; // the full scene composition
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Script.Resource;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
@@ -45,7 +45,7 @@ namespace Sedulous.Editor.Scene.Tests;
 /// actions. And its inspector: nothing selected says so; an entity's head and sections;
 /// Add Component; a transform's and a component's edits, each one undo step; several entities
 /// edited at once; a header's verbs; read only while the page simulates; an entity reference's
-/// slot; a component's extras (a rigid body's notice, a zone's Bake); a script component's
+/// slot; a component's extras (a rigid body's notice, a zone's Bake); a behavior component's
 /// behaviours; the scene's settings with the scene selected, the physics block's collision groups
 /// and the level script's properties. And its bar's editing controls: the page's actions,
 /// Select, the space's icon, Snap and its increments. Its HUD: the chips, the stats, the
@@ -66,7 +66,7 @@ class ScenePageTests
 		{
 			// The engine's full composition, so a scene's entities take its components.
 			Subsystems.AddSubsystem<SceneSubsystem>().SetComposition(EngineSceneComposition.Build());
-			Subsystems.AddSubsystem<ScriptSubsystem>(); // binds a scene's behaviours to its run's host
+			Subsystems.AddSubsystem<BehaviorSubsystem>(); // binds a scene's behaviours to its run's host
 			Subsystems.Startup();
 		}
 
@@ -483,10 +483,10 @@ class ScenePageTests
 		Test.Assert((Object)runs.Find(run.Id) === (Object)run);
 		Test.Assert(run.Name == "Level");
 		Test.Assert(run.State == .Idle, "editing is between sessions");
-		let host = RunServices.Get<ScriptRunHost>(run);
+		let host = RunServices.Get<BehaviorRunHost>(run);
 		Test.Assert(host != null);
 		Test.Assert((Object)host.OwningRun === (Object)run);
-		Test.Assert(page.ScenePtr.GetSystem<ScriptSceneSystem>().Host === host);
+		Test.Assert(page.ScenePtr.GetSystem<BehaviorSystem>().Host === host);
 		Test.Assert(page.ScenePtr.Events === run.Events, "the scene's bus is the run's");
 
 		page.StartSimulation();
@@ -505,7 +505,7 @@ class ScenePageTests
 		let otherRun = other.ScenePtr.Run;
 		Test.Assert(otherRun != null);
 		Test.Assert((Object)otherRun !== (Object)run);
-		Test.Assert(RunServices.Get<ScriptRunHost>(otherRun) !== host);
+		Test.Assert(RunServices.Get<BehaviorRunHost>(otherRun) !== host);
 		Test.Assert(runs.Count == 2);
 
 		// Closed mid Simulate, the session ends with the close; the run leaves with the page.
@@ -1353,8 +1353,8 @@ class ScenePageTests
 		Test.Assert(inspector.SettingsOf("Physics") != null);
 		Test.Assert(edit.FindSystemBySettingsType(typeof(NavigationSceneSettings)) != null);
 		Test.Assert(inspector.SettingsOf("Navigation") != null);
-		Test.Assert(edit.FindSystemBySettingsType(typeof(SceneScriptSettings)) != null);
-		Test.Assert(inspector.SettingsOf("Scene Script") != null);
+		Test.Assert(edit.FindSystemBySettingsType(typeof(SceneBehaviorSettings)) != null);
+		Test.Assert(inspector.SettingsOf("Scene Behavior") != null);
 		// No type name reads through.
 		let titles = inspector.SectionTitles(.. scope .());
 		Test.Assert(!titles.Contains("PostProcess", true));
@@ -1905,12 +1905,12 @@ class ScenePageTests
 		let page = bed.Open(bed.Level);
 		defer delete page;
 		let edit = page.EditContext;
-		edit.AddComponent(bed.Crate, typeof(ScriptComponent));
+		edit.AddComponent(bed.Crate, typeof(BehaviorComponent));
 		Guid[1] crate = .(bed.Crate);
-		let source = scope ScriptBehaviorsSource(edit, bed.Context, crate);
-		let manager = page.ScenePtr.GetSystem<ScriptComponentManager>();
+		let source = scope BehaviorsSource(edit, bed.Context, crate);
+		let manager = page.ScenePtr.GetSystem<BehaviorComponentManager>();
 		Test.Assert(manager != null);
-		ScriptComponent* Component() => manager.Get(page.ScenePtr.FindEntity(bed.Crate));
+		BehaviorComponent* Component() => manager.Get(page.ScenePtr.FindEntity(bed.Crate));
 
 		let top = scope List<PropertyInfo>();
 		defer { ClearAndDeleteItems!(top); }
@@ -2120,7 +2120,7 @@ class ScenePageTests
 		let page = bed.Open(bed.Level);
 		defer delete page;
 		let edit = page.EditContext;
-		SceneScriptSettings Settings() => (SceneScriptSettings)Internal.UnsafeCastToObject(edit.FindSystemBySettingsType(typeof(SceneScriptSettings)).SettingsInstance);
+		SceneBehaviorSettings Settings() => (SceneBehaviorSettings)Internal.UnsafeCastToObject(edit.FindSystemBySettingsType(typeof(SceneBehaviorSettings)).SettingsInstance);
 		let source = scope LevelScriptSource(edit, bed.Context);
 		let none = scope List<PropertyInfo>();
 		defer { ClearAndDeleteItems!(none); }
@@ -2141,7 +2141,7 @@ class ScenePageTests
 		spawn.Type = .Vec3;
 		spawn.Default = ScriptPropertyValue.Vec3(.(0, 0, 0));
 		level.Properties.Add(spawn);
-		Settings().Script.SetDirect(level);
+		Settings().BehaviorClass.SetDirect(level);
 		source.Refresh();
 
 		let rows = scope List<PropertyInfo>();
@@ -2171,7 +2171,7 @@ class ScenePageTests
 		Test.Assert(source.GetValue("p41", 0).AsFloat == 2.0);
 		page.Commands.Undo(); // the revert
 		Test.Assert(Settings().FindOverride(41) != null);
-		Settings().Script.SetDirect(null); // the test's class goes before the scene
+		Settings().BehaviorClass.SetDirect(null); // the test's class goes before the scene
 		page.OnClose();
 	}
 

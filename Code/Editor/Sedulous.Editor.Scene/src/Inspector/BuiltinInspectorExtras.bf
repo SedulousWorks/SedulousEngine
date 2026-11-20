@@ -4,7 +4,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Navigation;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Animation; // PropertyAnimatorComponent (its Edit Clip)
 
 namespace Sedulous.Editor.Scene;
@@ -14,11 +14,11 @@ namespace Sedulous.Editor.Scene;
 // SceneEditor.Register:
 //   - a rigid body whose shape is Cooked with no collision shape set has no collider: said under
 //     its header while it is so (it follows an edit, not only a rebuild);
-//   - a script component's behaviours, a source of their own (ScriptBehaviorsSource);
+//   - a behavior component's behaviours, a source of their own (BehaviorsSource);
 //   - a navigation zone's Bake: the in-zone static geometry baked and written into the zone's
 //     asset, the outcome said. It runs at once on the main thread, as the bake's interface is one
 //     call; a bake as a job waits for that call to be split (collect here, bake on a worker);
-//   - the physics block's collision groups and the scene script block's level properties, sources
+//   - the physics block's collision groups and the scene behavior block's level properties, sources
 //     of their own (SettingsExtraSources);
 //   - a property animator's Edit Clip: its clip in the page's animation panel, animating its entity.
 static class BuiltinInspectorExtras
@@ -35,16 +35,16 @@ static class BuiltinInspectorExtras
 		sRegistered = true;
 		InspectorExtrasRegistry.Register(typeof(RigidBodyComponent), new (extras) => { AddNoCollider(extras); });
 		InspectorExtrasRegistry.Register(typeof(NavMeshZoneComponent), new (extras) => { AddBake(extras); });
-		InspectorExtrasRegistry.Register(typeof(ScriptComponent), new (extras) => { AddBehaviors(extras); });
+		InspectorExtrasRegistry.Register(typeof(BehaviorComponent), new (extras) => { AddBehaviors(extras); });
 		InspectorExtrasRegistry.Register(typeof(PhysicsSceneSettings), new (extras) => { AddCollisionGroups(extras); });
-		InspectorExtrasRegistry.Register(typeof(SceneScriptSettings), new (extras) => { AddLevelProperties(extras); });
+		InspectorExtrasRegistry.Register(typeof(SceneBehaviorSettings), new (extras) => { AddLevelProperties(extras); });
 		InspectorExtrasRegistry.Register(typeof(PropertyAnimatorComponent), new (extras) => { AddEditClip(extras); });
 	}
 
-	// A script component's behaviours: a source of their own (reflection does not show them).
+	// A behavior component's behaviours: a source of their own (reflection does not show them).
 	private static void AddBehaviors(InspectorExtras extras)
 	{
-		let source = new ScriptBehaviorsSource(extras.Edit, extras.Context, extras.Entities);
+		let source = new BehaviorsSource(extras.Edit, extras.Context, extras.Entities);
 		extras.AddSection(source, new [=source] () => { source.Refresh(); });
 	}
 

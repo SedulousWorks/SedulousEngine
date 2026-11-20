@@ -54,7 +54,7 @@ class Door : EntityBehavior
 		{
 			m_pick += dt;
 			scene.Animation.SetIkTarget(thief, lock);
-			scene.Scripts.Emit("Picking", lock);
+			scene.Behaviors.Emit("Picking", lock);
 			if (m_pick >= pickSeconds)
 			{
 				locked = false;

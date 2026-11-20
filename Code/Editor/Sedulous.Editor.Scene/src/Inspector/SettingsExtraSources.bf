@@ -6,7 +6,7 @@ using Sedulous.Scene;
 using Sedulous.Physics;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Physics;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
 
@@ -21,7 +21,7 @@ namespace Sedulous.Editor.Scene;
 //     both; a new group collides with every group; only the last group is removed, as a
 //     body keeps its group by index (removing another renumbers the ones after it, a remap of
 //     every body this does not make). A scene without groups shows one, Default.
-//   - the scene script block's level properties: its Level class's properties by their kinds, as
+//   - the scene behavior block's level properties: its Level class's properties by their kinds, as
 //     a behaviour's are (ScriptPropertyRows), each an override on the block while it differs.
 // Every edit is the edit context's MutateSceneSettings: one undo step.
 
@@ -364,7 +364,7 @@ class LevelScriptSource : IPropertySource
 		// Called every frame while the scene is selected: the grid hears of it only when a value moved.
 		let moved = mShown.Take(scope (ar) =>
 			{
-				if (let system = mEdit.FindSystemBySettingsType(typeof(SceneScriptSettings)))
+				if (let system = mEdit.FindSystemBySettingsType(typeof(SceneBehaviorSettings)))
 					system.SerializeSettings(ar);
 			});
 		let signature = Signature();
@@ -472,11 +472,11 @@ class LevelScriptSource : IPropertySource
 
 	// === The level ===
 
-	private SceneScriptSettings Settings()
+	private SceneBehaviorSettings Settings()
 	{
-		let system = mEdit.FindSystemBySettingsType(typeof(SceneScriptSettings));
+		let system = mEdit.FindSystemBySettingsType(typeof(SceneBehaviorSettings));
 		let values = (system != null) ? system.SettingsInstance : null;
-		return (values != null) ? (SceneScriptSettings)Internal.UnsafeCastToObject(values) : null;
+		return (values != null) ? (SceneBehaviorSettings)Internal.UnsafeCastToObject(values) : null;
 	}
 
 	// The Level class bound, through the editor's resources while the reference has not resolved.
@@ -485,29 +485,29 @@ class LevelScriptSource : IPropertySource
 		let settings = Settings();
 		if (settings == null)
 			return null;
-		if (settings.Script.Get != null)
-			return settings.Script.Get;
-		if (settings.Script.Id.IsNil || (mContext == null) || (mContext.Resources == null))
+		if (settings.BehaviorClass.Get != null)
+			return settings.BehaviorClass.Get;
+		if (settings.BehaviorClass.Id.IsNil || (mContext == null) || (mContext.Resources == null))
 			return null;
-		return mContext.Resources.Bind<ScriptClass>(settings.Script.Id).Get;
+		return mContext.Resources.Bind<ScriptClass>(settings.BehaviorClass.Id).Get;
 	}
 
 	private uint64 Signature()
 	{
 		let settings = Settings();
-		var hash = Mix(14695981039346656037UL, (settings != null) ? (uint64)settings.Script.Id.GetHashCode() : 0);
+		var hash = Mix(14695981039346656037UL, (settings != null) ? (uint64)settings.BehaviorClass.Id.GetHashCode() : 0);
 		return Mix(hash, (Class() != null) ? 1 : 0);
 	}
 
 	private static uint64 Mix(uint64 hash, uint64 value) => (hash ^ value) &* 1099511628211UL;
 
-	private void Mutate(delegate void(SceneScriptSettings settings) mutate)
+	private void Mutate(delegate void(SceneBehaviorSettings settings) mutate)
 	{
-		mEdit.MutateSceneSettings(typeof(SceneScriptSettings), scope [&] (system) =>
+		mEdit.MutateSceneSettings(typeof(SceneBehaviorSettings), scope [&] (system) =>
 			{
 				let values = system.SettingsInstance;
 				if (values != null)
-					mutate((SceneScriptSettings)Internal.UnsafeCastToObject(values));
+					mutate((SceneBehaviorSettings)Internal.UnsafeCastToObject(values));
 			});
 		Refresh();
 	}

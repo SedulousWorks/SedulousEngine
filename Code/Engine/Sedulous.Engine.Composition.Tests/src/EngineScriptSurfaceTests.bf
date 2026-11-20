@@ -76,7 +76,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert((rayCast != null) && (rayCast.ReturnTypeName == "Sedulous.Engine.Physics.PhysicsHit"));
 		let applyImpulse = Method(physics, "ApplyImpulse");
 		Test.Assert((applyImpulse != null) && applyImpulse.OnEntity, "on the entity by request");
-		for (let name in scope String[]("Animation", "Audio", "Particles", "Render", "Debug", "Splines", "Scripts", "Prefabs"))
+		for (let name in scope String[]("Animation", "Audio", "Particles", "Render", "Debug", "Splines", "Behaviors", "Prefabs"))
 		{
 			bool found = false;
 			for (let t in s.Types)
@@ -154,7 +154,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponentManager") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Audio.AudioSubsystem") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Render.RenderSubsystem") == null);
-		for (let excluded in StringView[?]("Sedulous.Engine.Script.ScriptComponent",
+		for (let excluded in StringView[?]("Sedulous.Engine.Behavior.BehaviorComponent",
 			"Sedulous.Net.Replication.NetworkedTransform", "Sedulous.Engine.Navigation.NavMeshZoneComponent"))
 			Test.Assert(s.Find(excluded) == null, scope String(excluded));
 		for (let t in s.Types)

@@ -38,7 +38,7 @@ class Pickup : EntityBehavior
 		self.SetLocalPosition(Float3(m_home.X, m_home.Y + Sin(m_time * 2.0f) * bobHeight, m_home.Z));
 		if (m_player.IsValid() && (Distance(m_player.GetWorldPosition(), self.GetWorldPosition()) < radius))
 		{
-			scene.Scripts.Emit(takenEvent, value);
+			scene.Behaviors.Emit(takenEvent, value);
 			scene.Prefabs.Spawn(kTakenSparkle, self.GetWorldPosition());
 			Audio.PlayOneShot(kTakenSound, AudioBus::Effects, 0.8f, chimePitch);
 			Input.Rumble(0.1f, 0.5f, 0.12f);

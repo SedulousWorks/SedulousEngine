@@ -9,7 +9,7 @@ using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Input;
 using Sedulous.Script;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Scene;
 using Sedulous.Editor.App;
@@ -723,12 +723,12 @@ static class PieRunTool
 	public static bool BehaviorField(Sedulous.Scene.Scene scene, EntityHandle handle, StringView className, StringView field, out JsonValue outValue)
 	{
 		outValue = null;
-		let scripts = scene.GetSystem<ScriptComponentManager>();
-		let system = scene.GetSystem<ScriptSceneSystem>();
+		let scripts = scene.GetSystem<BehaviorComponentManager>();
+		let system = scene.GetSystem<BehaviorSystem>();
 		let runtime = ((system != null) && (system.Host != null)) ? system.Host.Runtime : null;
 		if ((scripts == null) || (runtime == null) || !scripts.HasComponent(handle))
 			return false;
-		let component = (ScriptComponent*)scripts.GetComponentAddress(handle);
+		let component = (BehaviorComponent*)scripts.GetComponentAddress(handle);
 		if ((component == null) || (component.Behaviors == null))
 			return false;
 		for (let behavior in component.Behaviors)

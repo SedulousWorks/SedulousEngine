@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Script;
 using Sedulous.Engine.Animation;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 
 namespace Sedulous.Engine.Integration;
 
@@ -17,7 +17,7 @@ class ScriptAnimationBridge : IAnimationListener
 {
 	/// BORROWED, both.
 	private AnimationSubsystem mAnimation = null;
-	private ScriptSubsystem mScripts = null;
+	private BehaviorSubsystem mScripts = null;
 
 	public ~this()
 	{
@@ -28,7 +28,7 @@ class ScriptAnimationBridge : IAnimationListener
 
 	/// Points `animation`'s events at `scripts`. Calling again re-points cleanly, the prior
 	/// registration dropped first, so re-wiring is safe.
-	public void Install(AnimationSubsystem animation, ScriptSubsystem scripts)
+	public void Install(AnimationSubsystem animation, BehaviorSubsystem scripts)
 	{
 		Uninstall();
 		if ((animation == null) || (scripts == null))

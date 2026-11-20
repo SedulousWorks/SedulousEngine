@@ -12,7 +12,7 @@ using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.VFS;
 using Sedulous.Engine.Run;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Composition;
 using Sedulous.Run;
 
@@ -73,10 +73,10 @@ class GameRun
 			};
 		mInstaller = new (scene) =>
 			{
-				ScriptScene.AddScriptSceneManagers(scene);
+				BehaviorScene.AddBehaviorSceneManagers(scene);
 				// What the script subsystem does as a scene composes: its behaviours on its run's
 				// host (the scene has its run by now).
-				scene.GetSystem<ScriptSceneSystem>().SetRunHost(RunServices.Get<ScriptRunHost>(scene.Run));
+				scene.GetSystem<BehaviorSystem>().SetRunHost(RunServices.Get<BehaviorRunHost>(scene.Run));
 				if (MoreSystems != null)
 					MoreSystems(scene);
 			};

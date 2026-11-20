@@ -28,7 +28,7 @@ class Goal : EntityBehavior
 			m_reached = true;
 			scene.Prefabs.Spawn(kConfetti, self.GetWorldPosition() + Float3(0.0f, 1.0f, 0.0f));
 			m_player.Send("Celebrate");
-			scene.Scripts.Emit("GoalReached", 0);
+			scene.Behaviors.Emit("GoalReached", 0);
 		}
 	}
 }

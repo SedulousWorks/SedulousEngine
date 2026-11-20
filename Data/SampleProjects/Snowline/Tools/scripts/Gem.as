@@ -30,7 +30,7 @@ class Gem : EntityBehavior
 		m_model = self.GetFirstChild();
 		// Gems along the course bob out of step with each other.
 		m_time = self.GetWorldPosition().Z * 0.37f;
-		scene.Scripts.Emit("GemRegistered", value);
+		scene.Behaviors.Emit("GemRegistered", value);
 	}
 
 	void onUpdate(float dt)
@@ -47,7 +47,7 @@ class Gem : EntityBehavior
 		{
 			m_taken = true;
 			m_model.SetActive(false);
-			scene.Scripts.Emit("GemCollected", value);
+			scene.Behaviors.Emit("GemCollected", value);
 			scene.Prefabs.Spawn(kGemSparkle, self.GetWorldPosition());
 			Audio.PlayOneShot(kGemChime, AudioBus::Effects, 0.6f);
 		}

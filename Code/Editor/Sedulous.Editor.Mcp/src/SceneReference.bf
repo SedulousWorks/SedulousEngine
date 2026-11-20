@@ -5,7 +5,7 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Pipeline.Core;
@@ -131,7 +131,7 @@ class SceneReference
 		input.Str("type", "component wire name / type name, or settings system id", true);
 		server.RegisterTool("component_schema",
 			"""
-			One component's or settings block's schema entry from the generated scene format reference (docs://generated/SceneSchema.json): its fields in wire order with kinds, defaults, enum names, ranges and reference targets, plus its dataVersions. Pass `type`: a component's wire name (a record's `type`, e.g. "light") or type name, or a settings block's system id or type name. A name a component and a settings block share answers the component: the level script's block, whose system id is `script` like the Script component's, is `SceneScriptSettings`.
+			One component's or settings block's schema entry from the generated scene format reference (docs://generated/SceneSchema.json): its fields in wire order with kinds, defaults, enum names, ranges and reference targets, plus its dataVersions. Pass `type`: a component's wire name (a record's `type`, e.g. "light") or type name, or a settings block's system id or type name. A name a component and a settings block share answers the component.
 			""",
 			input.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
@@ -624,22 +624,22 @@ class SceneReference
 		}
 	}
 
-	/// After the schema recorded the defaults: the script component's entity gets one
+	/// After the schema recorded the defaults: the behavior component's entity gets one
 	/// behaviour with an override of every property kind (named "<kind>Value"), so the example
 	/// shows the override encoding the scriptOverrides section describes.
 	private static void FillScriptBehaviour(Scene world, Example example, ref Sedulous.Core.Random rng)
 	{
-		let scripts = world.GetSystem<ScriptComponentManager>();
+		let scripts = world.GetSystem<BehaviorComponentManager>();
 		if (scripts == null)
 			return;
-		if (!example.EntityByComponent.TryGetValue(typeof(ScriptComponent), let entity))
+		if (!example.EntityByComponent.TryGetValue(typeof(BehaviorComponent), let entity))
 			return;
 		let component = scripts.Get(entity);
 		if ((component == null) || (component.Behaviors == null))
 			return;
 		let childId = world.GetEntityId(example.Child);
-		let behaviour = new ScriptBehavior();
-		behaviour.Script.Id = Guid.Generate(ref rng);
+		let behaviour = new AttachedBehavior();
+		behaviour.BehaviorClass.Id = Guid.Generate(ref rng);
 		for (let entry in ScriptPropertyNames.TypeNames)
 		{
 			let name = scope $"{entry.Name}Value";
@@ -861,7 +861,7 @@ class SceneReference
 		let ctx = scope FieldContext(scope Joiner(null), scope List<String>());
 		defer { ClearAndDeleteItems!(ctx.Unreflected); }
 
-		// The override record as the script component writes it.
+		// The override record as the behavior component writes it.
 		{
 			let recorder = scope SchemaRecorder();
 			let record = scope ScriptPropertyOverride();

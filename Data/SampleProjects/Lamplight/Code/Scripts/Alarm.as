@@ -26,7 +26,7 @@ class Alarm : EntityBehavior
 		m_resting = rest;
 		Float3 at = thief.GetWorldPosition();
 		Audio.PlayOneShot3DPath("Audio/Bell", at);
-		scene.Scripts.Emit("Noise", Float4(at.X, at.Y, at.Z, loudness));
-		scene.Scripts.Emit("Alarm", at);
+		scene.Behaviors.Emit("Noise", Float4(at.X, at.Y, at.Z, loudness));
+		scene.Behaviors.Emit("Alarm", at);
 	}
 }

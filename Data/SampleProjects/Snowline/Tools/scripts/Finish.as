@@ -21,9 +21,9 @@ class Finish : EntityBehavior
 	void onStart()
 	{
 		m_rider = scene.FindEntityByName("Rider");
-		scene.Scripts.Emit("MedalGold", int(gold * 100.0f + 0.5f));
-		scene.Scripts.Emit("MedalSilver", int(silver * 100.0f + 0.5f));
-		scene.Scripts.Emit("MedalBronze", int(bronze * 100.0f + 0.5f));
+		scene.Behaviors.Emit("MedalGold", int(gold * 100.0f + 0.5f));
+		scene.Behaviors.Emit("MedalSilver", int(silver * 100.0f + 0.5f));
+		scene.Behaviors.Emit("MedalBronze", int(bronze * 100.0f + 0.5f));
 	}
 
 	void onUpdate(float dt)
@@ -35,7 +35,7 @@ class Finish : EntityBehavior
 		if (m_seen && m_lastAlong < 0.0f && along >= 0.0f)
 		{
 			m_crossed = true;
-			scene.Scripts.Emit("RunFinished", 0);
+			scene.Behaviors.Emit("RunFinished", 0);
 		}
 		m_lastAlong = along;
 		m_seen = true;

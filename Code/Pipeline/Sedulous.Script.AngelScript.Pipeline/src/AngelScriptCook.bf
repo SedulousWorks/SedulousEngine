@@ -86,10 +86,10 @@ class AngelScriptCook : IScriptLanguageCook
 		{
 		case .Level:
 			outSource.Append("""
-				// A scene behavior, one per scene: set it on the scene's Script settings.
+				// A scene behavior, one per scene: set it on the scene's Scene Behavior settings.
 				// `scene` is filled in by the engine; the handlers run by their names while the
 				// scene simulates. Print, Random, Math and the facades on `scene`
-				// (scene.Physics, scene.Audio, scene.Scripts, ...) are visible globally.
+				// (scene.Physics, scene.Audio, scene.Behaviors, ...) are visible globally.
 				class {CLASSNAME} : SceneBehavior
 				{
 					Scene@ scene;
@@ -117,7 +117,7 @@ class AngelScriptCook : IScriptLanguageCook
 				""");
 		case .Behavior:
 			outSource.Append("""
-				// A behaviour: attach it to an entity through a Script component. An annotated
+				// A behaviour: attach it to an entity through a Behavior component. An annotated
 				// field, `[default, "description"]` in front of it, is a property the editor
 				// shows and sets; `self` and `scene` are filled in by the engine; `on` handlers
 				// run by their names.

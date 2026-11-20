@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Scene;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Script;
+using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Navigation;
 
 namespace Sedulous.Integration.Composition;
@@ -16,7 +16,7 @@ class UpdateOrderTests
 	{
 		let level = scope Scene("level");
 		EngineSceneComposition.AddAllSceneManagers(level);
-		let scripts = level.GetSystem<ScriptSceneSystem>();
+		let scripts = level.GetSystem<BehaviorSystem>();
 		let crowd = level.GetSystem<NavigationSceneSystem>();
 		Test.Assert((scripts != null) && (crowd != null));
 		Test.Assert(scripts.UpdateOrder < crowd.UpdateOrder, "an order of their own, not a tie the domain list breaks");
