@@ -119,6 +119,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Editor and MCP: a script asset no longer has a Class Name setting, and `script_validate` no
+  longer takes `className`: the class a script plays is the one deriving from a kind, and
+  `script_validate` returns its `kind` beside its `className`.
 - Scripts (breaking): a behavior declares its kind by deriving from it, `EntityBehavior`,
   `SceneBehavior` or `RunBehavior` (`class Coin : EntityBehavior`), and may have any name. The
   reserved names `Game` and `Level` are gone, and a script's other classes are its helpers. A

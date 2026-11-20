@@ -138,7 +138,7 @@ class AngelScriptCook : IScriptLanguageCook
 
 	public void ListIncludes(StringView source, List<String> outPaths) => AngelScriptRuntime.IncludesOf(source, outPaths);
 
-	public bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems,
+	public bool Cook(StringView source, StringView sourceName, ScriptClassSource outRecord, List<String> problems,
 		IScriptIncludeReader includes = null)
 	{
 		// The files it includes, compiled beside it and recorded for a run that compiles it again.
@@ -201,7 +201,7 @@ class AngelScriptCook : IScriptLanguageCook
 	}
 
 	/// Through the runtime's Check, which compiles as Cook does and keeps no module.
-	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden,
+	public bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden,
 		IScriptIncludeReader includes = null)
 	{
 		outClassName.Clear();

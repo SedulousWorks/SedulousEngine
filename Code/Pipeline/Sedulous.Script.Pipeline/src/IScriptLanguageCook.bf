@@ -26,10 +26,10 @@ interface IScriptLanguageCook
 	/// wrong into `problems`. The class is the one deriving from a behavior kind
 	/// (ScriptClasses.ChooseBehavior), its kind recorded; one whose classes derive from none is a
 	/// module of helpers. False when the source does not compile, or declares several behavior
-	/// classes. `className` is no longer read.
+	/// classes.
 	/// The files the source includes are read through `includes` (null: none can be, so a script
 	/// that includes one fails), and recorded in the record's Includes.
-	bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems,
+	bool Cook(StringView source, StringView sourceName, ScriptClassSource outRecord, List<String> problems,
 		IScriptIncludeReader includes = null);
 
 	/// Compile checks `source` as Cook would, WITHOUT running any of it and without the
@@ -38,7 +38,7 @@ interface IScriptLanguageCook
 	/// is typed. False when it does not compile or the class cannot be chosen. Against the
 	/// surface less the `hidden` types (by full name): a platform without a plugin lacks that
 	/// plugin's types, and a script that uses one does not compile there.
-	bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden,
+	bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden,
 		IScriptIncludeReader includes = null);
 
 	/// The paths `source`'s include directives name, as written, in order (none for a language
@@ -72,9 +72,8 @@ interface IScriptLanguageCook
 	/// CookFromAssembly, from what the project's build described, and not with Cook.
 	bool BuildsInAssembly => false;
 
-	/// Cooks the class `source` plays (chosen by `className` as Cook chooses it) from `assembly`,
-	/// its project's built assembly: its handlers and properties into `outRecord`, problems into
+	/// Cooks the class `source` plays from `assembly`, its project's built assembly: its handlers and properties into `outRecord`, problems into
 	/// `problems`. False when the assembly does not declare it.
-	bool CookFromAssembly(StringView source, StringView sourceName, StringView className, ScriptAssemblySource assembly,
+	bool CookFromAssembly(StringView source, StringView sourceName, ScriptAssemblySource assembly,
 		ScriptClassSource outRecord, List<String> problems) => false;
 }

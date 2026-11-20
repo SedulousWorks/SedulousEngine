@@ -1,13 +1,12 @@
 using System;
 using System.Collections;
-using Sedulous.Pipeline.Importer;
 using Sedulous.Script;
 
 namespace Sedulous.Script.Pipeline;
 
 /// The class a script plays, shared by every language's cook: the top-level `class Name` scan
 /// (the C-family convention) and the choice among the classes a file declares. A file may
-/// declare several (data, helpers), so the class it plays is chosen by name, never guessed.
+/// declare several (data, helpers); the one it plays is the one deriving from a behavior kind.
 static class ScriptClasses
 {
 	/// Every top-level `class Name` in `source`, in order, appended; none for a utility module.
@@ -41,38 +40,6 @@ static class ScriptClasses
 			}
 			i++;
 		}
-	}
-
-	/// The class a script plays among `declared`, into `outClass`: the one named `preferred`,
-	/// else its only one. Several and none so named is no guess: false, with `outProblem`
-	/// naming them and how to choose. None at all is a utility module: true, `outClass` empty.
-	public static bool Choose(List<String> declared, StringView preferred, String outClass, String outProblem)
-	{
-		outClass.Clear();
-		for (let name in declared)
-		{
-			if (name == preferred)
-			{
-				outClass.Set(name);
-				return true;
-			}
-		}
-		if (declared.Count == 1)
-		{
-			outClass.Set(declared[0]);
-			return true;
-		}
-		if (declared.IsEmpty)
-			return true;
-		let names = scope String();
-		for (let name in declared)
-		{
-			if (!names.IsEmpty)
-				names.Append(", ");
-			names.Append(name);
-		}
-		outProblem.AppendF("it declares the classes {} and none is '{}': set the script asset's Class Name to the one it plays (script_validate: className)", names, preferred);
-		return false;
 	}
 
 	/// The behavior class a script plays: the one among `declared` that derives from a kind
@@ -109,19 +76,6 @@ static class ScriptClasses
 		outProblem.AppendF("it declares the behavior classes {}: a script holds one, so move the others to scripts of their own", names);
 		return false;
 	}
-
-	/// The class preferred for a source: `className` when given (an asset's recorded class),
-	/// else the one named like `sourceName`'s file.
-	public static void PreferredFor(StringView className, StringView sourceName, String outClass)
-	{
-		if (!className.IsEmpty)
-			outClass.Append(className);
-		else
-			outClass.Append(ImportPaths.StemOf(ImportPaths.FileNameOf(sourceName)));
-	}
-
-	/// The class a script asset prefers: the one it records, else the one named like its file.
-	public static void Preferred(ScriptClassAsset asset, String outClass) => PreferredFor(asset.ClassName, asset.FileName.Value, outClass);
 
 	/// `source` with its comments dropped and its string literals blanked, so a `class` in
 	/// either is not taken for a declaration.

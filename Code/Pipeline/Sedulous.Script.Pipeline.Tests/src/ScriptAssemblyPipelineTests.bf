@@ -70,15 +70,15 @@ class StandInClassCook : IScriptLanguageCook
 		outSource.AppendF("class {}", className);
 	}
 
-	public bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems,
+	public bool Cook(StringView source, StringView sourceName, ScriptClassSource outRecord, List<String> problems,
 		IScriptIncludeReader includes = null) => false;
 
-	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden,
+	public bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden,
 		IScriptIncludeReader includes = null) => true;
 
 	public bool BuildsInAssembly => true;
 
-	public bool CookFromAssembly(StringView source, StringView sourceName, StringView className, ScriptAssemblySource assembly,
+	public bool CookFromAssembly(StringView source, StringView sourceName, ScriptAssemblySource assembly,
 		ScriptClassSource outRecord, List<String> problems)
 	{
 		let at = source.IndexOf("class ");

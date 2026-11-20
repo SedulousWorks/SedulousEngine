@@ -107,7 +107,6 @@ static class ScriptCreators
 		let asset = scope ScriptClassAsset();
 		asset.FileName.Set(fileName);
 		asset.Language.Set(languageId);
-		asset.ClassName.Set(className);
 		if (!(instance.WriteObject(asset) case .Ok))
 			return null;
 		return instance;

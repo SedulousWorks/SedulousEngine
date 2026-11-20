@@ -44,10 +44,10 @@ class AdoptedLanguageCook : IScriptLanguageCook
 		outSource.AppendF("class {}", className);
 	}
 
-	public bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems,
+	public bool Cook(StringView source, StringView sourceName, ScriptClassSource outRecord, List<String> problems,
 		IScriptIncludeReader includes = null) => false;
 
-	public bool Check(StringView source, StringView sourceName, StringView className, String outClassName, List<String> problems, Span<StringView> hidden,
+	public bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden,
 		IScriptIncludeReader includes = null) => true;
 
 	/// Its declarations take the language's own extension, as a language's may.

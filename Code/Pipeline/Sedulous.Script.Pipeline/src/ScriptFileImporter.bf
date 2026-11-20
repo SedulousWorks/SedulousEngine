@@ -59,19 +59,6 @@ class ScriptFileImporter : IFileImporter
 		let asset = scope ScriptClassAsset();
 		asset.FileName.Set(fileName);
 		asset.Language.Set(language);
-		// The class it plays: the one its file is named for, wherever its copy lands ("Battle.2.as"
-		// still plays Battle); a re-import of the same file keeps a class chosen by hand.
-		asset.ClassName.Set(ImportPaths.StemOf(ImportPaths.FileNameOf(sourcePath)));
-		if (clash.Kind == .Reimport)
-		{
-			let before = instance.ReadObject();
-			defer delete before;
-			if (let prior = before as ScriptClassAsset)
-			{
-				if (!prior.ClassName.IsEmpty)
-					asset.ClassName.Set(prior.ClassName);
-			}
-		}
 		if (instance.WriteObject(asset) case .Err(let writeError))
 			return .Err(writeError);
 		return .Ok(instance);

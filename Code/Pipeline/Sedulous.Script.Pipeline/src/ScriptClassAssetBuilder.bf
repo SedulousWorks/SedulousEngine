@@ -98,13 +98,12 @@ class ScriptClassAssetBuilder : IAssetBuilder
 		record.Source.Set(source);
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
-		let preferred = ScriptClasses.Preferred(authored, .. scope .());
 		if (cook.BuildsInAssembly)
 		{
-			if (CookFromProject(cook, authored, source, preferred, context, record, problems) case .Err(let projectError))
+			if (CookFromProject(cook, authored, source, context, record, problems) case .Err(let projectError))
 				return .Err(projectError);
 		}
-		else if (!cook.Cook(source, authored.FileName.Value, preferred, record, problems, scope MountIncludeReader(context)))
+		else if (!cook.Cook(source, authored.FileName.Value, record, problems, scope MountIncludeReader(context)))
 		{
 			// A warning is not why it failed.
 			for (let p in problems)
@@ -121,7 +120,7 @@ class ScriptClassAssetBuilder : IAssetBuilder
 	/// assembly, which cooks first, and the record naming that assembly. Not found when no project
 	/// holds the file or its project has not built.
 	private static Result<void, ErrorCode> CookFromProject(IScriptLanguageCook cook, ScriptClassAsset authored, StringView source,
-		StringView preferred, AssetBuildContext context, ScriptClassSource record, List<String> problems)
+		AssetBuildContext context, ScriptClassSource record, List<String> problems)
 	{
 		let file = authored.FileName.Value;
 		let project = ScriptAssemblies.FindFor(context.SourceDatabase, authored.Language, file);
@@ -139,7 +138,7 @@ class ScriptClassAssetBuilder : IAssetBuilder
 			GlobalLog(.Error, "Cook: '{}': its project '{}' has not built", file, project.GetPath(.. scope .()));
 			return .Err(.NotFound);
 		}
-		if (!cook.CookFromAssembly(source, file, preferred, assembly, record, problems))
+		if (!cook.CookFromAssembly(source, file, assembly, record, problems))
 		{
 			for (let p in problems)
 				GlobalLog(ScriptProblems.IsWarning(p) ? .Warning : .Error, "Cook: {}", p);

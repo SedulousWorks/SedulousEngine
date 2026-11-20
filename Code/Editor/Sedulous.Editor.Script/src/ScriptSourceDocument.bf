@@ -18,25 +18,20 @@ class ScriptSourceDocument
 	private String mCodeRoot = new .() ~ delete _;
 	private String mFileName = new .() ~ delete _;
 	private String mLanguage = new .() ~ delete _;
-	/// The class the asset prefers (its Class Name; empty: the one named like its file).
-	private String mPreferredClass = new .() ~ delete _;
 	private String mSource = new .() ~ delete _;
 	private String mSaved = new .() ~ delete _;
 	private String mClassName = new .() ~ delete _;
 	private List<ScriptCompileError> mErrors = new .() ~ DeleteContainerAndItems!(_);
 	private bool mLastCompileOk = true;
 
-	/// An empty language means AngelScript, the default backend; `preferredClass` is the
-	/// asset's Class Name (empty: the class named like the file), which the check plays;
-	/// `codeRoot` is the project's Code/ folder, which a file name starting Code/ is in.
-	public void Bind(StringView sourcesRoot, StringView fileName, StringView language, StringView preferredClass = default,
-		StringView codeRoot = default)
+	/// An empty language means AngelScript, the default backend; `codeRoot` is the project's
+	/// Code/ folder, which a file name starting Code/ is in.
+	public void Bind(StringView sourcesRoot, StringView fileName, StringView language, StringView codeRoot = default)
 	{
 		mSourcesRoot.Set(sourcesRoot);
 		mCodeRoot.Set(codeRoot);
 		mFileName.Set(fileName);
 		mLanguage.Set(language.IsEmpty ? "angelscript" : language);
-		mPreferredClass.Set(preferredClass);
 	}
 
 	public StringView FileName => mFileName;
@@ -90,7 +85,7 @@ class ScriptSourceDocument
 		defer { ClearAndDeleteItems!(problems); }
 		let className = scope String();
 		// The files it includes, from the project's sources, as the cook reads them.
-		let ok = cook.Check(mSource, mFileName, mPreferredClass, className, problems, default, scope FolderIncludeReader(mSourcesRoot, mCodeRoot));
+		let ok = cook.Check(mSource, mFileName, className, problems, default, scope FolderIncludeReader(mSourcesRoot, mCodeRoot));
 		for (let problem in problems)
 			mErrors.Add(ScriptCompileError.Parse(problem));
 		if (ok)

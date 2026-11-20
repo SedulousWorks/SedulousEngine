@@ -30,8 +30,8 @@ static class ScriptToolsTests
 		// The harvest names `on` handlers; the game's launch/update/exit are invoked by
 		// name by the run and are not handlers, so the run starter proves its class only. Each
 		// starter's class is named after its asset.
-		for (let (tier, className, handler) in scope (ScriptTier, StringView, StringView)[](
-			(.Behavior, "Coin", "onUpdate"), (.Level, "Arena", "onStart"), (.Game, "Heist", "")))
+		for (let (tier, className, handler, kind) in scope (ScriptTier, StringView, StringView, StringView)[](
+			(.Behavior, "Coin", "onUpdate", "EntityBehavior"), (.Level, "Arena", "onStart", "SceneBehavior"), (.Game, "Heist", "", "RunBehavior")))
 		{
 			let starter = scope String();
 			cook.NewAssetTemplate(tier, className, starter);
@@ -40,6 +40,7 @@ static class ScriptToolsTests
 			Test.Assert(ok.Get("valid").AsBool(), scope $"{tier}: {ok.Get("errors").ToString(.. scope .())}");
 			Test.Assert(ok.Get("errors").Count == 0);
 			Test.Assert(ok.Get("className").AsString() == className, scope $"{tier} -> {ok.Get("className").AsString()}");
+			Test.Assert(ok.Get("kind").AsString() == kind, scope $"{tier}: {ok.Get("kind").AsString()}");
 			Test.Assert(handler.IsEmpty || HasString(ok.Get("handlers"), handler), scope $"{tier}: {handler} harvested");
 			Test.Assert(ok.Get("checkLevel").AsString() == "compile");
 		}

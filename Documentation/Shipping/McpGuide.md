@@ -411,10 +411,10 @@ and writes as the Guid it holds). A member with `readOnly: true` (a network iden
 project's Code/ folder, `Code/<group>/<name>.<ext>`), then
 edit the returned source FILE, loop on `script_validate`, and `asset_cook` to make the
 class attachable. A script file may declare several classes (data, helpers); the one it plays is
-its asset's Class Name (`ClassName`: the name its file was imported under, or a new script's
-starter class), else the one named like its file, else its only one. Several and none so named
-fails the cook, naming them: set the asset's Class Name, or pass `script_validate` the file's
-`name` (or `className`). `script_declarations {directory}` writes the bound API as each backend's
+the one deriving from a kind (`class Coin : EntityBehavior`), of any name. A script with none is
+a module of helpers, refused where a behavior is set; two that derive from a kind fail the cook,
+naming them. `script_validate` returns the class it plays as `className`, and its `kind`.
+`script_declarations {directory}` writes the bound API as each backend's
 declarations file (`as.predefined`) for an external editor's completion; write it into the
 project's folder, and again after an engine update.
 
@@ -592,7 +592,8 @@ call and the export refuse it.
 - `script_validate` is a COMPILE check (`checkLevel: "compile"`): a call the language cannot
   see through, a misspelled member on a handle say, compiles and fails at runtime. Cross
   check against `script_api`. The compiler's warnings come in `warnings`, apart from `errors`:
-  the script compiled (`valid` is true), but each is likely a mistake worth reading. An
+  the script compiled (`valid` is true), but each is likely a mistake worth reading. It plays the
+  class the cook would, the one deriving from a kind, and returns its `className` and `kind`. An
   `#include "<path>"` resolves against `name` (pass the file's path in the project's sources,
   `Scripts/Player.as`) and is read from the open project, as the cook reads it.
 - `shader_validate` compiles every variant, the cook's check; an error under one flag says so

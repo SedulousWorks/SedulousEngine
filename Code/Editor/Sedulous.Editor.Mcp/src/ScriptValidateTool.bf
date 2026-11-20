@@ -37,12 +37,11 @@ static class ScriptValidateTool
 		let schema = scope SchemaBuilder();
 		schema.Str("source", "the full script source text", true);
 		schema.Enum("language", choices, "the script backend to compile against", true);
-		schema.Str("name", "a display name for error messages (e.g. the intended file name; default 'script'); its stem is the class it plays when the source declares several");
-		schema.Str("className", "the class it plays when the source declares several (a script asset's Class Name); default: the one named like `name`");
+		schema.Str("name", "a display name for error messages (e.g. the intended file name; default 'script')");
 		schema.Str("platform", scope $"also check it for this platform's plugins ({ExportPlatform.List(.. scope .())}); needs an open project");
 		server.RegisterTool("script_validate",
 			"""
-			COMPILE-CHECK a script source against a backend without saving: the exact compile the asset cook would run. Returns compile errors with line numbers, the compiler's warnings apart from them (`warnings`: it compiled, but each is likely a mistake), and on success the harvested metadata (className, handlers, properties, usesCoroutines) - confirm the engine recognized what you wrote. Use as the validation loop while authoring scripts, BEFORE creating the asset. Limits: compile only - a misspelled engine method is a compile error only where the language sees the call; check signatures with script_api. With `platform`, also checks it against what the open project's plugins leave there (a plugin the project does not enable on that platform takes its types with it), as an export for it does.
+			COMPILE-CHECK a script source against a backend without saving: the exact compile the asset cook would run. Returns compile errors with line numbers, the compiler's warnings apart from them (`warnings`: it compiled, but each is likely a mistake), and on success the harvested metadata (className and kind: the class deriving from RunBehavior, SceneBehavior or EntityBehavior, empty for a module of helpers; handlers, properties, usesCoroutines) - confirm the engine recognized what you wrote. Use as the validation loop while authoring scripts, BEFORE creating the asset. Limits: compile only - a misspelled engine method is a compile error only where the language sees the call; check signatures with script_api. With `platform`, also checks it against what the open project's plugins leave there (a plugin the project does not enable on that platform takes its types with it), as an export for it does.
 			""",
 			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Validate(session, arguments, outResult, outError));
@@ -67,7 +66,6 @@ static class ScriptValidateTool
 			return false;
 		}
 		let source = McpTools.ArgString(arguments, "source", .. scope .());
-		let className = McpTools.ArgString(arguments, "className", .. scope .());
 		let record = scope ScriptClassSource();
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
@@ -80,7 +78,7 @@ static class ScriptValidateTool
 			session.Project.CodeRoot(codeRoot);
 		}
 		let includes = scope FolderIncludeReader(sourcesRoot, codeRoot);
-		var ok = cook.Cook(source, name, className, record, problems, includes);
+		var ok = cook.Cook(source, name, record, problems, includes);
 		// Then against the platform's surface, when one is asked for and it lacks plugins.
 		let absent = scope String();
 		if (ok && !platform.IsEmpty && (session.Plugins != null))
@@ -93,7 +91,7 @@ static class ScriptValidateTool
 				let views = scope List<StringView>();
 				for (let hiddenName in hidden)
 					views.Add(hiddenName);
-				ok = cook.Check(source, name, className, scope .(), problems, (Span<StringView>)views, includes);
+				ok = cook.Check(source, name, scope .(), problems, (Span<StringView>)views, includes);
 			}
 		}
 
@@ -115,6 +113,7 @@ static class ScriptValidateTool
 		if (ok)
 		{
 			outResult.Set("className", JsonValue.MakeString(record.ClassName));
+			outResult.Set("kind", JsonValue.MakeString(BehaviorKinds.TypeName(record.Kind)));
 			let handlers = JsonValue.MakeArray();
 			for (let handler in record.Handlers)
 				handlers.Add(JsonValue.MakeString(handler));

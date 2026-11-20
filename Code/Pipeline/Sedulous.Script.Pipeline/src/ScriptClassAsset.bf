@@ -16,11 +16,6 @@ class ScriptClassAsset : Asset
 	/// The backend id, "angelscript".
 	[DisplayName("Language")]
 	public String Language = new .() ~ delete _;
-	/// The class it plays among those its file declares: the name its file was imported under,
-	/// or a new script's starter class; set by hand to pick another. Empty: the class named like
-	/// its file, else its only one (ScriptClasses.Preferred, ScriptClasses.Choose).
-	[DisplayName("Class Name")]
-	public String ClassName = new .() ~ delete _;
 
 	public override bool IsCode => true;
 }
