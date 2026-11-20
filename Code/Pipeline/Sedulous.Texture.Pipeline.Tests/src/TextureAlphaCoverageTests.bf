@@ -105,6 +105,54 @@ class TextureAlphaCoverageTests
 			Test.Assert(solid[i] == solidBefore[i]);
 	}
 
+	/// Leaves on a near-white background (a leaf atlas is mostly clear, and near white there). A
+	/// plain average drags every smaller level toward the background, so distant leaves turn pale;
+	/// weighted by alpha, each level is the leaves' own green, and no clear texel at any level
+	/// keeps the background to fringe an edge with. Without a cutoff the plain average stays.
+	[Test]
+	public static void AnAlphaTestedTexturesMipmapsKeepItsVisibleTexelsColor()
+	{
+		const uint32 size = 64;
+		let tested = scope List<uint8>();
+		let plain = scope List<uint8>();
+		for (let pixels in scope List<uint8>[](tested, plain))
+		{
+			pixels.Count = (int)size * (int)size * 4;
+			for (uint32 y < size)
+			{
+				for (uint32 x < size)
+				{
+					let leaf = (((x / 3) + (y / 5)) % 3) == 0; // about a third, in strokes
+					let at = ((int)y * (int)size + (int)x) * 4;
+					pixels[at] = leaf ? 60 : 236;
+					pixels[at + 1] = leaf ? 150 : 222;
+					pixels[at + 2] = leaf ? 40 : 215;
+					pixels[at + 3] = leaf ? 255 : 0;
+				}
+			}
+		}
+
+		let levels = TextureMipChain.Append(tested, size, size, true, 0.45f);
+		Test.Assert(levels == 7);
+		let last = tested.Count - 4; // the 1x1 level
+		Test.Assert(Math.Abs((int)tested[last] - 60) <= 2, scope String()..AppendF("{}", tested[last]));
+		Test.Assert(Math.Abs((int)tested[last + 1] - 150) <= 2, scope String()..AppendF("{}", tested[last + 1]));
+		Test.Assert(Math.Abs((int)tested[last + 2] - 40) <= 2, scope String()..AppendF("{}", tested[last + 2]));
+		var clear = 0;
+		for (int i = 0; i < tested.Count; i += 4)
+		{
+			if (tested[i + 3] == 0)
+			{
+				clear++;
+				Test.Assert(tested[i] < 120, scope String()..AppendF("texel {}: {}", i / 4, tested[i]));
+			}
+		}
+		Test.Assert(clear > 0);
+
+		TextureMipChain.Append(plain, size, size, true, 0.0f);
+		Test.Assert(plain[plain.Count - 4] > 150);
+	}
+
 	/// The settings round-trip through text, and a texture saved before them reads with its
 	/// coverage off: a project's textures must not stop loading for a new field.
 	[Test]
