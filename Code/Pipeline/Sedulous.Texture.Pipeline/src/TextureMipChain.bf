@@ -59,7 +59,7 @@ static class TextureMipChain
 	/// in a linear image, averages directly.
 	///
 	/// With `coverageReference` above 0 (an alpha-tested texture), color averages weighted by
-	/// alpha instead, each fully clear texel then takes the color of its texel one level up
+	/// alpha instead, the chain stops at AlphaTestedMinMipSize, each fully clear texel then takes the color of its texel one level up
 	/// (FillClearTexels), and each level's alpha is scaled to keep level nought's coverage of it
 	/// (PreserveAlphaCoverage). A texture with no cutoff keeps the plain average: its alpha may
 	/// not be opacity at all.
@@ -76,6 +76,9 @@ static class TextureMipChain
 		}
 		return levels;
 	}
+
+	/// The smallest level an alpha-tested texture's chain keeps, in texels across its short side.
+	public const uint32 AlphaTestedMinMipSize = 4;
 
 	/// Gives each fully clear texel of a tight RGBA8 2D chain the color of its texel one level up,
 	/// coarsest level first, so every clear texel carries its neighbourhood's visible color. A
@@ -198,6 +201,12 @@ static class TextureMipChain
 		{
 			let destinationWidth = (sourceWidth > 1) ? sourceWidth / 2 : 1;
 			let destinationHeight = (sourceHeight > 1) ? sourceHeight / 2 : 1;
+			// An alpha-tested chain stops at four texels across. A smaller level cannot hold a
+			// cutoff's coverage: at 1x1 a whole card is one alpha, so every distant card passes
+			// or every one fails and trees go bare. Sampling past the last level clamps to it,
+			// which keeps the coverage at any distance.
+			if (alphaWeighted && (Math.Min(destinationWidth, destinationHeight) < AlphaTestedMinMipSize))
+				break;
 			let destinationOffset = pixels.Count;
 			pixels.Count = destinationOffset + (int)destinationWidth * (int)destinationHeight * 4;
 

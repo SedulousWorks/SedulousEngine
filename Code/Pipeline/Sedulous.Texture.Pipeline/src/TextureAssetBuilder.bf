@@ -25,12 +25,13 @@ class TextureAssetBuilder : IAssetBuilder
 	public Type AssetType => typeof(TextureAsset);
 	public Type ProductType => typeof(TextureResource);
 
-	/// Six, after a run of output changes for the same input: the payload gained a full mip
+	/// Seven, after a run of output changes for the same input: the payload gained a full mip
 	/// chain, then block compression, then a normal map going to the large linear format with
 	/// the packed mask guard beside it, then radiance cooking to BC6H on a BC target, then an
 	/// alpha-tested texture's mipmaps averaging color weighted by alpha with its clear texels
-	/// filled from the level above. Each bump forces the re-cook the new output needs.
-	public int32 Version => 6;
+	/// filled from the level above, then that chain stopping at four texels across. Each bump
+	/// forces the re-cook the new output needs.
+	public int32 Version => 7;
 
 	/// Textures are THE platform variant producer: block compression on the desktop and ASTC
 	/// on the mobile web, from one source. The cook salts this builder's recipe by target and

@@ -81,12 +81,12 @@ class TextureAlphaCoverageTests
 		for (uint32 level = 0; (level < levels) && (w >= 8); level++, w /= 2)
 			Test.Assert(Math.Abs(after[level] - target) < 0.05f + 2.0f / (float)w, scope String()..AppendF("level {} ({}x{}): {} against {}", level, w, w, after[level], target));
 
-		// Through the chain's own entry, the same.
+		// Through the chain's own entry, the same, down to the 4x4 level where its chain stops.
 		let appended = scope List<uint8>();
 		appended.AddRange(Span<uint8>(kept.Ptr, (int)cSize * (int)cSize * 4));
-		Test.Assert(TextureMipChain.Append(appended, cSize, cSize, false, (float)cCut / 255.0f) == levels);
-		Test.Assert(appended.Count == kept.Count);
-		for (int i < kept.Count)
+		Test.Assert(TextureMipChain.Append(appended, cSize, cSize, false, (float)cCut / 255.0f) == levels - 2);
+		Test.Assert(appended.Count == kept.Count - (2 * 2 + 1 * 1) * 4);
+		for (int i < appended.Count)
 		{
 			if (appended[i] != kept[i])
 			{
@@ -133,8 +133,8 @@ class TextureAlphaCoverageTests
 		}
 
 		let levels = TextureMipChain.Append(tested, size, size, true, 0.45f);
-		Test.Assert(levels == 7);
-		let last = tested.Count - 4; // the 1x1 level
+		Test.Assert(levels == 5); // 64 down to 4x4: an alpha-tested chain stops there
+		let last = tested.Count - 4; // the 4x4 level's last texel
 		Test.Assert(Math.Abs((int)tested[last] - 60) <= 2, scope String()..AppendF("{}", tested[last]));
 		Test.Assert(Math.Abs((int)tested[last + 1] - 150) <= 2, scope String()..AppendF("{}", tested[last + 1]));
 		Test.Assert(Math.Abs((int)tested[last + 2] - 40) <= 2, scope String()..AppendF("{}", tested[last + 2]));
@@ -149,8 +149,36 @@ class TextureAlphaCoverageTests
 		}
 		Test.Assert(clear > 0);
 
-		TextureMipChain.Append(plain, size, size, true, 0.0f);
+		// Without a cutoff, the full chain too.
+		Test.Assert(TextureMipChain.Append(plain, size, size, true, 0.0f) == 7);
 		Test.Assert(plain[plain.Count - 4] > 150);
+	}
+
+	/// Below 4x4 a level cannot hold a cutoff's coverage: at 1x1 the whole texture is one alpha,
+	/// so a distant card wholly passes or wholly fails. The chain stops at four texels across its
+	/// short side, and its last level still holds level nought's coverage.
+	[Test]
+	public static void AnAlphaTestedTexturesChainStopsWhereItStillHoldsItsCoverage()
+	{
+		const uint32 size = 256;
+		const uint32 cut = 115;
+		let full = scope List<uint8>();
+		Test.Assert(FoliageChain(size, full) == 9);
+		let chain = scope List<uint8>();
+		chain.AddRange(Span<uint8>(full.Ptr, (int)size * (int)size * 4)); // level nought alone
+		let levels = TextureMipChain.Append(chain, size, size, true, (float)cut / 255.0f);
+		Test.Assert(levels == 7); // 256 .. 4
+		Test.Assert(chain.Count == (256 * 256 + 128 * 128 + 64 * 64 + 32 * 32 + 16 * 16 + 8 * 8 + 4 * 4) * 4);
+		let shares = scope List<float>();
+		CoverageByLevel(chain, size, levels, cut, shares);
+		Test.Assert(Math.Abs(shares[levels - 1] - shares[0]) < 0.1f, scope String()..AppendF("{} vs {}", shares[levels - 1], shares[0]));
+
+		// A wide texture stops on its short side: 64x16 keeps 64x16, 32x8 and 16x4.
+		let wide = scope List<uint8>();
+		wide.Count = 64 * 16 * 4;
+		for (int i < wide.Count)
+			wide[i] = ((i % 4) == 3) ? ((((i / 4) % 3) == 0) ? 255 : 0) : 100;
+		Test.Assert(TextureMipChain.Append(wide, 64, 16, true, 0.5f) == 3);
 	}
 
 	/// The settings round-trip through text, and a texture saved before them reads with its

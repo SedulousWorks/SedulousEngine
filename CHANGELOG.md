@@ -192,6 +192,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 - Editor: dragging entities in the scene hierarchy moves them again: onto a row puts them under it,
   at a row's edge before or after it, onto the scene's row makes them roots.
+- Distant trees keep their leaves. A leaf card that maps a whole texture sampled its 1x1 and 2x2
+  mipmaps a few pixels across, where one alpha decides the whole card, and every card failed the
+  cutoff at once, leaving bare branches in the distance. An alpha-tested texture's mipmaps now stop
+  at 4x4, the smallest level that still holds its coverage. Textures recook on their own.
 - Distant leaves and grass keep their colour instead of fading toward pale. An alpha-tested
   texture's mipmaps averaged its clear background (often near white) into the leaves; they now
   average colour weighted by alpha, and clear texels take the leaves' colour, so edges no longer
