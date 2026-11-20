@@ -31,7 +31,8 @@ import sys
 import time
 
 CODE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TIMEOUT_SECONDS = 900
+# A whole suite's limit; ASAN_TEST_TIMEOUT (seconds) raises it for a slow one.
+TIMEOUT_SECONDS = int(os.environ.get("ASAN_TEST_TIMEOUT") or 900)
 ASAN_OPTIONS = ":".join([
     "detect_leaks=1",
     # Both fire inside the Beef runtime's own allocator rather than in ported code.
@@ -112,10 +113,20 @@ def run(exe, env, name_filter):
             elif parts[0] == ":TestWrite":
                 sys.stdout.write(command[len(parts[0]) + 1:].replace("\r", "\n"))
                 sys.stdout.flush()
+    # Past the deadline the binary still waits on the pipe for its next test, and nothing will
+    # answer it: stop it rather than wait forever.
+    timed_out = proc.poll() is None
+    if timed_out:
+        print("TIMEOUT: no exit after %d seconds; stopping the test binary" % TIMEOUT_SECONDS)
+        sys.stdout.flush()
+        proc.kill()
     proc.wait()
     for path in (to_manager, to_client):
         if os.path.exists(path):
             os.remove(path)
+    if timed_out:
+        failures.append(":TestTimeout")
+        return 124, failures
     return proc.returncode, failures
 
 
