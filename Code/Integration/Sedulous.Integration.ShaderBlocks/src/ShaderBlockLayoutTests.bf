@@ -282,6 +282,12 @@ class ShaderBlockLayoutTests
 		.("_pad1", offsetof(TaaPush, Pad1)),
 		.("_pad2", offsetof(TaaPush, Pad2)));
 
+	private static FieldRow[?] sCutoutPush = .(
+		.("AlphaThreshold", offsetof(GpuCutoutPush, AlphaThreshold)),
+		.("_cutoutPad0", offsetof(GpuCutoutPush, Pad0)),
+		.("_cutoutPad1", offsetof(GpuCutoutPush, Pad1)),
+		.("_cutoutPad2", offsetof(GpuCutoutPush, Pad2)));
+
 	private static FieldRow[?] sSsgiPush = .(
 		.("InvProj", offsetof(SsgiPush, InvProj)),
 		.("VpMin", offsetof(SsgiPush, VpMin)),
@@ -579,6 +585,8 @@ class ShaderBlockLayoutTests
 		Check("pick_ids", .Vertex, .None, "type.Object", sObject);
 		Check("pick_ids", .Vertex, .Instanced, "InstanceData", sInstance);
 		Check("pick_ids", .Vertex, .None, "type.PickView", sPickView);
+		Check("shadow_depth", .Fragment, .None, "type.ConstantBuffer.CutoutPush", sCutoutPush);
+		Check("pick_ids", .Fragment, .AlphaTest, "type.ConstantBuffer.CutoutPush", sCutoutPush);
 		Check("forward", .Vertex, .Instanced, "type.InstanceSet", sInstanceSet);
 		Check("shadow_depth", .Vertex, .Instanced, "type.InstanceSet", sInstanceSet);
 		Check("pick_ids", .Vertex, .Instanced, "type.InstanceSet", sInstanceSet);

@@ -49,6 +49,12 @@ static class DrawEmitter
 			encoder.SetBindGroup(2, draw.MaterialSet);
 		if (draw.ClusterSet != null)
 			encoder.SetBindGroup(3, draw.ClusterSet);
+		if (draw.AlphaThreshold >= 0.0f)
+		{
+			var push = GpuCutoutPush();
+			push.AlphaThreshold = draw.AlphaThreshold;
+			encoder.SetPushConstants(.Fragment, 0, sizeof(GpuCutoutPush), &push);
+		}
 
 		if (draw.VertexBuffer0 != null)
 			encoder.SetVertexBuffer(0, draw.VertexBuffer0, draw.VertexOffset0);

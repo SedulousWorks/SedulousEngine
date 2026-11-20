@@ -24,6 +24,8 @@ struct ResolvedDraw
 
 	public IBindGroup MaterialSet = null;
 	public IBindGroup ClusterSet = null;
+	/// A built in depth like program's cut-out (GpuCutoutPush), pushed when nought or above.
+	public float AlphaThreshold = -1.0f;
 
 	public IBuffer VertexBuffer0 = null;
 	public uint64 VertexOffset0 = 0;

@@ -192,6 +192,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 - Editor: dragging entities in the scene hierarchy moves them again: onto a row puts them under it,
   at a row's edge before or after it, onto the scene's row makes them roots.
+- A masked material's shadow, and its pick in the editor, cut out at the material's own Alpha
+  Cutoff (and its base colour's alpha), as the material itself draws. They had cut at 0.5 whatever
+  the material said, so leaves with a lower cutoff cast thinner shadows than they drew.
 - Distant trees keep their leaves. A leaf card that maps a whole texture sampled its 1x1 and 2x2
   mipmaps a few pixels across, where one alpha decides the whole card, and every card failed the
   cutoff at once, leaving bare branches in the distance. An alpha-tested texture's mipmaps now stop

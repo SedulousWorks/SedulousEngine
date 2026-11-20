@@ -339,4 +339,36 @@ class WindTests
 		Test.Assert(!MeshRenderer.ChooseDepthLikeStream(ref none, false, false, false));
 		Test.Assert(none.VertexLayout == .Mesh);
 	}
+
+	/// The forward cuts out where albedo alpha times base colour alpha falls below AlphaCutoff;
+	/// the built in shadow and pick programs read the albedo alone, against the threshold pushed
+	/// for them, so a caster's shadow has the holes its draw has.
+	[Test]
+	public static void ACutOutsShadowAndPickTestItsAlbedoAtTheMaterialsOwnThreshold()
+	{
+		let leaves = MaterialPresets.CreatePbr("leaves");
+		defer delete leaves;
+		leaves.Pipeline.BlendMode = .Masked;
+		let plain = scope MaterialInstance(leaves);
+		Test.Assert(Math.Abs(MeshRenderer.CutoutThreshold(plain) - 0.5f) < 0.0001f); // the default cutoff
+
+		let forest = scope MaterialInstance(leaves);
+		forest.SetFloat("AlphaCutoff", 0.45f); // not the 0.5 the shadow assumed
+		Test.Assert(Math.Abs(MeshRenderer.CutoutThreshold(forest) - 0.45f) < 0.0001f);
+
+		let faded = scope MaterialInstance(leaves);
+		faded.SetFloat("AlphaCutoff", 0.4f);
+		faded.SetColor("BaseColor", .(1, 1, 1, 0.5f)); // half the albedo's alpha survives
+		Test.Assert(Math.Abs(MeshRenderer.CutoutThreshold(faded) - 0.8f) < 0.0001f);
+
+		let clear = scope MaterialInstance(leaves);
+		clear.SetColor("BaseColor", .(1, 1, 1, 0)); // nothing passes, as in the forward
+		Test.Assert(MeshRenderer.CutoutThreshold(clear) > 1.0f);
+
+		// A material with no such properties (a custom shader's own block) keeps the default.
+		let bare = scope MaterialBuilder("bare")..Float("Glow", 1.0f).Build();
+		defer delete bare;
+		let custom = scope MaterialInstance(bare);
+		Test.Assert(Math.Abs(MeshRenderer.CutoutThreshold(custom) - 0.5f) < 0.0001f);
+	}
 }

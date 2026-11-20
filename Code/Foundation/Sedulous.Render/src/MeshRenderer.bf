@@ -2291,7 +2291,43 @@ class MeshRenderer : Renderer
 			return false;
 		draw.Pso = pipeline;
 		draw.MaterialSet = materialSet; // set two: the material (a cut-out, wind, or its own program)
+		// A built in program cuts out at the material's own threshold, as its forward draw does;
+		// a material's own program reads its cutoff itself.
+		draw.AlphaThreshold = -1.0f;
+		if ((materialSet != null) && config.ShaderFlags.HasFlag(.AlphaTest)
+			&& ((config.ShaderName == "shadow_depth") || (config.ShaderName == "pick_ids")))
+			draw.AlphaThreshold = CutoutThreshold(InstanceFor(material));
 		return true;
+	}
+
+	/// A float of an instance's uniform block, by property name, or `fallback` where the
+	/// material has no such property (a custom shader that declares none).
+	private static float UniformFloat(MaterialInstance instance, StringView name, int component, float fallback)
+	{
+		let material = instance.Material;
+		if (material == null)
+			return fallback;
+		MaterialPropertyDef property;
+		if (!material.FindProperty(name, out property) || !property.IsUniform)
+			return fallback;
+		let values = instance.UniformData;
+		let at = (int)property.Offset + component * sizeof(float);
+		if ((((component + 1) * sizeof(float)) > (int)property.Size) || ((at + sizeof(float)) > values.Length))
+			return fallback;
+		float value = fallback;
+		Internal.MemCpy(&value, values.Ptr + at, sizeof(float));
+		return value;
+	}
+
+	/// The threshold the built in shadow and pick programs test a cut-out's albedo alpha against
+	/// (GpuCutoutPush). The forward cuts out where albedo alpha times base colour alpha falls
+	/// below AlphaCutoff, so the albedo alone is tested against AlphaCutoff over the base alpha;
+	/// a clear base colour cuts out everything.
+	public static float CutoutThreshold(MaterialInstance instance)
+	{
+		let cutoff = Math.Clamp(UniformFloat(instance, "AlphaCutoff", 0, 0.5f), 0.0f, 1.0f);
+		let baseAlpha = Math.Clamp(UniformFloat(instance, "BaseColor", 3, 1.0f), 0.0f, 1.0f);
+		return (baseAlpha > 0.0f) ? Math.Min(cutoff / baseAlpha, 2.0f) : 2.0f;
 	}
 
 	/// Appends `template` once per range, each with its range's pipeline, material set and
@@ -2668,18 +2704,6 @@ class MeshRenderer : Renderer
 		return layout;
 	}
 
-	private IPipelineLayout MakePipelineLayout3(IBindGroupLayout set0, IBindGroupLayout set1,
-		IBindGroupLayout set2)
-	{
-		var layouts = IBindGroupLayout[3](set0, set1, set2);
-		var desc = PipelineLayoutDesc();
-		desc.BindGroupLayouts = .(&layouts[0], 3);
-
-		if (!(mDevice.CreatePipelineLayout(desc) case .Ok(let layout)))
-			return null;
-		return layout;
-	}
-
 	private IPipelineLayout MakePipelineLayout4(IBindGroupLayout set0, IBindGroupLayout set1,
 		IBindGroupLayout set2, IBindGroupLayout set3)
 	{
@@ -2724,8 +2748,17 @@ class MeshRenderer : Renderer
 			return cached;
 
 		let set1 = instanced ? mInstanceLayout : mObjectLayout;
-		let layout = MakePipelineLayout3(mShadowViewLayout, set1, set2);
-		if (layout == null)
+		// The built in programs' cut-out threshold (GpuCutoutPush) is the fragment's push block;
+		// a material's own program ignores it.
+		var layouts = IBindGroupLayout[3](mShadowViewLayout, set1, set2);
+		var cutout = PushConstantRange();
+		cutout.Stages = .Fragment;
+		cutout.Offset = 0;
+		cutout.Size = sizeof(GpuCutoutPush);
+		var desc = PipelineLayoutDesc();
+		desc.BindGroupLayouts = .(&layouts[0], 3);
+		desc.PushConstantRanges = .(&cutout, 1);
+		if (!(mDevice.CreatePipelineLayout(desc) case .Ok(let layout)))
 			return null;
 
 		mShadowMaskedLayouts[key] = layout;
