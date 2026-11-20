@@ -33,7 +33,7 @@ class RenderQualityFacadeRunTests
 				string after = "";
 				bool switched = false;
 				bool refused = true;
-				void launch()
+				void onStart()
 				{
 					for (int i = 0; i < RenderQuality.Count(); i++)
 					{

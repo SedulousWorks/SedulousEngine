@@ -29,9 +29,9 @@ static class GameScriptTests
 			int exits = 0;
 			int score = 0;
 			string last;
-			void launch() { launches++; }
-			void update(float dt) { updates++; elapsed += dt; real += Run.RealDeltaTime; }
-			void exit() { exits++; }
+			void onStart() { launches++; }
+			void onUpdate(float dt) { updates++; elapsed += dt; real += Run.RealDeltaTime; }
+			void onStop() { exits++; }
 			void onScore(int points) { score += points; }
 			void onSaid(const string &in what) { last = what; }
 		}
@@ -64,7 +64,7 @@ static class GameScriptTests
 		Test.Assert(Math.Abs(run.PropFloat("elapsed") - 6.0f / 60.0f) < 1e-4f, "and in slow motion");
 		run.Instance.InstanceTimeScale = 1.0f;
 
-		// A second start replaces the first, exit() included: the new one has seen nothing.
+		// A second start replaces the first, onStop() included: the new one has seen nothing.
 		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert((run.PropInt("updates") == 0) && (run.PropInt("exits") == 0), "a fresh instance");
 
@@ -89,7 +89,7 @@ static class GameScriptTests
 		run.Instance.SetPaused(true);
 		Test.Assert(run.Instance.State == .Paused);
 		run.Step(2);
-		Test.Assert(run.PropInt("updates") == 1, "a level clock in update does not run on");
+		Test.Assert(run.PropInt("updates") == 1, "a level clock in onUpdate does not run on");
 		Test.Assert(run.Instance.RunTime == before, "nor does the run's");
 
 		run.Instance.SetPaused(false);
@@ -214,7 +214,7 @@ static class GameScriptTests
 				bool ready = false;
 				bool readyBefore = true;
 				int entities = 0;
-				void launch()
+				void onStart()
 				{{
 					readyBefore = Run.SceneReady;
 					startCoroutine(ScriptCoroutine(this.boot));
@@ -231,7 +231,7 @@ static class GameScriptTests
 		let game = run.Class("Game", source);
 		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(!run.PropBool("readyBefore"), "no scene at launch");
-		// The coroutine ran to its first yield inside launch(): the load is in flight.
+		// The coroutine ran to its first yield inside onStart(): the load is in flight.
 		Test.Assert(run.PropInt("ticket") == 1, scope $"ticket {run.PropInt("ticket")}");
 		Test.Assert(!run.PropBool("ready"));
 
@@ -254,7 +254,7 @@ static class GameScriptTests
 			{
 				int ticket = -1;
 				bool synced = true;
-				void launch()
+				void onStart()
 				{
 					ticket = Run.LoadSceneAsync(Guid());
 					synced = Run.LoadScene(Guid());
@@ -277,12 +277,12 @@ static class GameScriptTests
 			class Game
 			{
 				bool available = true;
-				void launch()
+				void onStart()
 				{
 					available = Run.ProfilerAvailable();
 					Run.SetProfilerOverlay(true);
 				}
-				void exit() { Run.SetProfilerOverlay(false); }
+				void onStop() { Run.SetProfilerOverlay(false); }
 			}
 			""";
 		{
@@ -298,7 +298,7 @@ static class GameScriptTests
 		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", source)));
 		Test.Assert(run.PropBool("available"));
 		Test.Assert((calls.Count == 1) && calls[0]);
-		run.Instance.StopRunBehavior(); // exit() hides it
+		run.Instance.StopRunBehavior(); // onStop() hides it
 		Test.Assert((calls.Count == 2) && !calls[1]);
 	}
 
@@ -310,7 +310,7 @@ static class GameScriptTests
 			class Game
 			{
 				int updates = 0;
-				void update(float dt) { updates++; if (updates == 2) { int[] a; a[5] = 1; } }
+				void onUpdate(float dt) { updates++; if (updates == 2) { int[] a; a[5] = 1; } }
 			}
 			""");
 		Test.Assert(run.Instance.StartRunBehavior(game));
@@ -321,7 +321,7 @@ static class GameScriptTests
 		run.Step(2); // and the run keeps ticking without it
 		Test.Assert(run.Game == null);
 		// The fault is remembered with where it happened, and the run's clock kept moving.
-		Test.Assert(run.Instance.ScriptFault.StartsWith("faulted in update"), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.ScriptFault.StartsWith("faulted in onUpdate"), scope String(run.Instance.ScriptFault));
 		Test.Assert(Math.Abs(run.Instance.RunTime - 4.0 / 60.0) < 1e-5);
 		Test.Assert(run.Instance.RealDeltaTime > 0);
 		run.Instance.ResetRunClock();
@@ -340,7 +340,7 @@ static class GameScriptTests
 	public static void AClassThatIsNotARunBehaviorIsRefusedAsTheRunsBehavior()
 	{
 		let run = scope GameRun("scratch_game_run_kind");
-		let mover = run.Class("Mover", "class Mover { int made = 0; Mover() { made++; } void launch() {} }", .Entity);
+		let mover = run.Class("Mover", "class Mover { int made = 0; Mover() { made++; } void onStart() {} }", .Entity);
 		Test.Assert(!run.Instance.StartRunBehavior(mover));
 		Test.Assert(!run.Instance.RunBehaviorRunning);
 		Test.Assert(run.Instance.ScriptFault.Contains("derives from EntityBehavior"), scope String(run.Instance.ScriptFault));
@@ -350,7 +350,7 @@ static class GameScriptTests
 		Test.Assert(run.Instance.ScriptFault.Contains("declares no behavior class"), scope String(run.Instance.ScriptFault));
 
 		// The same source as a RunBehavior starts.
-		let game = run.Class("Game", "class Game { Game() {} void launch() {} }");
+		let game = run.Class("Game", "class Game { Game() {} void onStart() {} }");
 		Test.Assert(run.Instance.StartRunBehavior(game), scope String(run.Instance.ScriptFault));
 		Test.Assert(run.Instance.ScriptFault.IsEmpty);
 		run.Instance.StopRunBehavior();
@@ -366,7 +366,7 @@ static class GameScriptTests
 			class Game
 			{
 				bool ready = false;
-				void update(float dt) { ready = Run.SceneReady; }
+				void onUpdate(float dt) { ready = Run.SceneReady; }
 			}
 			""";
 		Test.Assert(a.Instance.StartRunBehavior(a.Class("Game", game)));
@@ -389,7 +389,7 @@ static class GameScriptTests
 				int updates = 0;
 				int after = 0;
 				int score = 0;
-				void update(float dt)
+				void onUpdate(float dt)
 				{
 					updates++;
 					after++;
@@ -433,7 +433,7 @@ static class GameScriptTests
 				Float3 sum; Float3 diff; Float3 scaled; Float3 scaledLeft; Float3 halved; Float3 negated;
 				Float3 product; Float3 quotient; Float3 accumulated; Float2 flat; Float4 wide;
 				bool same; bool different; Quaternion turned; Color tint;
-				void launch()
+				void onStart()
 				{
 					Float3 a = Float3(1, 2, 3);
 					Float3 b = Float3(4, 5, 6);
@@ -495,7 +495,7 @@ static class GameScriptTests
 				bool loaded = false; bool entitySame = false; bool entityDifferent = false; bool selfSame = false;
 				bool compared = false;
 				Guid kept;
-				void launch()
+				void onStart()
 				{{
 					Guid a = Guid::FromString("{0}");
 					kept = a;
@@ -507,7 +507,7 @@ static class GameScriptTests
 					noEntity = Entity() == Entity();
 					loaded = Run.LoadScene(a);
 				}}
-				void update(float dt)
+				void onUpdate(float dt)
 				{{
 					// The level is the current scene from the frame after the load.
 					if (compared || !Run.SceneReady)
@@ -554,8 +554,8 @@ static class GameScriptTests
 				int stage = 0;
 				string before; string after = "unset"; string firstName = "unset";
 				bool validAfter = true; int countAfter = -1; int countNow = -1;
-				void launch() {{ Run.LoadScene(Guid::FromString("{0}")); }}
-				void update(float dt)
+				void onStart() {{ Run.LoadScene(Guid::FromString("{0}")); }}
+				void onUpdate(float dt)
 				{{
 					if (stage == 0)
 					{{
@@ -598,8 +598,8 @@ static class GameScriptTests
 			class Game
 			{
 				int step = 0;
-				void launch() {}
-				void update(float dt)
+				void onStart() {}
+				void onUpdate(float dt)
 				{
 					step++;
 					if (step == 1) { Input.Rumble(0.6f, 0.3f, 0.2f); }
@@ -653,8 +653,8 @@ static class GameScriptTests
 			class Game
 			{
 				int step = 0;
-				void launch() {}
-				void update(float dt)
+				void onStart() {}
+				void onUpdate(float dt)
 				{
 					step++;
 					if (step == 1) { Input.PushSet("Menu"); }
@@ -699,8 +699,8 @@ static class GameScriptTests
 				string shown;
 				string inMenu;
 				string unbound;
-				void launch() {}
-				void update(float dt)
+				void onStart() {}
+				void onUpdate(float dt)
 				{
 					shown = "Hold " + Input.Describe("Jump") + ": talk";
 					inMenu = Input.Describe("Confirm", "Menu");
@@ -756,7 +756,7 @@ static class GameScriptTests
 		const String cCounter = """
 			class Game
 			{
-				void launch()
+				void onStart()
 				{
 					int runs = Save.GetInt("runs", 0);
 					Save.SetInt("runs", runs + 1);
@@ -766,7 +766,7 @@ static class GameScriptTests
 					Save.SetInt("scratch", 1);
 					Save.Remove("scratch");
 				}
-				void update(float dt) {}
+				void onUpdate(float dt) {}
 			}
 			""";
 		let scratch = "scratch_game_save";
@@ -808,13 +808,13 @@ static class GameScriptTests
 			Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", """
 				class Game
 				{
-					void launch()
+					void onStart()
 					{
 						array<float> ghost = {1.5f, -2.25f, 30.0f};
 						Save.SetFloats("ghost.Course", ghost);
 						Save.SetInt("best", 3);
 					}
-					void update(float dt) {}
+					void onUpdate(float dt) {}
 				}
 				""")));
 			run.Instance.StopRunBehavior();
@@ -837,7 +837,7 @@ static class GameScriptTests
 					float last = 0.0f;
 					bool notList = true;
 					int notListCount = -1;
-					void launch()
+					void onStart()
 					{
 						array<float> ghost;
 						had = Save.GetFloats("ghost.Course", ghost);
@@ -847,7 +847,7 @@ static class GameScriptTests
 						notList = Save.GetFloats("best", other);
 						notListCount = other.length();
 					}
-					void update(float dt) {}
+					void onUpdate(float dt) {}
 				}
 				""")));
 			Test.Assert(run.PropBool("had"));
@@ -876,8 +876,8 @@ static class GameScriptTests
 				class Game
 				{
 					bool flushed = false;
-					void launch() { Save.SetInt("coins", 37); flushed = Save.Flush(); }
-					void update(float dt) {}
+					void onStart() { Save.SetInt("coins", 37); flushed = Save.Flush(); }
+					void onUpdate(float dt) {}
 				}
 				""")));
 			Test.Assert(run.PropBool("flushed"));
@@ -893,8 +893,8 @@ static class GameScriptTests
 			Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", """
 				class Game
 				{
-					void launch() { Save.Clear(); }
-					void update(float dt) {}
+					void onStart() { Save.Clear(); }
+					void onUpdate(float dt) {}
 				}
 				""")));
 			run.Instance.StopRunBehavior();
@@ -910,8 +910,8 @@ static class GameScriptTests
 				class Game
 				{
 					int coins = 0;
-					void launch() { Save.SetInt("coins", 5); coins = Save.GetInt("coins", 0); }
-					void update(float dt) {}
+					void onStart() { Save.SetInt("coins", 5); coins = Save.GetInt("coins", 0); }
+					void onUpdate(float dt) {}
 				}
 				""")));
 			Test.Assert(run.PropInt("coins") == 5);

@@ -108,8 +108,8 @@ static class AssembledGameTests
 		}
 		let calls = AssembledRuntime.sCalls;
 		Test.Assert(calls.Count >= 3, scope $"{calls.Count} calls");
-		Test.Assert(calls[0] == "launch");
-		Test.Assert(calls[1] == "update");
-		Test.Assert(calls.Back == "exit");
+		Test.Assert(calls[0] == "onStart");
+		Test.Assert(calls[1] == "onUpdate");
+		Test.Assert(calls.Back == "onStop");
 	}
 }

@@ -172,7 +172,7 @@ class Game : RunBehavior
 	private float m_tallyTime = 0.0f;
 	private float m_previousBest = -1.0f;
 
-	void launch()
+	void onStart()
 	{
 		showTitle();
 	}
@@ -301,7 +301,7 @@ class Game : RunBehavior
 		Run.LoadScene(courseScene(i));
 	}
 
-	void update(float dt)
+	void onUpdate(float dt)
 	{
 		if (m_onTitle)
 		{

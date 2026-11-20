@@ -391,12 +391,12 @@ class PieMcpToolsTests
 
 		// A faulted startup script shows in its instance's state, with the reason.
 		client.Script = .Faulted;
-		client.Fault.Set("faulted in update: Lobby.sc:12 index out of range");
+		client.Fault.Set("faulted in onUpdate: Lobby.sc:12 index out of range");
 		{
 			let state = Call(server, "pie_state", "{\"pie\":\"game-page-1\"}");
 			defer delete state;
 			Test.Assert(state.Payload.Get("script").Get("state").AsString() == "faulted");
-			Test.Assert(state.Payload.Get("script").Get("fault").AsString() == "faulted in update: Lobby.sc:12 index out of range");
+			Test.Assert(state.Payload.Get("script").Get("fault").AsString() == "faulted in onUpdate: Lobby.sc:12 index out of range");
 		}
 
 		// Stopping the client leaves the primary running; `all` stops the rest.

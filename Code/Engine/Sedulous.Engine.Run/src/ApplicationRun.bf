@@ -245,7 +245,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// context's scale, times THIS, times the scene's own. One by default, so a single
 	/// instance collapses to the model without it. It is the scene GROUP's scale, so nought
 	/// pauses the run's scenes, behaviours, physics and timers, while the Game orchestrator,
-	/// whose update(dt) does not take this scale, keeps going and can resume.
+	/// whose onUpdate(dt) does not take this scale, keeps going and can resume.
 	[Scriptable, ScriptName("TimeScale")]
 	public float InstanceTimeScale
 	{
@@ -646,7 +646,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// Seconds of frames since ResetRunClock, unscaled (see mRunTime); standing still while
 	/// the debugger holds the run.
 	public double RunTime => mRunTime;
-	/// A run's clock from zero: its time, and its real delta, which `launch()` would otherwise
+	/// A run's clock from zero: its time, and its real delta, which `onStart()` would otherwise
 	/// read as the previous run's last frame.
 	public void ResetRunClock()
 	{
@@ -654,7 +654,7 @@ class ApplicationRun : RunBase, IRunInput
 		mRealDelta = 0;
 	}
 
-	/// This frame's seconds before any time scale, the context's included. `update(dt)`
+	/// This frame's seconds before any time scale, the context's included. `onUpdate(dt)`
 	/// already ignores Run.TimeScale; coroutine waits stand still at TimeScale 0.
 	[Scriptable, ScriptName("RealDeltaTime")]
 	public float RealDeltaTime => mRealDelta;
@@ -668,8 +668,8 @@ class ApplicationRun : RunBase, IRunInput
 	public IScriptDebugger Debugger => mRunHost.Debugger;
 	public bool IsDebugPaused => mRunHost.IsDebugPaused;
 
-	/// Compiles and launches the game script: the class's constructor, then `launch()` when
-	/// it has one; `update(dt)` each tick and `exit()` at the stop, all optional, its
+	/// Compiles and launches the game script: the class's constructor, then `onStart()` when
+	/// it has one; `onUpdate(dt)` each tick and `onStop()` at the stop, all optional, its
 	/// `on<Event>` handlers subscribed to the run bus. False when the class did not load or
 	/// instantiate, logged. A class of another kind than RunBehavior is refused, ScriptFault
 	/// saying which kind it is. A second start stops the first.
@@ -699,12 +699,12 @@ class ApplicationRun : RunBase, IRunInput
 		mGameClass = scriptClass;
 		mRunHost.HasGameScriptHold = true;
 		SubscribeGameHandlers(scriptClass);
-		InvokeGame("launch", default);
+		InvokeGame(ScriptSceneSystem.cOnStart, default);
 		GlobalLog(.Information, scope $"Run: game script '{scriptClass.ClassName}' launched");
 		return mGame != null;
 	}
 
-	/// `exit()`, then release. Idempotent; the fault path lands here too.
+	/// `onStop()`, then release. Idempotent; the fault path lands here too.
 	public void StopRunBehavior()
 	{
 		ClearGameSubscriptions();
@@ -720,7 +720,7 @@ class ApplicationRun : RunBase, IRunInput
 		mSave.Flush();
 		if (mGame != null)
 		{
-			InvokeGame("exit", default);
+			InvokeGame(ScriptSceneSystem.cOnStop, default);
 			if ((mGame != null) && (mRunHost.Runtime != null))
 			{
 				mRunHost.Runtime.CancelCoroutinesFor(mGame);
@@ -732,7 +732,7 @@ class ApplicationRun : RunBase, IRunInput
 			mRunHost.HasGameScriptHold = false;
 			mRunHost.CheckTeardown();
 			// Networking belongs to the game's run: what it hosted or joined closes with it,
-			// after its exit() had the chance to say goodbye. An editor's Game tab stopped and
+			// after its onStop() had the chance to say goodbye. An editor's Game tab stopped and
 			// started again would otherwise come back still a server, its port still held.
 			// Only a game's stop: StartRunBehavior stops first, and an app's startup preset hosts
 			// or joins before the game launches.
@@ -745,7 +745,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// Ticks the game script and moves the run's clock: once per frame, before the run bus
 	/// drains. A faulting update stops THIS run's script, not the run.
 	///
-	/// The orchestrator's `update(dt)` is the host's delta through the context's and the
+	/// The orchestrator's `onUpdate(dt)` is the host's delta through the context's and the
 	/// current scene's scales, NOT the run's (Run.TimeScale): the Game sets that scale to pause
 	/// or slow its scenes, and the timers it keeps over them (a celebration, a countdown on a
 	/// frozen screen) go on in real time. The run's coroutines, behaviours' among them, advance
@@ -783,7 +783,7 @@ class ApplicationRun : RunBase, IRunInput
 		if (mGame != null)
 		{
 			var args = ScriptValue[1](.FromFloat(orchestrator));
-			InvokeGame("update", .(&args[0], 1));
+			InvokeGame(ScriptSceneSystem.cOnUpdate, .(&args[0], 1));
 		}
 		mRunHost.Advance(gameplay);
 	}

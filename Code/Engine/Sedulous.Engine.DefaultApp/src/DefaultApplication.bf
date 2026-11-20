@@ -548,8 +548,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		scene.SetSimulationEnabled(true);
 	}
 
-	/// Launches the game script on the primary instance: a class with `launch()`,
-	/// `update(dt)`, `exit()` and `on<Event>` handlers, all optional. The CALLER resolves
+	/// Launches the game script on the primary instance: a class with `onStart()`,
+	/// `onUpdate(dt)`, `onStop()` and `on<Event>` handlers, all optional. The CALLER resolves
 	/// where the class comes from, the manifest's startup script for the player. A fault
 	/// stops the script, not the game.
 	public bool StartRunBehavior(ScriptClass scriptClass) => mInstance.StartRunBehavior(scriptClass);
@@ -660,7 +660,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// calls that before it shuts its runtime's subsystems down and never calls OnExit.
 	protected void TearDownRuns()
 	{
-		// Every game script's exit() before its scenes go.
+		// Every game script's onStop() before its scenes go.
 		ForEachInstance(scope (instance) => instance.StopRunBehavior());
 		ForEachInstance(scope (instance) => instance.Scenes.Clear());
 	}

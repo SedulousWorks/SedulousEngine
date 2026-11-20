@@ -26,7 +26,7 @@ class NetFacadeTests
 				bool server = false;
 				bool client = true;
 				bool canHost = false;
-				void launch()
+				void onStart()
 				{
 					canHost = Net.CanHost;
 					offlineServer = Net.IsServer;
@@ -38,7 +38,7 @@ class NetFacadeTests
 					server = Net.IsServer;
 					client = Net.IsClient;
 				}
-				void exit() { Net.Disconnect(); }
+				void onStop() { Net.Disconnect(); }
 			}
 			""");
 		Test.Assert(run.Instance.StartRunBehavior(game));
@@ -48,7 +48,7 @@ class NetFacadeTests
 		Test.Assert(run.PropBool("hosted"), "a host on an assigned port opens");
 		Test.Assert(run.PropBool("server") && !run.PropBool("client"));
 		Test.Assert(run.Instance.NetEndpoint != null);
-		run.Instance.StopRunBehavior(); // exit() leaves
+		run.Instance.StopRunBehavior(); // onStop() leaves
 		Test.Assert(run.Instance.NetEndpoint == null, "left: offline again");
 	}
 
@@ -82,7 +82,7 @@ class NetFacadeTests
 				void onScore(int sender, double value) { score = value; scoreFrom = sender; Net.RpcNumber("ack", value * 2); }
 				void onHello(int sender, const string &in text) { greeting = text; }
 				void onPing(int sender) { pings++; }
-				void launch()
+				void onStart()
 				{
 					Net.OnNumber("score", NetNumberHandler(this.onScore));
 					Net.OnText("hello", NetTextHandler(this.onHello));
@@ -102,7 +102,7 @@ class NetFacadeTests
 			{
 				double ack = 0;
 				void onAck(int sender, double value) { ack = value; }
-				void launch()
+				void onStart()
 				{
 					Net.OnNumber("ack", NetNumberHandler(this.onAck));
 					Net.Connect("127.0.0.1", {{port}});
@@ -115,7 +115,7 @@ class NetFacadeTests
 					Net.Rpc("ping");
 					Net.RpcText("score", "the wrong kind for its handler");
 				}
-				void update(float dt) { if (Net.PeerCount > 0 && !sent) { sent = true; send(); } }
+				void onUpdate(float dt) { if (Net.PeerCount > 0 && !sent) { sent = true; send(); } }
 				bool sent = false;
 			}
 			""");
@@ -149,13 +149,13 @@ class NetFacadeTests
 				int joined = -1;
 				int self = -2;
 				void onJoin(int player) { joined = player; Net.RpcNumberTo(player, "welcome", player * 10); Net.RpcTo(99, "nobody"); }
-				void launch()
+				void onStart()
 				{
 					Net.OnJoin(NetHandler(this.onJoin));
 					Net.StartServer(0);
 					self = Net.LocalPlayer;
 				}
-				void exit() { Net.Disconnect(); }
+				void onStop() { Net.Disconnect(); }
 			}
 			""");
 		Test.Assert(host.Instance.StartRunBehavior(hostGame));
@@ -175,7 +175,7 @@ class NetFacadeTests
 				void onJoin(int player) { joinedAs = player; self = Net.LocalPlayer; }
 				void onWelcome(int sender, double value) { welcome = value; welcomeFrom = sender; }
 				void onLeave(int player) { left = player; }
-				void launch()
+				void onStart()
 				{
 					Net.OnJoin(NetHandler(this.onJoin));
 					Net.OnLeave(NetHandler(this.onLeave));
@@ -200,7 +200,7 @@ class NetFacadeTests
 		Test.Assert(Math.Abs(client.PropFloat("welcome") - (float)(clientId * 10)) < 0.001f, "a message to it alone");
 		Test.Assert(client.PropInt("welcomeFrom") == 0, "from the host, player nought");
 
-		host.Instance.StopRunBehavior(); // exit(): the host leaves
+		host.Instance.StopRunBehavior(); // onStop(): the host leaves
 		for (int i < 600)
 		{
 			Pump(host, client, 1);
@@ -238,12 +238,12 @@ class NetFacadeTests
 				bool ownMine = false;
 				bool offlineMine = true;
 				bool finished = false;
-				void launch()
+				void onStart()
 				{
 					Net.StartServer(0);
 					loaded = Run.LoadScene(Guid::FromString("{{level}}"));
 				}
-				void update(float dt)
+				void onUpdate(float dt)
 				{
 					if (spawned || !Run.SceneReady)
 						return;
@@ -280,14 +280,14 @@ class NetFacadeTests
 	public static void AGamesStopClosesWhatItHosted()
 	{
 		let run = scope GameRun("scratch_net_stop");
-		let game = run.Class("Game", "class Game { void launch() { Net.StartServer(0); } }");
+		let game = run.Class("Game", "class Game { void onStart() { Net.StartServer(0); } }");
 		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(run.Instance.NetEndpoint != null);
 		run.Instance.StopRunBehavior();
 		Test.Assert(run.Instance.NetEndpoint == null, "the game's server closed with it");
 
 		Test.Assert(run.Instance.StartServer(0, false), "a startup preset's host");
-		let quiet = run.Class("Game", "class Game { void launch() {} }");
+		let quiet = run.Class("Game", "class Game { void onStart() {} }");
 		Test.Assert(run.Instance.StartRunBehavior(quiet));
 		Test.Assert(run.Instance.NetEndpoint != null, "the launch stopped no game, so the host stands");
 		run.Instance.StopRunBehavior();

@@ -98,7 +98,7 @@ class Game : RunBehavior
 	private float m_celebrated = 0.0f; // seconds into a cleared block's celebration
 	private int m_secondsLeft = 0;     // the clock when the block was cleared (its time bonus)
 
-	void launch()
+	void onStart()
 	{
 		m_levels.insertLast(Guid::FromString("252c2c2a-4795-6a4d-bafb-95001f747b70"));
 		m_levels.insertLast(Guid::FromString("5e9597f2-196d-1f42-b917-366eb2b6c2b1"));
@@ -114,7 +114,7 @@ class Game : RunBehavior
 	}
 
 	// The Game tier ticks at time scale 0 too, so the Pause action is read here in every phase.
-	void update(float dt)
+	void onUpdate(float dt)
 	{
 		if (m_phase == Phase::Celebrating)
 		{
@@ -146,7 +146,7 @@ class Game : RunBehavior
 		}
 	}
 
-	void exit() {}
+	void onStop() {}
 
 	// ---- what the level reports ----
 

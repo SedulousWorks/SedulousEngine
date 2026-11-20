@@ -56,7 +56,7 @@ class Game : RunBehavior
 	private float m_note = 0.0f; // how long the HUD's word shows yet
 	private float m_controlsShow = 0.0f; // how long the controls panel shows yet
 
-	void launch()
+	void onStart()
 	{
 		showTitle();
 	}
@@ -167,7 +167,7 @@ class Game : RunBehavior
 		Run.LoadScene(levelScene(i));
 	}
 
-	void update(float dt)
+	void onUpdate(float dt)
 	{
 		if (!m_inLevel)
 		{

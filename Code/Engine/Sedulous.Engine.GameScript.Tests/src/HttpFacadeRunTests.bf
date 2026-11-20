@@ -29,7 +29,7 @@ class HttpFacadeRunTests
 			{
 				string got = "";
 				int late = 0;
-				void launch()
+				void onStart()
 				{
 					Http.Get("http://127.0.0.1:{{server.BoundPort}}/best", HttpHandler(this.onBest));
 					Http.Get("http://127.0.0.1:{{server.BoundPort}}/slow", HttpHandler(this.onSlow));

@@ -104,14 +104,14 @@ class AngelScriptCook : IScriptLanguageCook
 		case .Game:
 			outSource.Append("""
 				// A run behavior, the game's orchestrator, one per run: set it as the project's.
-				// `Run` is the application run: load the opening scene from launch(),
+				// `Run` is the application run: load the opening scene from onStart(),
 				// Run.LoadScene(sceneId), and use Run.Emit for run wide events; on<Event>
 				// handlers receive them.
 				class {CLASSNAME} : RunBehavior
 				{
-					void launch() { Print("Game launched"); }
-					void update(float dt) {}
-					void exit() {}
+					void onStart() { Print("Game launched"); }
+					void onUpdate(float dt) {}
+					void onStop() {}
 				}
 
 				""");

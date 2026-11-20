@@ -86,7 +86,7 @@ class Game : RunBehavior
 	private float m_readyIn = -1.0f;     // a joiner: until it tells the host it is ready, once the host's map has loaded
 	private float m_joinWait = -1.0f;    // a joiner on the title: how long until it gives up on the host
 
-	void launch()
+	void onStart()
 	{
 		// A joiner hears the host's map in its welcome (Ball.as's onJoined), here rather than in a
 		// scene's behaviour, as it arrives while the title's scene is the one loaded.
@@ -321,7 +321,7 @@ class Game : RunBehavior
 		}
 	}
 
-	void update(float dt)
+	void onUpdate(float dt)
 	{
 		if (m_controlsOpen && Input.WasPressed("Pause"))
 		{

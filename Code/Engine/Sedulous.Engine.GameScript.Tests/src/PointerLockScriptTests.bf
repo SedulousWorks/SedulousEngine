@@ -53,8 +53,8 @@ class PointerLockScriptTests
 				int step = 0;
 				bool lockedAsked = true;
 				bool lockedHeld = false;
-				void launch() {}
-				void update(float dt)
+				void onStart() {}
+				void onUpdate(float dt)
 				{
 					step++;
 					if (step == 1) { Input.LockPointer(true); lockedAsked = Input.PointerLocked(); }

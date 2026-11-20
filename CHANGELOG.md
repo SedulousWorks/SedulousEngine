@@ -119,6 +119,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Scripts: a run behavior's handlers take the names the other kinds use: `launch`, `update` and
+  `exit` are now `onStart`, `onUpdate` and `onStop`.
 - Editor and MCP: a script asset no longer has a Class Name setting, and `script_validate` no
   longer takes `className`: the class a script plays is the one deriving from a kind, and
   `script_validate` returns its `kind` beside its `className`.

@@ -250,7 +250,7 @@ class PlayerApplication : DefaultApplication
 			Instance.SetSaveFile(PathJoin(savePath, saveName, .. scope String()));
 		}
 
-		// The game script launches FIRST: its launch() may load the first level itself, and
+		// The game script launches FIRST: its onStart() may load the first level itself, and
 		// a startup scene, when the manifest names one, loads behind it. The player's one run
 		// plays one session, from here to OnExit.
 		Instance.Start();
