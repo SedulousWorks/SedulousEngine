@@ -14,7 +14,7 @@ class UnversionedScriptRecord
 	public String ClassName = new .() ~ delete _;
 	public String SourceName = new .() ~ delete _;
 	public String Source = new .() ~ delete _;
-	public List<ScriptPropertyDesc> Properties = new .() ~ DeleteContainerAndItems!(_);
+	public List<BehaviorProperty> Properties = new .() ~ DeleteContainerAndItems!(_);
 	public List<String> Handlers = new .() ~ DeleteContainerAndItems!(_);
 	public bool UsesCoroutines = false;
 }

@@ -66,7 +66,7 @@ static class ScriptValidateTool
 			return false;
 		}
 		let source = McpTools.ArgString(arguments, "source", .. scope .());
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
 		// The files it includes, from the open project's sources, resolved against `name`.

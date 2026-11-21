@@ -114,7 +114,7 @@ def vec(name, xyz, keys="xyz"):
 
 
 def fnv(name):
-    """ScriptPropertyNameHash: FNV-1a 64 over the property's name."""
+    """BehaviorPropertyNameHash: FNV-1a 64 over the property's name."""
     h = 14695981039346656037
     for b in name.encode():
         h ^= b

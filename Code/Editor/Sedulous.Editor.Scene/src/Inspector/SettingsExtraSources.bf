@@ -22,7 +22,7 @@ namespace Sedulous.Editor.Scene;
 //     body keeps its group by index (removing another renumbers the ones after it, a remap of
 //     every body this does not make). A scene without groups shows one, Default.
 //   - the scene behavior block's level properties: its Level class's properties by their kinds, as
-//     a behaviour's are (ScriptPropertyRows), each an override on the block while it differs.
+//     a behaviour's are (BehaviorPropertyRows), each an override on the block while it differs.
 // Every edit is the edit context's MutateSceneSettings: one undo step.
 
 class CollisionGroupsSource : IPropertySource
@@ -388,13 +388,13 @@ class LevelScriptSource : IPropertySource
 			return;
 		if (parent.IsEmpty)
 		{
-			ScriptPropertyRows.Describe(type, outInfos);
+			BehaviorPropertyRows.Describe(type, outInfos);
 			return;
 		}
-		ScriptPropertyRows.ParseRow(parent, let row, let part);
-		let property = ScriptPropertyRows.Find(type, row);
+		BehaviorPropertyRows.ParseRow(parent, let row, let part);
+		let property = BehaviorPropertyRows.Find(type, row);
 		if ((property != null) && (part < 0))
-			ScriptPropertyRows.Parts(property, outInfos);
+			BehaviorPropertyRows.Parts(property, outInfos);
 	}
 
 	public override Sedulous.GUI.Variant GetValue(StringView path, int object)
@@ -403,12 +403,12 @@ class LevelScriptSource : IPropertySource
 		let settings = Settings();
 		if ((type == null) || (settings == null))
 			return .();
-		ScriptPropertyRows.ParseRow(path, let row, let part);
-		let property = ScriptPropertyRows.Find(type, row);
+		BehaviorPropertyRows.ParseRow(path, let row, let part);
+		let property = BehaviorPropertyRows.Find(type, row);
 		if (property == null)
 			return .();
 		let over = settings.FindOverride(property.Hash);
-		return ScriptPropertyRows.ToGrid((over != null) ? over.Value : property.Default, property.Type, part);
+		return BehaviorPropertyRows.ToGrid((over != null) ? over.Value : property.Default, property.Type, part);
 	}
 
 	public override void BeginEdit(StringView path) {}
@@ -420,8 +420,8 @@ class LevelScriptSource : IPropertySource
 		let type = Class();
 		if (type == null)
 			return;
-		ScriptPropertyRows.ParseRow(path, let row, let part);
-		let property = ScriptPropertyRows.Find(type, row);
+		BehaviorPropertyRows.ParseRow(path, let row, let part);
+		let property = BehaviorPropertyRows.Find(type, row);
 		if (property == null)
 			return;
 		let hash = property.Hash;
@@ -431,7 +431,7 @@ class LevelScriptSource : IPropertySource
 		Mutate(scope (settings) =>
 			{
 				let over = settings.FindOverride(hash);
-				settings.SetOverride(hash, ScriptPropertyRows.FromGrid((over != null) ? over.Value : fallback, kind, part, value));
+				settings.SetOverride(hash, BehaviorPropertyRows.FromGrid((over != null) ? over.Value : fallback, kind, part, value));
 			});
 	}
 
@@ -442,9 +442,9 @@ class LevelScriptSource : IPropertySource
 		let type = Class();
 		if (type == null)
 			return .();
-		ScriptPropertyRows.ParseRow(path, let row, let part);
-		let property = ScriptPropertyRows.Find(type, row);
-		return (property != null) ? ScriptPropertyRows.ToGrid(property.Default, property.Type, part) : .();
+		BehaviorPropertyRows.ParseRow(path, let row, let part);
+		let property = BehaviorPropertyRows.Find(type, row);
+		return (property != null) ? BehaviorPropertyRows.ToGrid(property.Default, property.Type, part) : .();
 	}
 
 	public override bool Revert(StringView path)
@@ -452,8 +452,8 @@ class LevelScriptSource : IPropertySource
 		let type = Class();
 		if (type == null)
 			return false;
-		ScriptPropertyRows.ParseRow(path, let row, let part);
-		let property = ScriptPropertyRows.Find(type, row);
+		BehaviorPropertyRows.ParseRow(path, let row, let part);
+		let property = BehaviorPropertyRows.Find(type, row);
 		if (property == null)
 			return false;
 		let hash = property.Hash;
@@ -480,7 +480,7 @@ class LevelScriptSource : IPropertySource
 	}
 
 	// The Level class bound, through the editor's resources while the reference has not resolved.
-	private ScriptClass Class()
+	private BehaviorClass Class()
 	{
 		let settings = Settings();
 		if (settings == null)
@@ -489,7 +489,7 @@ class LevelScriptSource : IPropertySource
 			return settings.BehaviorClass.Get;
 		if (settings.BehaviorClass.Id.IsNil || (mContext == null) || (mContext.Resources == null))
 			return null;
-		return mContext.Resources.Bind<ScriptClass>(settings.BehaviorClass.Id).Get;
+		return mContext.Resources.Bind<BehaviorClass>(settings.BehaviorClass.Id).Get;
 	}
 
 	private uint64 Signature()

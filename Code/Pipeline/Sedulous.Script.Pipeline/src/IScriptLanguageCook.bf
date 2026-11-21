@@ -29,7 +29,7 @@ interface IScriptLanguageCook
 	/// classes.
 	/// The files the source includes are read through `includes` (null: none can be, so a script
 	/// that includes one fails), and recorded in the record's Includes.
-	bool Cook(StringView source, StringView sourceName, ScriptClassSource outRecord, List<String> problems,
+	bool Cook(StringView source, StringView sourceName, BehaviorClassSource outRecord, List<String> problems,
 		IScriptIncludeReader includes = null);
 
 	/// Compile checks `source` as Cook would, WITHOUT running any of it and without the
@@ -75,5 +75,5 @@ interface IScriptLanguageCook
 	/// Cooks the class `source` plays from `assembly`, its project's built assembly: its handlers and properties into `outRecord`, problems into
 	/// `problems`. False when the assembly does not declare it.
 	bool CookFromAssembly(StringView source, StringView sourceName, ScriptAssemblySource assembly,
-		ScriptClassSource outRecord, List<String> problems) => false;
+		BehaviorClassSource outRecord, List<String> problems) => false;
 }

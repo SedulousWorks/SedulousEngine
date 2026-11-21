@@ -22,7 +22,7 @@ namespace Sedulous.Script.Pipeline.Tests;
 static class ScriptClassCookTests
 {
 	private const String cRoot = "scratch_script_cook";
-	private const String cProductType = "Sedulous.Script.Resource.ScriptClassSource";
+	private const String cProductType = "Sedulous.Script.Resource.BehaviorClassSource";
 
 	private static ScriptSurface sSurface = null ~ delete _;
 
@@ -79,15 +79,15 @@ static class ScriptClassCookTests
 			context.Sources = mount;
 			context.Output = instance;
 			let builder = scope ScriptClassAssetBuilder();
-			Test.Assert(builder.Version == 8, "the shell's 7 plus the cook's 1");
+			Test.Assert(builder.Version == 9, "the shell's 8 plus the cook's 1");
 			Test.Assert(builder.Build(asset, context) case .Ok, "cooked");
 		}
 
 		let database = scope ContentDatabase(mount, serializers, "rasset");
 		let manager = scope ResourceManager(database, null);
-		let factory = scope ScriptClassFactory();
+		let factory = scope BehaviorClassFactory();
 		manager.AddFactory(factory);
-		let proxy = manager.Bind<ScriptClass>(id);
+		let proxy = manager.Bind<BehaviorClass>(id);
 		let product = proxy.Get;
 		Test.Assert(product != null, "bound");
 		Test.Assert(product.Language == "angelscript");
@@ -142,7 +142,7 @@ static class ScriptClassCookTests
 		Test.Assert(deps.Files.Count == 2, scope $"{deps.Files.Count} inputs");
 		Test.Assert(builder.Build(asset, context) case .Ok, "cooked");
 
-		let record = instance.ReadObject() as ScriptClassSource;
+		let record = instance.ReadObject() as BehaviorClassSource;
 		Test.Assert(record != null);
 		defer delete record;
 		Test.Assert(record.Includes.Count == 2);
@@ -157,7 +157,7 @@ static class ScriptClassCookTests
 		let cook = ScriptLanguageCooks.Find("angelscript");
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
-		let missing = scope ScriptClassSource();
+		let missing = scope BehaviorClassSource();
 		Test.Assert(!cook.Cook("#include \"lib/Nope.as\"\nclass Player {}\n", "scripts/Player.as", missing, problems, scope FolderIncludeReader(root)));
 		Test.Assert(!problems.IsEmpty && problems.Back.Contains("scripts/lib/Nope.as"), problems.IsEmpty ? "" : problems.Back);
 		Test.Assert(!cook.Cook("#include \"../../outside.as\"\nclass Player {}\n", "scripts/Player.as", missing, problems, scope FolderIncludeReader(root)));
@@ -230,7 +230,7 @@ static class ScriptClassCookTests
 		Registered();
 		let cook = ScriptLanguageCooks.Find("angelscript");
 		Test.Assert(cook != null);
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
 		Test.Assert(!cook.Cook("class Broken : EntityBehavior { void onStart() { Nope(); } }", "Broken.as", record, problems));
@@ -278,7 +278,7 @@ static class ScriptClassCookTests
 		Test.Assert(cook.Check(faulting, "Mover.as", className, problems, default), problems.IsEmpty ? "" : problems[0]);
 		Test.Assert(className == "Mover");
 		Test.Assert(problems.IsEmpty);
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		Test.Assert(cook.Cook(faulting, "Mover.as", record, problems), problems.IsEmpty ? "" : problems[0]);
 		Test.Assert(record.ClassName == "Mover");
 
@@ -435,7 +435,7 @@ static class ScriptClassCookTests
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
 		let source = "class Stats { int hp; }\nclass Hero : EntityBehavior { Stats stats; void onUpdate(float dt) {} }\nclass Damage { int amount; }\n";
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		Test.Assert(cook.Cook(source, "Player.as", record, problems), problems.IsEmpty ? "" : problems[0]);
 		Test.Assert((record.ClassName == "Hero") && (record.Kind == .Entity), scope String(record.ClassName));
 		let className = scope String();
@@ -505,7 +505,7 @@ static class ScriptClassCookTests
 				return false;
 			let object = output.ReadObject();
 			defer delete object;
-			if (let record = object as ScriptClassSource)
+			if (let record = object as BehaviorClassSource)
 				outClass.Set(record.ClassName);
 			return true;
 		}
@@ -592,7 +592,7 @@ static class ScriptClassCookTests
 	{
 		Registered();
 		let cook = ScriptLanguageCooks.Find("angelscript");
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems(problems); }
 		Test.Assert(cook.Cook("float Helper(float x) { return x * 2; }", "Helpers.as", record, problems));
@@ -647,7 +647,7 @@ static class ScriptClassCookTests
 		{
 			let problems = scope List<String>();
 			defer { ClearAndDeleteItems(problems); }
-			let record = scope ScriptClassSource();
+			let record = scope BehaviorClassSource();
 			record.Kind = .Scene; // overwritten
 			Test.Assert(cook.Cook(c.source, c.asset, record, problems), problems.IsEmpty ? scope String(c.asset) : problems[0]);
 			Test.Assert(record.Kind == c.kind, scope String()..AppendF("{}: {}", c.asset, record.Kind));

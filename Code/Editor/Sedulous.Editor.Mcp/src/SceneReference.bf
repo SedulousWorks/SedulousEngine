@@ -608,7 +608,7 @@ class SceneReference
 		}
 	}
 
-	private static ScriptPropertyValue SampleValue(ScriptPropertyType kind, Guid child, ref Sedulous.Core.Random rng)
+	private static BehaviorPropertyValue SampleValue(BehaviorPropertyType kind, Guid child, ref Sedulous.Core.Random rng)
 	{
 		switch (kind)
 		{
@@ -864,7 +864,7 @@ class SceneReference
 		// The override record as the behavior component writes it.
 		{
 			let recorder = scope SchemaRecorder();
-			let record = scope ScriptPropertyOverride();
+			let record = scope BehaviorPropertyOverride();
 			record.Serialize(recorder);
 			json.Set("record", FieldsJson(recorder.Root, null, ctx));
 		}
@@ -884,7 +884,7 @@ class SceneReference
 			let kinds = JsonValue.MakeArray();
 			for (let entry in ScriptPropertyNames.TypeNames)
 			{
-				var value = ScriptPropertyValue();
+				var value = BehaviorPropertyValue();
 				value.Kind = entry.Kind;
 				let recorder = scope SchemaRecorder();
 				value.Serialize(recorder);

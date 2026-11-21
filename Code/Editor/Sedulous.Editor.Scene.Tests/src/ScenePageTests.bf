@@ -1934,9 +1934,9 @@ class ScenePageTests
 		source.GetProperties("behaviors.0", rows);
 		Test.Assert(rows.Count == 3); // no script yet: its own rows only
 		Test.Assert(rows[0].Kind == .Reference);
-		Test.Assert(rows[0].ReferenceType == typeof(ScriptClass));
+		Test.Assert(rows[0].ReferenceType == typeof(BehaviorClass));
 		// By its name, what the asset picker asks the builders for.
-		Test.Assert(rows[0].ReferenceType.GetName(.. scope .()) == "ScriptClass");
+		Test.Assert(rows[0].ReferenceType.GetName(.. scope .()) == "BehaviorClass");
 
 		source.CommitEdit("behaviors.0.enabled", PropertyWrite(Sedulous.GUI.Variant(false)));
 		Test.Assert(!Component().Behaviors[0].Enabled);
@@ -2127,19 +2127,19 @@ class ScenePageTests
 		source.GetProperties(default, none);
 		Test.Assert(none.IsEmpty); // no Level class: nothing to author
 
-		let level = scope ScriptClass();
+		let level = scope BehaviorClass();
 		level.ClassName.Set("Level");
-		let speed = new ScriptPropertyDesc();
+		let speed = new BehaviorProperty();
 		speed.Name.Set("speed");
 		speed.Hash = 41;
 		speed.Type = .Float;
-		speed.Default = ScriptPropertyValue.Float(2.0);
+		speed.Default = BehaviorPropertyValue.Float(2.0);
 		level.Properties.Add(speed);
-		let spawn = new ScriptPropertyDesc();
+		let spawn = new BehaviorProperty();
 		spawn.Name.Set("spawn");
 		spawn.Hash = 42;
 		spawn.Type = .Vec3;
-		spawn.Default = ScriptPropertyValue.Vec3(.(0, 0, 0));
+		spawn.Default = BehaviorPropertyValue.Vec3(.(0, 0, 0));
 		level.Properties.Add(spawn);
 		Settings().BehaviorClass.SetDirect(level);
 		source.Refresh();

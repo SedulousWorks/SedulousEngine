@@ -23,7 +23,7 @@ class ScriptPlayScene
 	public BehaviorSystem Scripts;
 	public BehaviorRunHost Host = new .();
 	private ScriptSurface mSurface = new .();
-	private List<ScriptClass> mClasses = new .();
+	private List<BehaviorClass> mClasses = new .();
 	private int mHarvested = 0;
 
 	/// The scenes go first: their teardown releases instances through the host, which
@@ -78,7 +78,7 @@ class ScriptPlayScene
 	/// Compiles `source` as `sourceName`, harvests `className` from it, and answers the
 	/// product, of the behavior kind `kind` (a Level's is Scene). The class is owned here, as a
 	/// resource manager would own it.
-	public ScriptClass Class(StringView className, StringView source, StringView sourceName = "Test.as", BehaviorKind kind = .Entity)
+	public BehaviorClass Class(StringView className, StringView source, StringView sourceName = "Test.as", BehaviorKind kind = .Entity)
 	{
 		let runtime = Host.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
@@ -88,7 +88,7 @@ class ScriptPlayScene
 			Console.WriteLine("  {}", p);
 		Test.Assert(ok, "the class compiled");
 
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		record.Language.Set(AngelScriptBackend.cLanguage);
 		record.ClassName.Set(className);
 		record.Kind = kind;
@@ -97,21 +97,21 @@ class ScriptPlayScene
 		Test.Assert(ScriptHarvest.Harvest(runtime, module, className, record), "harvested");
 		runtime.DiscardModule(module);
 
-		let product = new ScriptClass();
+		let product = new BehaviorClass();
 		product.From(record);
 		mClasses.Add(product);
 		return product;
 	}
 
 	/// Frees a product as a hot reload does when it swaps in the rebuilt one.
-	public void Free(ScriptClass scriptClass)
+	public void Free(BehaviorClass scriptClass)
 	{
 		mClasses.Remove(scriptClass);
 		delete scriptClass;
 	}
 
 	/// An entity with one behaviour of the class.
-	public EntityHandle AddBehavior(ScriptClass scriptClass, StringView entityName = "e", Scene into = null)
+	public EntityHandle AddBehavior(BehaviorClass scriptClass, StringView entityName = "e", Scene into = null)
 	{
 		let scene = into ?? Scene;
 		let entity = scene.CreateEntity(entityName);
@@ -119,7 +119,7 @@ class ScriptPlayScene
 		return entity;
 	}
 
-	public AttachedBehavior Attach(EntityHandle entity, ScriptClass scriptClass, Scene into = null)
+	public AttachedBehavior Attach(EntityHandle entity, BehaviorClass scriptClass, Scene into = null)
 	{
 		let scene = into ?? Scene;
 		let components = scene.GetSystem<BehaviorComponentManager>();

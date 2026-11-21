@@ -91,7 +91,7 @@ static class AssembledGameTests
 		assembly.Language.Set(AssembledRuntime.cLanguage);
 		assembly.Image.Add(0x4D);
 		assembly.Image.Add(0x5A);
-		let game = scope ScriptClass();
+		let game = scope BehaviorClass();
 		game.Language.Set(AssembledRuntime.cLanguage);
 		game.ClassName.Set("Game");
 		game.Kind = .Run;

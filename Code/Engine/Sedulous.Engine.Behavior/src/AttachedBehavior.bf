@@ -18,12 +18,12 @@ class AttachedBehavior : ISerializable
 	// ---- authored ----
 
 	/// The behavior's class, a cooked script asset.
-	public Ref<ScriptClass> BehaviorClass = .(Guid());
+	public Ref<BehaviorClass> BehaviorClass = .(Guid());
 	public bool Enabled = true;
 	/// Seconds between onUpdate calls; zero or less is every tick. The delivered dt is the
 	/// ACCUMULATED time, so movement integrates correctly at the lower rate.
 	public float UpdateInterval = 0.0f;
-	public List<ScriptPropertyOverride> Overrides = new .() ~ DeleteContainerAndItems!(_);
+	public List<BehaviorPropertyOverride> Overrides = new .() ~ DeleteContainerAndItems!(_);
 
 	// ---- runtime, transient ----
 
@@ -31,7 +31,7 @@ class AttachedBehavior : ISerializable
 	public ScriptObject Instance = null;
 	/// The product the instance was built from, BORROWED: a reload swaps the product and
 	/// the instance is rebuilt.
-	public ScriptClass BoundClass = null;
+	public BehaviorClass BoundClass = null;
 	/// Keeps BoundClass's resource loaded while the instance lives; null with no instance.
 	public ResourceHold BoundHold = null ~ _?.Release();
 	/// onStart delivered.
@@ -45,7 +45,7 @@ class AttachedBehavior : ISerializable
 	/// Time banked toward the next throttled onUpdate.
 	public float UpdateAccumulator = 0.0f;
 
-	public ScriptPropertyOverride FindOverride(uint64 hash)
+	public BehaviorPropertyOverride FindOverride(uint64 hash)
 	{
 		for (let entry in Overrides)
 		{
@@ -56,12 +56,12 @@ class AttachedBehavior : ISerializable
 	}
 
 	/// Sets an override, taking the value's Text if it has one.
-	public void SetOverride(uint64 hash, ScriptPropertyValue value)
+	public void SetOverride(uint64 hash, BehaviorPropertyValue value)
 	{
 		var existing = FindOverride(hash);
 		if (existing == null)
 		{
-			existing = new ScriptPropertyOverride();
+			existing = new BehaviorPropertyOverride();
 			existing.Hash = hash;
 			Overrides.Add(existing);
 		}

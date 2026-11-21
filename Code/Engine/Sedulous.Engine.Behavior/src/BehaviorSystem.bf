@@ -62,7 +62,7 @@ class BehaviorSystem : SceneSystem
 	// ---- the Level tier ----
 	private SceneBehaviorSettings mSettings = new .() ~ delete _;
 	private ScriptObject mLevel = null;
-	private ScriptClass mLevelClass = null;
+	private BehaviorClass mLevelClass = null;
 	/// Keeps mLevelClass's resource loaded while the Level lives; null with none.
 	private ResourceHold mLevelHold = null ~ _?.Release();
 	private bool mLevelStarted = false;
@@ -125,7 +125,7 @@ class BehaviorSystem : SceneSystem
 	/// The Level's asset-valued overrides, which the script binds itself.
 	public override void CollectUnboundReferences(List<Guid> outIds)
 	{
-		ScriptPropertyOverride.CollectAssetIds(mSettings.Overrides, outIds);
+		BehaviorPropertyOverride.CollectAssetIds(mSettings.Overrides, outIds);
 	}
 
 	/// The Level's class (the settings' reference) and the assets its overrides name, which a
@@ -134,7 +134,7 @@ class BehaviorSystem : SceneSystem
 	{
 		base.CollectResourceIds(outIds);
 		let assets = scope List<Guid>();
-		ScriptPropertyOverride.CollectAssetIds(mSettings.Overrides, assets);
+		BehaviorPropertyOverride.CollectAssetIds(mSettings.Overrides, assets);
 		for (let id in assets)
 		{
 			if (!id.IsNil)
@@ -442,7 +442,7 @@ class BehaviorSystem : SceneSystem
 		}
 	}
 
-	private void InstantiateBehavior(AttachedBehavior behavior, EntityHandle entity, ScriptClass scriptClass)
+	private void InstantiateBehavior(AttachedBehavior behavior, EntityHandle entity, BehaviorClass scriptClass)
 	{
 		// The class stays loaded while what was built from it lives, whatever the reference
 		// names meanwhile.
@@ -508,7 +508,7 @@ class BehaviorSystem : SceneSystem
 
 	/// Whether `bound` is no longer the product of the resource `hold` keeps: reloaded or released
 	/// since. A class set directly, with no resource, is never stale.
-	private static bool IsStale(ResourceHold hold, ScriptClass bound)
+	private static bool IsStale(ResourceHold hold, BehaviorClass bound)
 	{
 		let handle = (hold != null) ? hold.Handle : null;
 		return (handle != null) && (bound != null) && (handle.Product !== bound);
@@ -640,7 +640,7 @@ class BehaviorSystem : SceneSystem
 	// ---- events ----
 
 	/// Subscribes this scene's bus to every event the class handles, once per event name.
-	private void SubscribeHandlers(ScriptClass scriptClass)
+	private void SubscribeHandlers(BehaviorClass scriptClass)
 	{
 		let bus = mScene.Events;
 		if (bus == null)

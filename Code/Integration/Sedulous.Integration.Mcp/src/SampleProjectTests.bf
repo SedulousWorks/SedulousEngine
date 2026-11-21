@@ -187,11 +187,11 @@ static class SampleProjectTests
 	}
 
 	/// Each override names a property the script's cooked class declares; answers how many.
-	private static int CheckDeclared(EditorProject project, StringView owner, Guid script, List<ScriptPropertyOverride> overrides)
+	private static int CheckDeclared(EditorProject project, StringView owner, Guid script, List<BehaviorPropertyOverride> overrides)
 	{
 		let stored = project.CookedDb.ReadObject(script);
 		defer delete stored;
-		let source = stored as ScriptClassSource;
+		let source = stored as BehaviorClassSource;
 		Test.Assert(source != null, scope $"{owner}: the script is cooked");
 		if (source == null)
 			return 0;

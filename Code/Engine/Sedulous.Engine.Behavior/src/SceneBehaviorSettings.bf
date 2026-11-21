@@ -19,13 +19,13 @@ class SceneBehaviorSettings : ISerializable
 {
 	/// The scene behavior (a SceneBehavior class); nil is none.
 	[DisplayName("Behavior")]
-	public Ref<ScriptClass> BehaviorClass = .(Guid());
+	public Ref<BehaviorClass> BehaviorClass = .(Guid());
 	[Scriptable]
 	public bool Enabled = true;
 	[Hidden]
-	public List<ScriptPropertyOverride> Overrides = new .() ~ DeleteContainerAndItems!(_);
+	public List<BehaviorPropertyOverride> Overrides = new .() ~ DeleteContainerAndItems!(_);
 
-	public ScriptPropertyOverride FindOverride(uint64 hash)
+	public BehaviorPropertyOverride FindOverride(uint64 hash)
 	{
 		for (let entry in Overrides)
 		{
@@ -35,12 +35,12 @@ class SceneBehaviorSettings : ISerializable
 		return null;
 	}
 
-	public void SetOverride(uint64 hash, ScriptPropertyValue value)
+	public void SetOverride(uint64 hash, BehaviorPropertyValue value)
 	{
 		var existing = FindOverride(hash);
 		if (existing == null)
 		{
-			existing = new ScriptPropertyOverride();
+			existing = new BehaviorPropertyOverride();
 			existing.Hash = hash;
 			Overrides.Add(existing);
 		}

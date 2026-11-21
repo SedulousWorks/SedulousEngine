@@ -5,7 +5,7 @@ using Sedulous.Core;
 namespace Sedulous.Script.Resource;
 
 /// A project's script assembly at run time: what its classes load in place of compiling their
-/// source (ScriptClass.Assembly). Owned by the resource manager.
+/// source (BehaviorClass.Assembly). Owned by the resource manager.
 class ScriptAssembly
 {
 	public String Language = new .() ~ delete _;

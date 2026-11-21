@@ -265,14 +265,14 @@ class PlayerApplication : DefaultApplication
 				"Player: no startup scene resolved, and no game script to own boot, so nothing is running");
 	}
 
-	/// The manifest's startup script is a cooked ScriptClass, bound from the content
+	/// The manifest's startup script is a cooked BehaviorClass, bound from the content
 	/// database by id. None is fine; one that does not resolve is an error the run survives.
 	private void LoadAndStartRunBehavior()
 	{
 		let scriptId = mSettings.StartupScriptId;
 		if ((scriptId == Guid()) || (Resources == null))
 			return;
-		let scriptClass = Resources.Bind<ScriptClass>(scriptId).Get;
+		let scriptClass = Resources.Bind<BehaviorClass>(scriptId).Get;
 		if (scriptClass == null)
 		{
 			GlobalLog(.Error, "Player: the startup script asset did not resolve");

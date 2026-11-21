@@ -7,10 +7,10 @@ namespace Sedulous.Script.Resource;
 /// Binds a cooked script class: the record read, its content copied into the product, and the
 /// project assembly it is built into bound beside it. No VM is involved; compilation is the
 /// run's, on first use.
-class ScriptClassFactory : IResourceFactory
+class BehaviorClassFactory : IResourceFactory
 {
-	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<ScriptClass>();
-	public Type CookedType => typeof(ScriptClassSource);
+	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<BehaviorClass>();
+	public Type CookedType => typeof(BehaviorClassSource);
 
 	public bool SupportsAsync => true;
 
@@ -25,7 +25,7 @@ class ScriptClassFactory : IResourceFactory
 	/// the class is never handed out before what it loads from.
 	private static Object BindAssembly(ResourceManager manager, Object product)
 	{
-		let scriptClass = product as ScriptClass;
+		let scriptClass = product as BehaviorClass;
 		if ((scriptClass != null) && (manager != null) && (scriptClass.AssemblyId != Guid.Empty))
 			scriptClass.Assembly = manager.Bind<ScriptAssembly>(scriptClass.AssemblyId).Get;
 		return product;
@@ -38,11 +38,11 @@ class ScriptClassFactory : IResourceFactory
 			return null;
 		defer delete stored;
 
-		let source = stored as ScriptClassSource;
+		let source = stored as BehaviorClassSource;
 		if (source == null)
 			return null;
 
-		let product = new ScriptClass();
+		let product = new BehaviorClass();
 		product.From(source);
 		return product;
 	}

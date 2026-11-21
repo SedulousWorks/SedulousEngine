@@ -59,7 +59,7 @@ static class BehaviorPropertyTests
 		{
 			let runtime = play.Host.EnsureRuntime(Sedulous.Script.AngelScript.AngelScriptBackend.cLanguage);
 			Test.Assert(runtime.Compile("refused", "Guest.as", source));
-			let record = scope ScriptClassSource();
+			let record = scope BehaviorClassSource();
 			let problems = scope List<String>();
 			defer ClearAndDeleteItems(problems);
 			let ok = ScriptHarvest.Harvest(runtime, "refused", "Guest", record, problems);

@@ -5,7 +5,7 @@ using Sedulous.Script.Resource;
 
 namespace Sedulous.Script.Resource.Tests;
 
-/// A cooked script record stamped with an older data version of ScriptClassSource: what a cook
+/// A cooked script record stamped with an older data version of BehaviorClassSource: what a cook
 /// wrote before the current layout, which this build has to refuse rather than misread.
 class StaleScriptRecord : ISerializable
 {
@@ -14,7 +14,7 @@ class StaleScriptRecord : ISerializable
 	public String ClassName = new .() ~ delete _;
 	public String SourceName = new .() ~ delete _;
 	public String Source = new .() ~ delete _;
-	public List<ScriptPropertyDesc> Properties = new .() ~ DeleteContainerAndItems!(_);
+	public List<BehaviorProperty> Properties = new .() ~ DeleteContainerAndItems!(_);
 
 	public this(uint32 version)
 	{
@@ -23,7 +23,7 @@ class StaleScriptRecord : ISerializable
 
 	public void Serialize(ISerializer ar)
 	{
-		Sedulous.Core.Serialization.BeginVersionedPayload(ar, ScriptClassSource.TypeId, Version);
+		Sedulous.Core.Serialization.BeginVersionedPayload(ar, BehaviorClassSource.TypeId, Version);
 		ar.BeginObject();
 		Sedulous.Core.Serialization.Serialize(ar, "language", Language);
 		Sedulous.Core.Serialization.Serialize(ar, "className", ClassName);

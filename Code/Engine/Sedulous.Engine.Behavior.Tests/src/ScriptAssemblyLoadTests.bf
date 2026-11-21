@@ -91,7 +91,7 @@ static class ScriptAssemblyLoadTests
 		assembly.Image.Add(0x4D);
 		assembly.Image.Add(0x5A);
 		assembly.Symbols.Add(0x42);
-		let mover = scope ScriptClass();
+		let mover = scope BehaviorClass();
 		mover.Language.Set(ImageRuntime.cLanguage);
 		mover.ClassName.Set("Mover");
 		mover.Kind = .Entity;
@@ -124,7 +124,7 @@ static class ScriptAssemblyLoadTests
 		Test.Assert(runtime.Modules.Count == 3, "and so do changed symbols");
 
 		// A class built into no assembly compiles its source, which this language refuses.
-		let loose = scope ScriptClass();
+		let loose = scope BehaviorClass();
 		loose.Language.Set(ImageRuntime.cLanguage);
 		loose.ClassName.Set("Loose");
 		loose.SourceName.Set("Loose.si");

@@ -43,7 +43,7 @@ class BehaviorRunHost
 	private String mLanguage = new .() ~ delete _;
 	/// BORROWED: the resource manager owns the products.
 	/// The classes loaded, each in a module of its own, as COPIES of their names and sources: a
-	/// ScriptClass is a product the resource manager replaces (and frees) on every hot reload,
+	/// BehaviorClass is a product the resource manager replaces (and frees) on every hot reload,
 	/// and this host outlives a play, so it must not hold one.
 	private List<LoadedClass> mLoaded = new .() ~ DeleteContainerAndItems!(_);
 
@@ -61,7 +61,7 @@ class BehaviorRunHost
 		/// source, and the class loads again for it.
 		public uint64 ImageHash = 0;
 
-		public void Set(ScriptClass scriptClass)
+		public void Set(BehaviorClass scriptClass)
 		{
 			ClassName.Set(scriptClass.ClassName);
 			SourceName.Set(scriptClass.SourceName);
@@ -77,7 +77,7 @@ class BehaviorRunHost
 
 		/// Whether `scriptClass` is what was loaded: its source, its file, what it includes and the
 		/// assembly it was built into.
-		public bool Matches(ScriptClass scriptClass)
+		public bool Matches(BehaviorClass scriptClass)
 		{
 			if ((Source != scriptClass.Source) || (SourceName != scriptClass.SourceName) || (Includes.Count != scriptClass.Includes.Count * 2))
 				return false;
@@ -92,7 +92,7 @@ class BehaviorRunHost
 		}
 	}
 	/// The class's assembly image and symbols hashed, 0 when it compiles from source.
-	private static uint64 ImageHashOf(ScriptClass scriptClass)
+	private static uint64 ImageHashOf(BehaviorClass scriptClass)
 	{
 		let assembly = scriptClass.Assembly;
 		if (assembly == null)
@@ -266,7 +266,7 @@ class BehaviorRunHost
 	/// An instance of the class, its module loaded or reloaded as needed. Null on failure,
 	/// logged, and for a class not of the kind `kind` the place it is set takes (a scene's
 	/// Level slot a SceneBehavior, an entity's an EntityBehavior, the run's a RunBehavior).
-	public ScriptObject Instantiate(ScriptClass scriptClass, BehaviorKind kind)
+	public ScriptObject Instantiate(BehaviorClass scriptClass, BehaviorKind kind)
 	{
 		if (scriptClass.Kind != kind)
 		{
@@ -302,7 +302,7 @@ class BehaviorRunHost
 	/// load is not kept (so it fails no class after it), and a reloaded class (the same name, a
 	/// changed source) loads beside its predecessor, whose live instances keep running. False on
 	/// a load failure, logged.
-	public bool EnsureClassLoaded(ScriptClass scriptClass)
+	public bool EnsureClassLoaded(BehaviorClass scriptClass)
 	{
 		if (EnsureRuntime(scriptClass.Language) == null)
 			return false;

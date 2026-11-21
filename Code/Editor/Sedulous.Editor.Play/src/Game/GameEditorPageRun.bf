@@ -285,7 +285,7 @@ extension GameEditorPage
 		let scriptId = mContext.Project.Settings.StartupScriptId;
 		if (scriptId.IsNil || (mContext.Resources == null))
 			return;
-		let scriptClass = mContext.Resources.Bind<ScriptClass>(scriptId).Get;
+		let scriptClass = mContext.Resources.Bind<BehaviorClass>(scriptId).Get;
 		if ((scriptClass == null) || scriptClass.Source.IsEmpty)
 		{
 			mContext.Notify(.Warning, "Game: startup script asset not found.");

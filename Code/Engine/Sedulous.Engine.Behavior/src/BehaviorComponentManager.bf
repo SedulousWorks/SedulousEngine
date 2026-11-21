@@ -42,7 +42,7 @@ class BehaviorComponentManager : ResourceBindingComponentManager<BehaviorCompone
 		ForEach(scope (component, owner) =>
 		{
 			for (let behavior in component.Behaviors)
-				ScriptPropertyOverride.CollectAssetIds(behavior.Overrides, outIds);
+				BehaviorPropertyOverride.CollectAssetIds(behavior.Overrides, outIds);
 		});
 	}
 
@@ -61,7 +61,7 @@ class BehaviorComponentManager : ResourceBindingComponentManager<BehaviorCompone
 			{
 				if (!behavior.BehaviorClass.Id.IsNil)
 					outIds.Add(behavior.BehaviorClass.Id);
-				ScriptPropertyOverride.CollectAssetIds(behavior.Overrides, assets);
+				BehaviorPropertyOverride.CollectAssetIds(behavior.Overrides, assets);
 			}
 		});
 		for (let id in assets)

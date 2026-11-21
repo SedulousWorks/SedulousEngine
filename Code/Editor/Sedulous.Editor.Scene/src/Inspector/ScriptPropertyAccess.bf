@@ -8,7 +8,7 @@ namespace Sedulous.Editor.Scene;
 /// closures through the view.
 class ScriptPropertyAccess
 {
-	public delegate ScriptPropertyValue() Effective ~ delete _;
-	public delegate void(ScriptPropertyValue value) SetOverride ~ delete _;
+	public delegate BehaviorPropertyValue() Effective ~ delete _;
+	public delegate void(BehaviorPropertyValue value) SetOverride ~ delete _;
 	public delegate void() RemoveOverride ~ delete _;
 }

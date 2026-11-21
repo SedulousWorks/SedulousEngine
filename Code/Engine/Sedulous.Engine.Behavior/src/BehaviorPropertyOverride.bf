@@ -7,10 +7,10 @@ namespace Sedulous.Engine.Behavior;
 
 /// One authored value that differs from the class's harvested default, keyed by the
 /// property's name hash so a rename is detectable rather than silently orphaning it.
-class ScriptPropertyOverride : ISerializable
+class BehaviorPropertyOverride : ISerializable
 {
 	public uint64 Hash = 0;
-	public ScriptPropertyValue Value = .() ~ { if (_.Text != null) delete _.Text; };
+	public BehaviorPropertyValue Value = .() ~ { if (_.Text != null) delete _.Text; };
 
 	public void Serialize(ISerializer ar)
 	{
@@ -21,7 +21,7 @@ class ScriptPropertyOverride : ISerializable
 
 	/// The assets `overrides` name, appended to `outIds` once each: a nil one names nothing,
 	/// and an entity reference is a guid of the scene's, not an asset.
-	public static void CollectAssetIds(List<ScriptPropertyOverride> overrides, List<Guid> outIds)
+	public static void CollectAssetIds(List<BehaviorPropertyOverride> overrides, List<Guid> outIds)
 	{
 		for (let entry in overrides)
 		{

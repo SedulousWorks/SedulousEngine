@@ -32,7 +32,7 @@ static class ScriptHarvest
 
 	/// False when the class is not in the module, or an annotated field cannot be a
 	/// property; the reason goes to outProblems when given.
-	public static bool Harvest(ScriptRuntime runtime, StringView moduleName, StringView className, ScriptClassSource outSource,
+	public static bool Harvest(ScriptRuntime runtime, StringView moduleName, StringView className, BehaviorClassSource outSource,
 		List<String> outProblems = null)
 	{
 		let members = scope List<ScriptMemberDesc>();
@@ -66,7 +66,7 @@ static class ScriptHarvest
 			StringView firstToken = tokens.IsEmpty ? "" : tokens[0];
 			let typeName = NormalizeTypeName(m.TypeName);
 
-			let desc = new ScriptPropertyDesc();
+			let desc = new BehaviorProperty();
 			desc.Name.Set(m.Name);
 			desc.Hash = ScriptPropertyNames.HashOf(m.Name);
 			if (!ResolvePropertyType(typeName, firstToken, ref desc.Type, desc.AssetType))
@@ -132,7 +132,7 @@ static class ScriptHarvest
 		}
 	}
 
-	private static bool ResolvePropertyType(StringView typeName, StringView firstToken, ref ScriptPropertyType outKind, String outAssetType)
+	private static bool ResolvePropertyType(StringView typeName, StringView firstToken, ref BehaviorPropertyType outKind, String outAssetType)
 	{
 		outAssetType.Clear();
 		if ((typeName == "float") || (typeName == "double")) { outKind = .Float; return true; }
@@ -165,7 +165,7 @@ static class ScriptHarvest
 
 	/// The default from the first token: what the language can say literally, scalars, bool,
 	/// a quoted string, a `(r, g, b[, a])` or `(x, y, z)` list, and `null` for a reference.
-	private static void ParseDefault(ScriptPropertyType type, StringView firstToken, ref ScriptPropertyValue outValue)
+	private static void ParseDefault(BehaviorPropertyType type, StringView firstToken, ref BehaviorPropertyValue outValue)
 	{
 		outValue.Kind = type;
 		var token = firstToken;

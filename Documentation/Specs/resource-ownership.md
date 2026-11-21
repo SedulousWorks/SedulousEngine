@@ -62,7 +62,7 @@ resource goes):
 | `MaterialFactory` / `ModelFactory` → `Material.SetDefaultTexture` | a texture's GPU view | a `ResourceHold` on the texture, kept by the material and its clones |
 | `SoundCueFactory` → `SoundCueVariant.Clip` | the clip product | the dependency edge the cue's build records (rule 2) |
 | `AnimationGraphSource.ResolveClip` → clip state nodes, blend tree entries | the clip product | the dependency edge the graph's build records |
-| `ScriptClassFactory` → `ScriptClass.Assembly` | the assembly product | the dependency edge the class's build records |
+| `BehaviorClassFactory` → `BehaviorClass.Assembly` | the assembly product | the dependency edge the class's build records |
 | `ApplicationRun.mGameClass` | the game's script class | nothing: it is written and never read |
 | `ScriptBehavior.BoundClass`, `ScriptSceneSystem.mLevelClass` | script classes | a hold per binding until it stops; the behaviours list and override assets are named by the script component and system |
 | `GuiSubsystem` default and other fonts → font service | font products, atlases | an owner per font the service keeps (`SetFonts`) |

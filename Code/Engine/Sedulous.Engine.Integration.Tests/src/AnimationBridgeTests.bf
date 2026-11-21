@@ -34,7 +34,7 @@ class AnimationWorld
 	public Scene Scene;
 
 	private ScriptSurface mSurface = new .();
-	private List<ScriptClass> mClasses = new .();
+	private List<BehaviorClass> mClasses = new .();
 	private int mHarvested = 0;
 
 	// Modules are addressed by pointer, so they live as long as the composition.
@@ -90,7 +90,7 @@ class AnimationWorld
 	}
 
 	/// Compiles and harvests a class through the run's own runtime, as ContactWorld does.
-	public ScriptClass Class(StringView className, StringView source)
+	public BehaviorClass Class(StringView className, StringView source)
 	{
 		let runtime = Scripts.Host.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
@@ -99,7 +99,7 @@ class AnimationWorld
 		for (let p in runtime.Problems)
 			Console.WriteLine("  {}", p);
 		Test.Assert(ok, "the class compiled");
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		record.Language.Set(AngelScriptBackend.cLanguage);
 		record.ClassName.Set(className);
 		record.Kind = .Entity;
@@ -107,13 +107,13 @@ class AnimationWorld
 		record.Source.Set(source);
 		Test.Assert(ScriptHarvest.Harvest(runtime, module, className, record), "harvested");
 		runtime.DiscardModule(module);
-		let product = new ScriptClass();
+		let product = new BehaviorClass();
 		product.From(record);
 		mClasses.Add(product);
 		return product;
 	}
 
-	public AttachedBehavior Attach(EntityHandle entity, ScriptClass scriptClass)
+	public AttachedBehavior Attach(EntityHandle entity, BehaviorClass scriptClass)
 	{
 		let components = Scene.GetSystem<BehaviorComponentManager>();
 		var component = components.Get(entity);

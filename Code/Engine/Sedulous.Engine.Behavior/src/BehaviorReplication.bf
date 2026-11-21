@@ -8,7 +8,7 @@ using Sedulous.Script.Resource;
 
 namespace Sedulous.Engine.Behavior;
 
-/// A networked entity's behaviours keep their replicated properties (ScriptPropertyDesc.
+/// A networked entity's behaviours keep their replicated properties (BehaviorProperty.
 /// Replicated) the same on every peer: the host writes their live values, a client writes
 /// them back in, through the setter when the instance runs and as overrides for an instance
 /// made later. A behaviour is matched by its slot and its class, so a value never reaches a
@@ -42,7 +42,7 @@ extension BehaviorComponentManager
 			{
 				if (!property.Replicated)
 					continue;
-				var value = ScriptPropertyValue();
+				var value = BehaviorPropertyValue();
 				// The live value when the script runs (its text this writer's); else what it would
 				// start with (borrowed).
 				let live = (runtime != null) && (behavior.Instance != null) && LiveValue(runtime, behavior.Instance, property, ref value);
@@ -92,7 +92,7 @@ extension BehaviorComponentManager
 			reader.Read(out slot);
 			reader.Read(out classHash);
 			reader.Read(out propertyHash);
-			var value = ScriptPropertyValue();
+			var value = BehaviorPropertyValue();
 			if (!ReadValue(reader, ref value))
 				return; // cut short: nothing half read is applied
 			defer { if (value.Text != null) delete value.Text; }
@@ -116,7 +116,7 @@ extension BehaviorComponentManager
 	}
 
 	/// The instance's current value of `property`, as the property's own kind.
-	private static bool LiveValue(ScriptRuntime runtime, ScriptObject instance, ScriptPropertyDesc property, ref ScriptPropertyValue value)
+	private static bool LiveValue(ScriptRuntime runtime, ScriptObject instance, BehaviorProperty property, ref BehaviorPropertyValue value)
 	{
 		var live = ScriptValue.Nil;
 		if (!runtime.GetProperty(instance, property.Name, ref live))
@@ -153,7 +153,7 @@ extension BehaviorComponentManager
 		return true;
 	}
 
-	private static void WriteValue(BinaryWriter writer, ScriptPropertyValue value)
+	private static void WriteValue(BinaryWriter writer, BehaviorPropertyValue value)
 	{
 		writer.Write((uint8)value.Kind);
 		switch (value.Kind)
@@ -168,12 +168,12 @@ extension BehaviorComponentManager
 	}
 
 	/// A value written by WriteValue; a text it reads is the caller's.
-	private static bool ReadValue(BinaryReader reader, ref ScriptPropertyValue value)
+	private static bool ReadValue(BinaryReader reader, ref BehaviorPropertyValue value)
 	{
 		uint8 kind = 0;
 		if (!reader.Read(out kind))
 			return false;
-		value.Kind = (ScriptPropertyType)kind;
+		value.Kind = (BehaviorPropertyType)kind;
 		switch (value.Kind)
 		{
 		case .Float, .Int: reader.Read(out value.Number);

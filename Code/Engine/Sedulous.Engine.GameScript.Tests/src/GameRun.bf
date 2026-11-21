@@ -38,7 +38,7 @@ class GameRun
 	/// Loads the prefabs a spawn names, through Resources.
 	private PrefabFactory mPrefabs = new .() ~ delete _;
 	private String mRoot = new .() ~ delete _;
-	private List<ScriptClass> mClasses = new .();
+	private List<BehaviorClass> mClasses = new .();
 	private delegate void(Scene) mInstaller ~ delete _;
 	/// More systems for each scene the run makes, beside the script managers (a test's
 	/// networking and prefab spawning). OWNED.
@@ -137,7 +137,7 @@ class GameRun
 
 	/// Compiles and harvests a class through the run's own runtime: what the cook produces, of
 	/// the behavior kind `kind` (an entity's behavior is Entity).
-	public ScriptClass Class(StringView className, StringView source, BehaviorKind kind = .Run)
+	public BehaviorClass Class(StringView className, StringView source, BehaviorKind kind = .Run)
 	{
 		let runtime = Instance.RunHost.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
@@ -146,7 +146,7 @@ class GameRun
 		for (let p in runtime.Problems)
 			Console.WriteLine("  {}", p);
 		Test.Assert(ok, "the class compiled");
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		record.Language.Set(AngelScriptBackend.cLanguage);
 		record.ClassName.Set(className);
 		record.Kind = kind;
@@ -154,7 +154,7 @@ class GameRun
 		record.Source.Set(source);
 		Test.Assert(ScriptHarvest.Harvest(runtime, module, className, record), "harvested");
 		runtime.DiscardModule(module);
-		let product = new ScriptClass();
+		let product = new BehaviorClass();
 		product.From(record);
 		mClasses.Add(product);
 		return product;

@@ -305,7 +305,7 @@ static class SceneMcpEditTools
 		if (scriptClass == null)
 			return false;
 		// Every property checked before anything changes.
-		let values = scope List<(uint64 hash, ScriptPropertyValue value)>();
+		let values = scope List<(uint64 hash, BehaviorPropertyValue value)>();
 		defer { for (let v in values) if (v.value.Text != null) delete v.value.Text; }
 		if (!ReadProperties(edit, scriptClass, arguments.Get("properties"), values, outError))
 			return false;
@@ -328,7 +328,7 @@ static class SceneMcpEditTools
 				if (c.Behaviors == null)
 					return;
 				let behavior = new AttachedBehavior();
-				behavior.BehaviorClass = Ref<ScriptClass>(script);
+				behavior.BehaviorClass = Ref<BehaviorClass>(script);
 				for (let v in values)
 					behavior.SetOverride(v.hash, Owned(v.value));
 				c.Behaviors.Add(behavior);
@@ -364,7 +364,7 @@ static class SceneMcpEditTools
 		let scriptClass = CookedClass(context, component.Behaviors[index].BehaviorClass.Id, outError);
 		if (scriptClass == null)
 			return false;
-		let values = scope List<(uint64 hash, ScriptPropertyValue value)>();
+		let values = scope List<(uint64 hash, BehaviorPropertyValue value)>();
 		defer { for (let v in values) if (v.value.Text != null) delete v.value.Text; }
 		if (!ReadProperties(edit, scriptClass, arguments.Get("properties"), values, outError))
 			return false;
@@ -534,16 +534,16 @@ static class SceneMcpEditTools
 	}
 
 	/// The cooked class, its properties the source of truth for a behaviour's.
-	private static ScriptClass CookedClass(EditorContext context, Guid script, String outError)
+	private static BehaviorClass CookedClass(EditorContext context, Guid script, String outError)
 	{
-		let scriptClass = (context.Resources != null) ? context.Resources.Bind<ScriptClass>(script).Get : null;
+		let scriptClass = (context.Resources != null) ? context.Resources.Bind<BehaviorClass>(script).Get : null;
 		if ((scriptClass == null) || scriptClass.ClassName.IsEmpty)
 			outError.AppendF("script {} is not a cooked script class (script_create, then asset_cook)", script);
 		return scriptClass;
 	}
 
 	/// A value's owned copy for SetOverride, which takes the text.
-	private static ScriptPropertyValue Owned(ScriptPropertyValue value)
+	private static BehaviorPropertyValue Owned(BehaviorPropertyValue value)
 	{
 		var copy = value;
 		if (value.Text != null)
@@ -552,8 +552,8 @@ static class SceneMcpEditTools
 	}
 
 	/// Each named property's value, typed by the class's description of it.
-	private static bool ReadProperties(SceneEditContext edit, ScriptClass scriptClass, JsonValue properties,
-		List<(uint64 hash, ScriptPropertyValue value)> outValues, String outError)
+	private static bool ReadProperties(SceneEditContext edit, BehaviorClass scriptClass, JsonValue properties,
+		List<(uint64 hash, BehaviorPropertyValue value)> outValues, String outError)
 	{
 		if (properties == null)
 			return true;
@@ -574,7 +574,7 @@ static class SceneMcpEditTools
 					outError.AppendF("{}{}", (p > 0) ? ", " : "", scriptClass.Properties[p].Name);
 				return false;
 			}
-			ScriptPropertyValue parsed = .();
+			BehaviorPropertyValue parsed = .();
 			bool ok = false;
 			switch (desc.Type)
 			{

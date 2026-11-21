@@ -1276,7 +1276,7 @@ static class SceneMcpTools
 			let id = behavior.BehaviorClass.Id;
 			json.Set("class", FieldJson.GuidJson(id));
 			let scriptClass = (behavior.BehaviorClass.Get != null) ? behavior.BehaviorClass.Get
-				: (((resources != null) && id.IsSet) ? resources.Bind<ScriptClass>(id).Get : null);
+				: (((resources != null) && id.IsSet) ? resources.Bind<BehaviorClass>(id).Get : null);
 			json.Set("className", (scriptClass != null) ? JsonValue.MakeString(scriptClass.ClassName) : JsonValue.MakeNull());
 			json.Set("enabled", JsonValue.MakeBool(behavior.Enabled));
 			let properties = JsonValue.MakeObject();
@@ -1310,7 +1310,7 @@ static class SceneMcpTools
 		return list;
 	}
 
-	private static JsonValue PropertyValueJson(ScriptPropertyValue value, Sedulous.Scene.Scene scene)
+	private static JsonValue PropertyValueJson(BehaviorPropertyValue value, Sedulous.Scene.Scene scene)
 	{
 		var value;
 		switch (value.Kind)

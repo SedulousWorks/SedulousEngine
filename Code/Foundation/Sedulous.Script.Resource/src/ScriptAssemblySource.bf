@@ -12,12 +12,12 @@ class ScriptAssemblyClass
 {
 	public String ClassName = new .() ~ delete _;
 	public List<String> Handlers = new .() ~ DeleteContainerAndItems!(_);
-	public List<ScriptPropertyDesc> Properties = new .() ~ DeleteContainerAndItems!(_);
+	public List<BehaviorProperty> Properties = new .() ~ DeleteContainerAndItems!(_);
 }
 
 /// The cooked record of a project's script assembly. A language whose classes build together
 /// (every file of a project in one assembly, so they share types) builds once into this, and
-/// each class's own record names it (ScriptClassSource.Assembly).
+/// each class's own record names it (BehaviorClassSource.Assembly).
 [Serializable]
 class ScriptAssemblySource
 {

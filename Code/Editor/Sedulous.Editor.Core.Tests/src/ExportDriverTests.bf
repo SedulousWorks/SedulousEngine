@@ -783,7 +783,7 @@ static class ExportDriverTests
 		let product = db.ReadObject(manifest.StartupScriptId);
 		Test.Assert(product != null, "the script class is in the pak by the source's guid");
 		defer delete product;
-		let record = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(product)) as Sedulous.Script.Resource.ScriptClassSource;
+		let record = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(product)) as Sedulous.Script.Resource.BehaviorClassSource;
 		Test.Assert((record != null) && (record.ClassName == "Game") && (record.Language == "angelscript"));
 	}
 

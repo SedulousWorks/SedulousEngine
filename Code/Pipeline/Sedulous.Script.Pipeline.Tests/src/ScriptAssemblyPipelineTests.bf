@@ -70,7 +70,7 @@ class StandInClassCook : IScriptLanguageCook
 		outSource.AppendF("class {}", className);
 	}
 
-	public bool Cook(StringView source, StringView sourceName, ScriptClassSource outRecord, List<String> problems,
+	public bool Cook(StringView source, StringView sourceName, BehaviorClassSource outRecord, List<String> problems,
 		IScriptIncludeReader includes = null) => false;
 
 	public bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems, Span<StringView> hidden,
@@ -79,7 +79,7 @@ class StandInClassCook : IScriptLanguageCook
 	public bool BuildsInAssembly => true;
 
 	public bool CookFromAssembly(StringView source, StringView sourceName, ScriptAssemblySource assembly,
-		ScriptClassSource outRecord, List<String> problems)
+		BehaviorClassSource outRecord, List<String> problems)
 	{
 		let at = source.IndexOf("class ");
 		let name = (at < 0) ? StringView() : StringView(source, at + 6);
@@ -107,7 +107,7 @@ class StandInClassCook : IScriptLanguageCook
 static class ScriptAssemblyPipelineTests
 {
 	public const String cLanguage = "stand-in";
-	internal const String cClassType = "Sedulous.Script.Resource.ScriptClassSource";
+	internal const String cClassType = "Sedulous.Script.Resource.BehaviorClassSource";
 	internal const String cAssemblyType = "Sedulous.Script.Resource.ScriptAssemblySource";
 
 	private static bool sRegistered = false;
@@ -226,7 +226,7 @@ static class ScriptAssemblyPipelineTests
 
 		/// Cooks the class at `file` into `outRecord`; with `deps`, scans it first as the cook
 		/// driver does, the source database as the scan context's Database.
-		public Result<void, ErrorCode> CookClass(StringView file, ScriptClassSource outRecord, AssetDependencies deps = null)
+		public Result<void, ErrorCode> CookClass(StringView file, BehaviorClassSource outRecord, AssetDependencies deps = null)
 		{
 			let asset = scope ScriptClassAsset();
 			asset.FileName.Set(file);
@@ -247,7 +247,7 @@ static class ScriptAssemblyPipelineTests
 			{
 				let object = product.ReadObject();
 				defer delete object;
-				let cooked = object as ScriptClassSource;
+				let cooked = object as BehaviorClassSource;
 				Test.Assert(cooked != null);
 				outRecord.ClassName.Set(cooked.ClassName);
 				ClearAndDeleteItems!(outRecord.Handlers);
@@ -312,7 +312,7 @@ static class ScriptAssemblyPipelineTests
 		}
 
 		// A class reads its project (which cooks first) and names it; its description is the build's.
-		let player = scope ScriptClassSource();
+		let player = scope BehaviorClassSource();
 		let deps = scope AssetDependencies();
 		Test.Assert(bed.CookClass("Game/Player.si", player, deps) case .Ok);
 		Test.Assert((deps.Reads.Count == 1) && (deps.Reads[0] == game.Id), "the scan finds the class's project");
@@ -325,16 +325,16 @@ static class ScriptAssemblyPipelineTests
 
 		// Nested projects: the nearest holds the file.
 		Test.Assert(bed.BuildProject(inner) case .Ok);
-		let deep = scope ScriptClassSource();
+		let deep = scope BehaviorClassSource();
 		Test.Assert(bed.CookClass("Tools/Inner/Deep.si", deep) case .Ok);
 		Test.Assert(deep.Assembly == inner.Id);
 		Test.Assert(deep.Assembly != tools.Id);
 
 		// In no project, or in one that has not built: the cook fails.
-		let loose = scope ScriptClassSource();
+		let loose = scope BehaviorClassSource();
 		Test.Assert(IsNotFound(bed.CookClass("Loose.si", loose)));
 		bed.Write("Tools/Tool.si", "class Tool");
-		let tool = scope ScriptClassSource();
+		let tool = scope BehaviorClassSource();
 		Test.Assert(IsNotFound(bed.CookClass("Tools/Tool.si", tool)));
 	}
 

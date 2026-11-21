@@ -13,9 +13,9 @@ static class ScriptPropertyNames
 	public struct TypeEntry
 	{
 		public String Name;
-		public ScriptPropertyType Kind;
+		public BehaviorPropertyType Kind;
 
-		public this(String name, ScriptPropertyType kind)
+		public this(String name, BehaviorPropertyType kind)
 		{
 			Name = name;
 			Kind = kind;
@@ -32,7 +32,7 @@ static class ScriptPropertyNames
 		.("color", .Color), .("vec3", .Vec3), .("entity", .Entity), .("asset", .Asset));
 
 	/// The authored spelling of `kind` ("float", "asset" for the prefixed form); empty for None.
-	public static StringView TypeName(ScriptPropertyType kind)
+	public static StringView TypeName(BehaviorPropertyType kind)
 	{
 		for (let entry in TypeNames)
 		{
@@ -44,7 +44,7 @@ static class ScriptPropertyNames
 
 	/// The parsed "float" / "asset:AudioClip" type text a script declares a property with,
 	/// to its kind and, for an asset, the product type name. False for anything else.
-	public static bool Parse(StringView text, out ScriptPropertyType outKind, String outAssetType)
+	public static bool Parse(StringView text, out BehaviorPropertyType outKind, String outAssetType)
 	{
 		outAssetType.Clear();
 		outKind = .None;

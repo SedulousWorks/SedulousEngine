@@ -138,7 +138,7 @@ class AngelScriptCook : IScriptLanguageCook
 
 	public void ListIncludes(StringView source, List<String> outPaths) => AngelScriptRuntime.IncludesOf(source, outPaths);
 
-	public bool Cook(StringView source, StringView sourceName, ScriptClassSource outRecord, List<String> problems,
+	public bool Cook(StringView source, StringView sourceName, BehaviorClassSource outRecord, List<String> problems,
 		IScriptIncludeReader includes = null)
 	{
 		// The files it includes, compiled beside it and recorded for a run that compiles it again.

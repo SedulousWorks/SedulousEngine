@@ -3,7 +3,7 @@ namespace Sedulous.Script.Resource;
 /// The kinds a script's authored property can have: what the inspector edits and a
 /// component override stores. A small closed set on purpose; it is the wire format of
 /// every override in every scene file.
-enum ScriptPropertyType : uint8
+enum BehaviorPropertyType : uint8
 {
 	case None = 0;
 	case Float;

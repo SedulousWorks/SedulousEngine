@@ -4,9 +4,9 @@ using Sedulous.Core;
 
 namespace Sedulous.Script.Resource;
 
-/// The runtime product a component's Ref<ScriptClass> binds: the cooked record's content,
+/// The runtime product a component's Ref<BehaviorClass> binds: the cooked record's content,
 /// owned by the resource manager for as long as something references it.
-class ScriptClass
+class BehaviorClass
 {
 	public String Language = new .() ~ delete _;
 	public String ClassName = new .() ~ delete _;
@@ -14,19 +14,19 @@ class ScriptClass
 	public String Source = new .() ~ delete _;
 	/// The files `Source` includes, loaded beside it.
 	public List<ScriptIncludedSource> Includes = new .() ~ DeleteContainerAndItems!(_);
-	public List<ScriptPropertyDesc> Properties = new .() ~ DeleteContainerAndItems!(_);
+	public List<BehaviorProperty> Properties = new .() ~ DeleteContainerAndItems!(_);
 	public List<String> Handlers = new .() ~ DeleteContainerAndItems!(_);
 	public bool UsesCoroutines = false;
 	/// "Script Mover": a stable label for the profiler, which keeps the pointer.
 	public String ProfileName = new .() ~ delete _;
-	/// The project assembly the class is built into (ScriptClassSource.Assembly); nil for a class
+	/// The project assembly the class is built into (BehaviorClassSource.Assembly); nil for a class
 	/// that cooks alone.
 	public Guid AssemblyId;
 	/// That assembly, which the class loads in place of compiling its source; null for a class
 	/// that compiles. BORROWED: the resource manager owns it, and the factory's bind of it recorded
 	/// the edge, so a rebuilt assembly rebuilds this class too.
 	public ScriptAssembly Assembly = null;
-	/// The behavior kind the class derives from (ScriptClassSource.Kind).
+	/// The behavior kind the class derives from (BehaviorClassSource.Kind).
 	public BehaviorKind Kind = .None;
 
 	/// A utility module: source with no behaviour class to instantiate.
@@ -42,7 +42,7 @@ class ScriptClass
 		return false;
 	}
 
-	public ScriptPropertyDesc FindProperty(uint64 hash)
+	public BehaviorProperty FindProperty(uint64 hash)
 	{
 		for (let property in Properties)
 		{
@@ -52,10 +52,10 @@ class ScriptClass
 		return null;
 	}
 
-	public ScriptPropertyDesc FindProperty(StringView name) => FindProperty(ScriptPropertyNames.HashOf(name));
+	public BehaviorProperty FindProperty(StringView name) => FindProperty(ScriptPropertyNames.HashOf(name));
 
 	/// Fills from the cooked record.
-	public void From(ScriptClassSource source)
+	public void From(BehaviorClassSource source)
 	{
 		Language.Set(source.Language);
 		ClassName.Set(source.ClassName);
@@ -72,7 +72,7 @@ class ScriptClass
 		ClearAndDeleteItems!(Properties);
 		for (let p in source.Properties)
 		{
-			let copy = new ScriptPropertyDesc();
+			let copy = new BehaviorProperty();
 			copy.Name.Set(p.Name);
 			copy.Hash = p.Hash;
 			copy.Type = p.Type;

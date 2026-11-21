@@ -44,10 +44,10 @@ static class NetworkIdentityScriptTests
 	public static void ABehaviourThatAssignsAuthorityNeverStarts()
 	{
 		// Outlives the scene that binds it, as the resource manager's product would.
-		let tweaker = scope ScriptClass();
+		let tweaker = scope BehaviorClass();
 		let play = scope ScriptPlayScene();
 		let networks = play.Scene.AddSystem<NetworkComponentManager>();
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		record.Language.Set(Sedulous.Script.AngelScript.AngelScriptBackend.cLanguage);
 		record.ClassName.Set("Tweaker");
 		record.Kind = .Entity;

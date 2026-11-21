@@ -120,7 +120,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// The orchestrator: an instance of the game script's class. Null when no script runs.
 	private ScriptObject mGame = null;
 	/// BORROWED: the resource manager owns the product.
-	private ScriptClass mGameClass = null;
+	private BehaviorClass mGameClass = null;
 	/// Why the last game script stopped on its own: the handler it faulted in and the
 	/// runtime's problems, or that it did not instantiate. Empty while it runs or after a
 	/// clean stop; a start clears it.
@@ -673,7 +673,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// `on<Event>` handlers subscribed to the run bus. False when the class did not load or
 	/// instantiate, logged. A class of another kind than RunBehavior is refused, ScriptFault
 	/// saying which kind it is. A second start stops the first.
-	public bool StartRunBehavior(ScriptClass scriptClass)
+	public bool StartRunBehavior(BehaviorClass scriptClass)
 	{
 		StopRunBehavior();
 		mScriptFault.Clear();
@@ -824,7 +824,7 @@ class ApplicationRun : RunBase, IRunInput
 		ClearGameSubscriptions();
 	}
 
-	private void SubscribeGameHandlers(ScriptClass scriptClass)
+	private void SubscribeGameHandlers(BehaviorClass scriptClass)
 	{
 		for (let handler in scriptClass.Handlers)
 		{

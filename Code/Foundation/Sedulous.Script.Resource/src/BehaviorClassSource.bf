@@ -16,7 +16,7 @@ namespace Sedulous.Script.Resource;
 /// class is built into; 4: the behavior kind its class derives from. A record cooked before is
 /// in another layout; the strict reader refuses it and the script recooks.
 [Serializable(4)]
-class ScriptClassSource
+class BehaviorClassSource
 {
 	/// The backend id, "angelscript".
 	public String Language = new .() ~ delete _;
@@ -28,7 +28,7 @@ class ScriptClassSource
 	public String Source = new .() ~ delete _;
 	/// Every file `Source` includes, each once, as the cook resolved and read them.
 	public List<ScriptIncludedSource> Includes = new .() ~ DeleteContainerAndItems!(_);
-	public List<ScriptPropertyDesc> Properties = new .() ~ DeleteContainerAndItems!(_);
+	public List<BehaviorProperty> Properties = new .() ~ DeleteContainerAndItems!(_);
 	/// The lifecycle and event handlers the class declares: the dispatch gate.
 	public List<String> Handlers = new .() ~ DeleteContainerAndItems!(_);
 	/// The class starts coroutines, so a teardown has some to cancel.

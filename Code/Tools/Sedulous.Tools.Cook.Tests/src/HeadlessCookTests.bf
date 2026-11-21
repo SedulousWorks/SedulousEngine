@@ -70,12 +70,12 @@ static class HeadlessCookTests
 		driver.Execute(plan, stats);
 		Test.Assert((stats.Cooked == 1) && (stats.Failed == 0), scope $"cooked {stats.Cooked}, failed {stats.Failed}");
 
-		// The product, through the cooked database by the source's id: a ScriptClass the
+		// The product, through the cooked database by the source's id: a BehaviorClass the
 		// runtime would load.
 		let product = project.CookedDb.ReadObject(assetId);
 		Test.Assert(product != null, "the product is in the cooked database and reads back by its registered type");
 		defer delete product;
-		let source = product as ScriptClassSource;
+		let source = product as BehaviorClassSource;
 		Test.Assert((source != null) && (source.ClassName == "Mover") && (source.Language == "angelscript"));
 		Test.Assert(source.Properties.Count == 1, scope $"{source.Properties.Count} properties harvested");
 

@@ -14,9 +14,9 @@ namespace Sedulous.Script.Resource.Tests;
 /// and the type registers under the name an instance stores.
 static class ScriptClassResourceTests
 {
-	private static ScriptPropertyDesc Property(StringView name, ScriptPropertyType type, ScriptPropertyValue value, StringView assetType = "")
+	private static BehaviorProperty Property(StringView name, BehaviorPropertyType type, BehaviorPropertyValue value, StringView assetType = "")
 	{
-		let p = new ScriptPropertyDesc();
+		let p = new BehaviorProperty();
 		p.Name.Set(name);
 		p.Hash = ScriptPropertyNames.HashOf(name);
 		p.Type = type;
@@ -25,9 +25,9 @@ static class ScriptClassResourceTests
 		return p;
 	}
 
-	private static ScriptClassSource Authored()
+	private static BehaviorClassSource Authored()
 	{
-		let source = new ScriptClassSource();
+		let source = new BehaviorClassSource();
 		source.Language.Set("angelscript");
 		source.ClassName.Set("Mover");
 		source.SourceName.Set("Mover.as");
@@ -60,7 +60,7 @@ static class ScriptClassResourceTests
 			Test.Assert(writer.IsOk);
 		}
 		buffer.Seek(0, .Begin);
-		let read = scope ScriptClassSource();
+		let read = scope BehaviorClassSource();
 		{
 			let reader = scope BinarySerializer(buffer, .Read);
 			((ISerializable)read).Serialize(reader);
@@ -93,7 +93,7 @@ static class ScriptClassResourceTests
 	{
 		let source = Authored();
 		defer delete source;
-		let product = scope ScriptClass();
+		let product = scope BehaviorClass();
 		product.From(source);
 
 		Test.Assert(product.ClassName == "Mover");
@@ -140,7 +140,7 @@ static class ScriptClassResourceTests
 	[Test]
 	public static void ARecordCookedBeforeTheReplicatedFlagTheIncludesTheAssemblyOrTheKindIsRefused()
 	{
-		Test.Assert(ScriptClassSource.DataVersion == 4);
+		Test.Assert(BehaviorClassSource.DataVersion == 4);
 
 		let old = scope UnversionedScriptRecord();
 		old.Language.Set("angelscript");
@@ -148,7 +148,7 @@ static class ScriptClassResourceTests
 		old.Properties.Add(Property("speed", .Float, .Float(2)));
 		AssertRefused(old);
 
-		for (uint32 stale = 1; stale < ScriptClassSource.DataVersion; stale++)
+		for (uint32 stale = 1; stale < BehaviorClassSource.DataVersion; stale++)
 		{
 			let versioned = scope StaleScriptRecord(stale);
 			versioned.Language.Set("angelscript");
@@ -168,7 +168,7 @@ static class ScriptClassResourceTests
 		}
 		buffer.Seek(0, .Begin);
 
-		let read = scope ScriptClassSource();
+		let read = scope BehaviorClassSource();
 		let reader = scope BinarySerializer(buffer, .Read);
 		((ISerializable)read).Serialize(reader);
 		Test.Assert(!reader.IsOk, "the stale record was refused");
@@ -206,13 +206,13 @@ static class ScriptClassResourceTests
 		Test.Assert(assemblyInstance != null);
 		Test.Assert(assemblyInstance.WriteObject(assembly) case .Ok);
 
-		let cooked = scope ScriptClassSource();
+		let cooked = scope BehaviorClassSource();
 		cooked.Language.Set("stand-in");
 		cooked.ClassName.Set("Mover");
 		cooked.SourceName.Set("Mover.si");
 		cooked.Source.Set("class Mover");
 		cooked.Assembly = assemblyInstance.Id;
-		let classInstance = database.RootGroup.CreateInstance("mover", typeof(ScriptClassSource).GetFullName(.. scope .()));
+		let classInstance = database.RootGroup.CreateInstance("mover", typeof(BehaviorClassSource).GetFullName(.. scope .()));
 		Test.Assert(classInstance != null);
 		Test.Assert(classInstance.WriteObject(cooked) case .Ok);
 
@@ -228,10 +228,10 @@ static class ScriptClassResourceTests
 		}
 
 		let manager = scope ResourceManager(database, null);
-		let classes = scope ScriptClassFactory();
+		let classes = scope BehaviorClassFactory();
 		let assemblies = scope ScriptAssemblyFactory();
 		ScriptResources.AddFactories(manager, classes, assemblies);
-		let product = manager.Bind<ScriptClass>(classInstance.Id).Get;
+		let product = manager.Bind<BehaviorClass>(classInstance.Id).Get;
 		Test.Assert(product != null, "bound");
 		Test.Assert(product.AssemblyId == assemblyInstance.Id);
 		Test.Assert(product.Source == "class Mover", "the class keeps its source");
@@ -242,12 +242,12 @@ static class ScriptClassResourceTests
 		Test.Assert(product.Assembly === manager.Bind<ScriptAssembly>(assemblyInstance.Id).Get, "the assembly's own product, shared");
 
 		// A class that cooks alone binds none.
-		let alone = scope ScriptClassSource();
+		let alone = scope BehaviorClassSource();
 		alone.Language.Set("stand-in");
 		alone.ClassName.Set("Loner");
-		let aloneInstance = database.RootGroup.CreateInstance("loner", typeof(ScriptClassSource).GetFullName(.. scope .()));
+		let aloneInstance = database.RootGroup.CreateInstance("loner", typeof(BehaviorClassSource).GetFullName(.. scope .()));
 		Test.Assert(aloneInstance.WriteObject(alone) case .Ok);
-		let loner = manager.Bind<ScriptClass>(aloneInstance.Id).Get;
+		let loner = manager.Bind<BehaviorClass>(aloneInstance.Id).Get;
 		Test.Assert((loner != null) && (loner.AssemblyId == Guid.Empty) && (loner.Assembly == null));
 	}
 
@@ -256,10 +256,10 @@ static class ScriptClassResourceTests
 	{
 		let registry = scope SerializableRegistry();
 		ScriptResources.RegisterAll(registry);
-		Test.Assert(registry.IsRegistered(ScriptClassSource.TypeId));
-		Test.Assert(registry.IsRegistered(TypeIdOf("Sedulous.Script.Resource.ScriptClassSource")));
-		let created = registry.Create(ScriptClassSource.TypeId);
+		Test.Assert(registry.IsRegistered(BehaviorClassSource.TypeId));
+		Test.Assert(registry.IsRegistered(TypeIdOf("Sedulous.Script.Resource.BehaviorClassSource")));
+		let created = registry.Create(BehaviorClassSource.TypeId);
 		defer delete created;
-		Test.Assert(created is ScriptClassSource);
+		Test.Assert(created is BehaviorClassSource);
 	}
 }

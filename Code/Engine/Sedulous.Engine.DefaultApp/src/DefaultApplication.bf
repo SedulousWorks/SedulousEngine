@@ -552,7 +552,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// `onUpdate(dt)`, `onStop()` and `on<Event>` handlers, all optional. The CALLER resolves
 	/// where the class comes from, the manifest's startup script for the player. A fault
 	/// stops the script, not the game.
-	public bool StartRunBehavior(ScriptClass scriptClass) => mInstance.StartRunBehavior(scriptClass);
+	public bool StartRunBehavior(BehaviorClass scriptClass) => mInstance.StartRunBehavior(scriptClass);
 	public void StopRunBehavior() => mInstance.StopRunBehavior();
 	public bool RunBehaviorRunning => mInstance.RunBehaviorRunning;
 

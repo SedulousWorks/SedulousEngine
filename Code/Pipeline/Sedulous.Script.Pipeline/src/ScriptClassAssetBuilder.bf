@@ -13,14 +13,14 @@ namespace Sedulous.Script.Pipeline;
 class ScriptClassAssetBuilder : IAssetBuilder
 {
 	public Type AssetType => typeof(ScriptClassAsset);
-	public Type ProductType => typeof(ScriptClassSource);
+	public Type ProductType => typeof(BehaviorClassSource);
 
 	/// The shell's own version (2: each property a replicated flag; 3: the record carries
 	/// data version 1, so the reader refuses one from before the flag; 4: the class is the
 	/// asset's choice, never a guess among several; 5: the record carries the included files;
-	/// 6: the record names the assembly its class is built into; 7: the behavior kind) plus
-	/// every cook's, so a cook change recooks.
-	public int32 Version => 7 + ScriptLanguageCooks.VersionSum;
+	/// 6: the record names the assembly its class is built into; 7: the behavior kind; 8: the
+	/// record's type is BehaviorClassSource) plus every cook's, so a cook change recooks.
+	public int32 Version => 8 + ScriptLanguageCooks.VersionSum;
 
 	/// The surface the scripts are checked against: a change (an engine whose facades changed)
 	/// recooks them, so a script that no longer compiles is found at cook time, not at load.
@@ -92,7 +92,7 @@ class ScriptClassAssetBuilder : IAssetBuilder
 			return .Err(readError);
 		}
 
-		let record = scope ScriptClassSource();
+		let record = scope BehaviorClassSource();
 		record.Language.Set(authored.Language);
 		record.SourceName.Set(authored.FileName.Value);
 		record.Source.Set(source);
@@ -120,7 +120,7 @@ class ScriptClassAssetBuilder : IAssetBuilder
 	/// assembly, which cooks first, and the record naming that assembly. Not found when no project
 	/// holds the file or its project has not built.
 	private static Result<void, ErrorCode> CookFromProject(IScriptLanguageCook cook, ScriptClassAsset authored, StringView source,
-		AssetBuildContext context, ScriptClassSource record, List<String> problems)
+		AssetBuildContext context, BehaviorClassSource record, List<String> problems)
 	{
 		let file = authored.FileName.Value;
 		let project = ScriptAssemblies.FindFor(context.SourceDatabase, authored.Language, file);

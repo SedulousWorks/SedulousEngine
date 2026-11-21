@@ -311,7 +311,7 @@ static class BehaviorLifecycleTests
 		let play = scope ScriptPlayScene();
 		let good = play.Class("Good", "class Good { int n = 1; }", "Good.as");
 		// Made by hand: the bed's Class compiles it to harvest it, which this one cannot.
-		let broken = scope ScriptClass();
+		let broken = scope BehaviorClass();
 		broken.Language.Set(AngelScriptBackend.cLanguage);
 		broken.ClassName.Set("Broken");
 		broken.Kind = .Entity;
@@ -332,7 +332,7 @@ static class BehaviorLifecycleTests
 	public static void AClassLoadsWithTheFilesItIncludes()
 	{
 		let play = scope ScriptPlayScene();
-		let tripler = scope ScriptClass();
+		let tripler = scope BehaviorClass();
 		tripler.Language.Set(AngelScriptBackend.cLanguage);
 		tripler.ClassName.Set("Tripler");
 		tripler.Kind = .Entity;

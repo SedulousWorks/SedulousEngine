@@ -24,7 +24,7 @@ static class ScriptResourceIdsTests
 		let behavior = play.BehaviorOf(e);
 		behavior.BehaviorClass.SetId(classId);
 		behavior.SetOverride(ScriptPropertyNames.HashOf("clip"), .Asset(assetId));
-		let levelOverride = new ScriptPropertyOverride();
+		let levelOverride = new BehaviorPropertyOverride();
 		levelOverride.Hash = ScriptPropertyNames.HashOf("music");
 		levelOverride.Value = .Asset(levelAssetId);
 		play.Scripts.Settings.Overrides.Add(levelOverride);
