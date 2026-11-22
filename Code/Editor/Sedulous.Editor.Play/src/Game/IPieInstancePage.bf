@@ -7,14 +7,14 @@ using Sedulous.Editor.Scene;
 
 namespace Sedulous.Editor.Play;
 
-/// Where a PIE instance's startup script stands.
-enum PieScriptState
+/// Where a PIE instance's run behavior stands.
+enum PieRunBehaviorState
 {
-	/// The project has no startup script, or the run has not started one.
+	/// The project has no run behavior, or the run has not started one.
 	None,
 	Running,
 	/// It stopped on its own: a fault in one of its calls, or it did not instantiate.
-	/// IPieInstancePage.ScriptFault says which.
+	/// IPieInstancePage.RunBehaviorFault says which.
 	Faulted
 }
 
@@ -41,9 +41,9 @@ interface IPieInstancePage : IGameScenePage
 	double RunTime { get; }
 	/// Frames rendered since the run started.
 	uint64 FrameCount { get; }
-	/// The startup script's state, and the reason a faulted one stopped.
-	PieScriptState ScriptState { get; }
-	StringView ScriptFault { get; }
+	/// The run behavior's state, and the reason a faulted one stopped.
+	PieRunBehaviorState RunBehaviorState { get; }
+	StringView RunBehaviorFault { get; }
 
 	/// Asks for the viewport's next rendered frame, after the game's own UI and overlays,
 	/// as a PNG at `path` (its directory must exist), replacing a pending request.
@@ -51,9 +51,9 @@ interface IPieInstancePage : IGameScenePage
 	/// The latest request's state, as it advances frame by frame. BORROWED.
 	ViewportCapture LastViewportCapture { get; }
 
-	/// Reads a property of the running game script into `value`; false without one.
-	bool GetScriptProperty(StringView name, ref ScriptValue value);
-	/// Reads a property of the running scene's level script into `value`; false without one or
+	/// Reads a field of the run behavior into `value`; false without one.
+	bool GetRunBehaviorProperty(StringView name, ref ScriptValue value);
+	/// Reads a field of the running scene's behavior into `value`; false without one or
 	/// with no such property.
 	bool GetLevelProperty(StringView name, ref ScriptValue value);
 

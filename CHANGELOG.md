@@ -204,6 +204,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   draw over the page's viewport while it simulates and go when it stops.
 - Project settings: the Startup script is the Run behavior (`runBehaviorId` for MCP's
   `project_settings_set`). A project file saved by an earlier release still opens.
+- MCP: `pie_state` reports the run behavior as `runBehavior` (was `script`), and `pie_run` probes
+  and `until` take `runBehavior` and `sceneBehavior` (were `script` and `level`).
 
 ### Fixed
 

@@ -263,7 +263,7 @@ class NetFacadeTests
 		Test.Assert(run.Instance.StartRunBehavior(game));
 		Test.Assert(run.PropBool("loaded"));
 		run.Step(2);
-		Test.Assert(run.Instance.ScriptFault.IsEmpty, scope $"faulted: {run.Instance.ScriptFault}");
+		Test.Assert(run.Instance.RunBehaviorFault.IsEmpty, scope $"faulted: {run.Instance.RunBehaviorFault}");
 		Test.Assert(run.PropBool("spawned"));
 		Test.Assert(run.PropBool("valid"), "the spawned entity is one the script can use");
 		Test.Assert(run.PropBool("named"));

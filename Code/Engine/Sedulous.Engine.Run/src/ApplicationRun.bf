@@ -124,7 +124,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// Why the last game script stopped on its own: the handler it faulted in and the
 	/// runtime's problems, or that it did not instantiate. Empty while it runs or after a
 	/// clean stop; a start clears it.
-	private String mScriptFault = new .() ~ delete _;
+	private String mRunBehaviorFault = new .() ~ delete _;
 	/// Seconds of frames TickScript has run since ResetRunClock: the host's delta, NOT scaled
 	/// by the context's, the run's or the scene's time scale, so it keeps going while the game
 	/// pauses its scene with Run.TimeScale = 0 (a menu over a paused scene still takes clicks).
@@ -634,15 +634,15 @@ class ApplicationRun : RunBase, IRunInput
 	public bool RunBehaviorRunning => mGame != null;
 	/// Reads a property of the running game script (a score, a lives count) into `value`;
 	/// false with no script running or no such property.
-	public bool GetScriptProperty(StringView name, ref ScriptValue value)
+	public bool GetRunBehaviorProperty(StringView name, ref ScriptValue value)
 	{
 		if ((mGame == null) || (mRunHost.Runtime == null))
 			return false;
 		return mRunHost.Runtime.GetProperty(mGame, name, ref value);
 	}
 
-	/// Why the game script stopped on its own; empty when it did not (see mScriptFault).
-	public StringView ScriptFault => mScriptFault;
+	/// Why the game script stopped on its own; empty when it did not (see mRunBehaviorFault).
+	public StringView RunBehaviorFault => mRunBehaviorFault;
 	/// Seconds of frames since ResetRunClock, unscaled (see mRunTime); standing still while
 	/// the debugger holds the run.
 	public double RunTime => mRunTime;
@@ -671,28 +671,28 @@ class ApplicationRun : RunBase, IRunInput
 	/// Compiles and launches the game script: the class's constructor, then `onStart()` when
 	/// it has one; `onUpdate(dt)` each tick and `onStop()` at the stop, all optional, its
 	/// `on<Event>` handlers subscribed to the run bus. False when the class did not load or
-	/// instantiate, logged. A class of another kind than RunBehavior is refused, ScriptFault
+	/// instantiate, logged. A class of another kind than RunBehavior is refused, RunBehaviorFault
 	/// saying which kind it is. A second start stops the first.
 	public bool StartRunBehavior(BehaviorClass scriptClass)
 	{
 		StopRunBehavior();
-		mScriptFault.Clear();
+		mRunBehaviorFault.Clear();
 		if (scriptClass == null)
 			return false;
 		if (scriptClass.Kind != .Run)
 		{
 			if (scriptClass.Kind == .None)
-				mScriptFault.AppendF("'{}' declares no behavior class: the run behavior derives from RunBehavior (class Game : RunBehavior)", scriptClass.SourceName);
+				mRunBehaviorFault.AppendF("'{}' declares no behavior class: the run behavior derives from RunBehavior (class Game : RunBehavior)", scriptClass.SourceName);
 			else
-				mScriptFault.AppendF("'{}' derives from {}: the run behavior derives from RunBehavior", scriptClass.ClassName, BehaviorKinds.TypeName(scriptClass.Kind));
-			GlobalLog(.Error, scope $"Run: {mScriptFault}");
+				mRunBehaviorFault.AppendF("'{}' derives from {}: the run behavior derives from RunBehavior", scriptClass.ClassName, BehaviorKinds.TypeName(scriptClass.Kind));
+			GlobalLog(.Error, scope $"Run: {mRunBehaviorFault}");
 			return false;
 		}
 		let game = mRunHost.Instantiate(scriptClass, .Run);
 		if (game == null)
 		{
 			GlobalLog(.Error, scope $"Run: the game script '{scriptClass.ClassName}' did not instantiate");
-			mScriptFault.AppendF("the game script '{}' did not instantiate (log_read, category Script, has why)", scriptClass.ClassName);
+			mRunBehaviorFault.AppendF("the game script '{}' did not instantiate (log_read, category Script, has why)", scriptClass.ClassName);
 			return false;
 		}
 		mGame = game;
@@ -812,11 +812,11 @@ class ApplicationRun : RunBase, IRunInput
 		if (mRunHost.IsDebugPaused)
 			return; // suspended at a breakpoint, not a fault; the debugger completes it
 		GlobalLog(.Error, scope $"Run: the game script faulted in {handler}; stopped");
-		mScriptFault.Set(scope $"faulted in {handler}");
+		mRunBehaviorFault.Set(scope $"faulted in {handler}");
 		let problems = scope String();
 		mRunHost.ReportProblems(problems);
 		if (!problems.IsEmpty)
-			mScriptFault.AppendF(": {}", problems);
+			mRunBehaviorFault.AppendF(": {}", problems);
 		let faulted = mGame;
 		mGame = null;
 		runtime.CancelCoroutinesFor(faulted);

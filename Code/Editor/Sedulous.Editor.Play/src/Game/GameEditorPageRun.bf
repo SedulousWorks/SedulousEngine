@@ -19,7 +19,7 @@ using Sedulous.Editor.Scene;
 
 namespace Sedulous.Editor.Play;
 
-/// Starting and stopping a run: the default scene into the instance, the startup script,
+/// Starting and stopping a run: the default scene into the instance, the run behavior,
 /// the input map and bus layout, and following the scene the script switches to.
 extension GameEditorPage
 {
@@ -35,7 +35,7 @@ extension GameEditorPage
 		if ((instance == null) && !project.Settings.DefaultScene.IsEmpty)
 			instance = project.SourceDb.GetInstanceByPath(project.Settings.DefaultScene);
 		if (instance == null)
-			GlobalLog(.Information, "Editor: Game: no default scene - the game script owns boot.");
+			GlobalLog(.Information, "Editor: Game: no default scene - the run behavior owns boot.");
 
 		mFrameCount = 0;
 		mStoppedRunTime = 0;
@@ -288,10 +288,10 @@ extension GameEditorPage
 		let scriptClass = mContext.Resources.Bind<BehaviorClass>(scriptId).Get;
 		if ((scriptClass == null) || scriptClass.Source.IsEmpty)
 		{
-			mContext.Notify(.Warning, "Game: startup script asset not found.");
+			mContext.Notify(.Warning, "Game: the run behavior asset was not found.");
 			return;
 		}
 		if ((mApplicationRun == null) || !mApplicationRun.StartRunBehavior(scriptClass))
-			mContext.Notify(.Error, "Game: startup script failed to start (see Console).");
+			mContext.Notify(.Error, "Game: the run behavior did not start (see Console).");
 	}
 }

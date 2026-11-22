@@ -321,7 +321,7 @@ static class GameScriptTests
 		run.Step(2); // and the run keeps ticking without it
 		Test.Assert(run.Game == null);
 		// The fault is remembered with where it happened, and the run's clock kept moving.
-		Test.Assert(run.Instance.ScriptFault.StartsWith("faulted in onUpdate"), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.RunBehaviorFault.StartsWith("faulted in onUpdate"), scope String(run.Instance.RunBehaviorFault));
 		Test.Assert(Math.Abs(run.Instance.RunTime - 4.0 / 60.0) < 1e-5);
 		Test.Assert(run.Instance.RealDeltaTime > 0);
 		run.Instance.ResetRunClock();
@@ -329,9 +329,9 @@ static class GameScriptTests
 		Test.Assert(run.Instance.RealDeltaTime == 0, "a new run does not read the last one's frame time");
 		// A new start clears it.
 		Test.Assert(run.Instance.StartRunBehavior(game));
-		Test.Assert(run.Instance.ScriptFault.IsEmpty);
+		Test.Assert(run.Instance.RunBehaviorFault.IsEmpty);
 		run.Instance.StopRunBehavior();
-		Test.Assert(run.Instance.ScriptFault.IsEmpty, "a clean stop is not a fault");
+		Test.Assert(run.Instance.RunBehaviorFault.IsEmpty, "a clean stop is not a fault");
 	}
 
 	/// The run's behavior is a RunBehavior: a class of another kind, or a script that declares
@@ -343,16 +343,16 @@ static class GameScriptTests
 		let mover = run.Class("Mover", "class Mover { int made = 0; Mover() { made++; } void onStart() {} }", .Entity);
 		Test.Assert(!run.Instance.StartRunBehavior(mover));
 		Test.Assert(!run.Instance.RunBehaviorRunning);
-		Test.Assert(run.Instance.ScriptFault.Contains("derives from EntityBehavior"), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.RunBehaviorFault.Contains("derives from EntityBehavior"), scope String(run.Instance.RunBehaviorFault));
 
 		let helpers = run.Class("Helpers", "class Helpers { Helpers() {} }", .None);
 		Test.Assert(!run.Instance.StartRunBehavior(helpers));
-		Test.Assert(run.Instance.ScriptFault.Contains("declares no behavior class"), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.RunBehaviorFault.Contains("declares no behavior class"), scope String(run.Instance.RunBehaviorFault));
 
 		// The same source as a RunBehavior starts.
 		let game = run.Class("Game", "class Game { Game() {} void onStart() {} }");
-		Test.Assert(run.Instance.StartRunBehavior(game), scope String(run.Instance.ScriptFault));
-		Test.Assert(run.Instance.ScriptFault.IsEmpty);
+		Test.Assert(run.Instance.StartRunBehavior(game), scope String(run.Instance.RunBehaviorFault));
+		Test.Assert(run.Instance.RunBehaviorFault.IsEmpty);
 		run.Instance.StopRunBehavior();
 	}
 
@@ -521,9 +521,9 @@ static class GameScriptTests
 				}}
 			}}
 			""", levelId);
-		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", source)), scope String(run.Instance.RunBehaviorFault));
 		run.Step();
-		Test.Assert(run.Instance.ScriptFault.IsEmpty, scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.RunBehaviorFault.IsEmpty, scope String(run.Instance.RunBehaviorFault));
 		Test.Assert(run.PropBool("compared"), "the level was current at the next frame");
 		Test.Assert(run.PropBool("guidSame") && run.PropBool("guidDifferent") && run.PropBool("nilSame"));
 		Test.Assert(run.PropBool("nilMade"), "a declared Guid and Guid() are both nil");
@@ -578,9 +578,9 @@ static class GameScriptTests
 				}}
 			}}
 			""", firstId, secondId);
-		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", source)), scope String(run.Instance.RunBehaviorFault));
 		run.Step(2);
-		Test.Assert(run.Instance.RunBehaviorRunning, scope String(run.Instance.ScriptFault));
+		Test.Assert(run.Instance.RunBehaviorRunning, scope String(run.Instance.RunBehaviorFault));
 		Test.Assert(run.PropInt("stage") == 2, "both frames ran");
 		Test.Assert(run.Prop("before").AsString == "e0", "the first level's entity, while it lived");
 		Test.Assert(run.PropInt("countNow") == 3, "the run is in the second level");

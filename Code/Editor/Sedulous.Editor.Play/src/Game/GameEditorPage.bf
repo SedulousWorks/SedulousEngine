@@ -32,7 +32,7 @@ class GameEditorPageServices
 }
 
 /// The Game tab: plays the project's default scene through its OWN application run, with the
-/// startup script, the default input map and bus layout, the resolution it draws at (the project's
+/// run behavior, the default input map and bus layout, the resolution it draws at (the project's
 /// by default), and the script debugger beside the game (hidden until its toggle, or a breakpoint,
 /// shows it).
 ///
@@ -257,7 +257,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	public uint64 FrameCount => mFrameCount;
 	public double RunTime => (mRunning && (mApplicationRun != null)) ? mApplicationRun.RunTime : mStoppedRunTime;
 
-	public PieScriptState ScriptState
+	public PieRunBehaviorState RunBehaviorState
 	{
 		get
 		{
@@ -265,11 +265,11 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 				return .None;
 			if (mApplicationRun.RunBehaviorRunning)
 				return .Running;
-			return mApplicationRun.ScriptFault.IsEmpty ? .None : .Faulted;
+			return mApplicationRun.RunBehaviorFault.IsEmpty ? .None : .Faulted;
 		}
 	}
 
-	public StringView ScriptFault => (mApplicationRun != null) ? mApplicationRun.ScriptFault : "";
+	public StringView RunBehaviorFault => (mApplicationRun != null) ? mApplicationRun.RunBehaviorFault : "";
 
 	public void RequestViewportCapture(StringView path) => mCapture.Request(path);
 	public ViewportCapture LastViewportCapture => mCapture.State;
@@ -534,7 +534,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	/// script's fault) and the scene it runs.
 	private void RefreshToolbar()
 	{
-		let faulted = mRunning && (ScriptState == .Faulted);
+		let faulted = mRunning && (RunBehaviorState == .Faulted);
 		let paused = mRunning && (mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked));
 		if (mPlayButton != null)
 			mPlayButton.Enabled = !mRunning && !mPendingPlay;
@@ -555,7 +555,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 				for (let old in kinds)
 					mStateLabel.RemoveClass(old);
 				mStateLabel.AddClass(kind);
-				mStateLabel.Tooltip = faulted ? ScriptFault : "";
+				mStateLabel.Tooltip = faulted ? RunBehaviorFault : "";
 			}
 		}
 		if (mSceneLabel != null)

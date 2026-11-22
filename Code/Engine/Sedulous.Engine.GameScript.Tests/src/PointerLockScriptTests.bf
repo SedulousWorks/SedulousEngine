@@ -69,7 +69,7 @@ class PointerLockScriptTests
 		let sourceB = scope LockMouseSource();
 		runA.Instance.SetInputSource(sourceA);
 		runB.Instance.SetInputSource(sourceB);
-		Test.Assert(runA.Instance.StartRunBehavior(runA.Class("Game", cLooker)), scope String(runA.Instance.ScriptFault));
+		Test.Assert(runA.Instance.StartRunBehavior(runA.Class("Game", cLooker)), scope String(runA.Instance.RunBehaviorFault));
 
 		// Asked in the update, not yet applied; the next input drive locks the run's own mouse.
 		runA.Step();

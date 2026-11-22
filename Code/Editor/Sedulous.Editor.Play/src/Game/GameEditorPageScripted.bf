@@ -43,9 +43,9 @@ extension GameEditorPage
 			mScriptedEnding = true;
 	}
 
-	public bool GetScriptProperty(StringView name, ref ScriptValue value)
+	public bool GetRunBehaviorProperty(StringView name, ref ScriptValue value)
 	{
-		return (mApplicationRun != null) && mApplicationRun.GetScriptProperty(name, ref value);
+		return (mApplicationRun != null) && mApplicationRun.GetRunBehaviorProperty(name, ref value);
 	}
 
 	public bool GetLevelProperty(StringView name, ref ScriptValue value)

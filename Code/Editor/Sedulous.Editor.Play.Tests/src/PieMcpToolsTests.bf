@@ -15,7 +15,7 @@ namespace Sedulous.Editor.Play.Tests;
 /// The PIE tools over a real EditorContext whose Game tabs are headless IPieInstancePage
 /// pages, opened by stand-ins for the editor's game.play and game.playNewInstance actions:
 /// starting (the wait for the cook and the first frame), addressing by id, a second instance
-/// beside the primary, stopping one while the other runs, the list, a faulted startup script
+/// beside the primary, stopping one while the other runs, the list, a faulted run behavior
 /// in the state, and the capture's frame-by-frame wait.
 class PieMcpToolsTests
 {
@@ -28,7 +28,7 @@ class PieMcpToolsTests
 		public String Scene = new .() ~ delete _;
 		public double Time = 0;
 		public uint64 Frames = 0;
-		public PieScriptState Script = .None;
+		public PieRunBehaviorState Script = .None;
 		public String Fault = new .() ~ delete _;
 		public ViewportCapture Capture = new .() ~ delete _;
 		public int CaptureRequests = 0;
@@ -60,8 +60,8 @@ class PieMcpToolsTests
 		public StringView SceneName => Scene;
 		public double RunTime => Time;
 		public uint64 FrameCount => Frames;
-		public PieScriptState ScriptState => Script;
-		public StringView ScriptFault => Fault;
+		public PieRunBehaviorState RunBehaviorState => Script;
+		public StringView RunBehaviorFault => Fault;
 		public void RequestViewportCapture(StringView path)
 		{
 			Capture.State = .Pending;
@@ -70,18 +70,18 @@ class PieMcpToolsTests
 		}
 		public ViewportCapture LastViewportCapture => Capture;
 
-		/// The run's scene, and a game script with one property, `score`.
+		/// The run's scene, and a run behavior with one field, `score`.
 		public Sedulous.Scene.Scene Level = new .("Level1") ~ delete _;
 		public double Score = 0;
 		public Sedulous.Scene.Scene RunningScene => Running ? Level : null;
-		public bool GetScriptProperty(StringView name, ref ScriptValue value)
+		public bool GetRunBehaviorProperty(StringView name, ref ScriptValue value)
 		{
 			if (!Running || (name != "score"))
 				return false;
 			value = .FromFloat(Score);
 			return true;
 		}
-		/// The scene's level script, with one property, `wave`.
+		/// The scene's behavior, with one field, `wave`.
 		public double Wave = 0;
 		public bool GetLevelProperty(StringView name, ref ScriptValue value)
 		{
@@ -344,7 +344,7 @@ class PieMcpToolsTests
 			Test.Assert(answer.Payload.Get("scene").AsString() == "Level1");
 			Test.Assert(answer.Payload.Get("running").AsBool());
 			Test.Assert(!answer.Payload.Get("alreadyRunning").AsBool());
-			Test.Assert(answer.Payload.Get("script").Get("state").AsString() == "running");
+			Test.Assert(answer.Payload.Get("runBehavior").Get("state").AsString() == "running");
 		}
 		// A second start of the running primary answers it as it is.
 		{
@@ -389,14 +389,14 @@ class PieMcpToolsTests
 			Test.Assert(unknown.Error.StartsWith("no PIE instance 'game-page-9'"), unknown.Error);
 		}
 
-		// A faulted startup script shows in its instance's state, with the reason.
+		// A faulted run behavior shows in its instance's state, with the reason.
 		client.Script = .Faulted;
 		client.Fault.Set("faulted in onUpdate: Lobby.sc:12 index out of range");
 		{
 			let state = Call(server, "pie_state", "{\"pie\":\"game-page-1\"}");
 			defer delete state;
-			Test.Assert(state.Payload.Get("script").Get("state").AsString() == "faulted");
-			Test.Assert(state.Payload.Get("script").Get("fault").AsString() == "faulted in onUpdate: Lobby.sc:12 index out of range");
+			Test.Assert(state.Payload.Get("runBehavior").Get("state").AsString() == "faulted");
+			Test.Assert(state.Payload.Get("runBehavior").Get("fault").AsString() == "faulted in onUpdate: Lobby.sc:12 index out of range");
 		}
 
 		// Stopping the client leaves the primary running; `all` stops the rest.
@@ -658,13 +658,13 @@ class PieMcpToolsTests
 			// The nested shapes are checked by name: `field` for `fields` read worldPosition.
 			let probeField = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"entity\":\"Player\",\"field\":\"position.x\"}]}");
 			defer delete probeField;
-			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, script, level)", probeField.Error);
+			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, runBehavior, sceneBehavior)", probeField.Error);
 			let inputTypo = Call(server, "pie_run", "{\"duration\":1,\"input\":[{\"at\":0,\"key\":\"D\",\"donw\":false}]}");
 			defer delete inputTypo;
 			Test.Assert(inputTypo.Error.StartsWith("pie_run: no field 'input[0].donw' (it takes: at, "), inputTypo.Error);
-			let untilTypo = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"script\":\"score\",\"op\":\">\",\"valeu\":1}}");
+			let untilTypo = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"runBehavior\":\"score\",\"op\":\">\",\"valeu\":1}}");
 			defer delete untilTypo;
-			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, script, level, op, value)", untilTypo.Error);
+			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, runBehavior, sceneBehavior, op, value)", untilTypo.Error);
 			let noDuration = Call(server, "pie_run", "{\"duration\":0}");
 			defer delete noDuration;
 			Test.Assert(noDuration.Error.StartsWith("`duration` takes run seconds"), noDuration.Error);
@@ -680,7 +680,7 @@ class PieMcpToolsTests
 
 		// Hold D for a second of a two second run, sampling the player and the score every half
 		// second, with a screenshot at one second.
-		let args = "{\"duration\":2,\"input\":[{\"at\":0,\"key\":\"D\"},{\"at\":1,\"key\":\"D\",\"down\":false}],\"probes\":[{\"entity\":\"Player\",\"fields\":[\"position.x\"]},{\"script\":\"score\"}],\"every\":0.5,\"screenshots\":[1],\"screenshotDir\":\"shots\"}";
+		let args = "{\"duration\":2,\"input\":[{\"at\":0,\"key\":\"D\"},{\"at\":1,\"key\":\"D\",\"down\":false}],\"probes\":[{\"entity\":\"Player\",\"fields\":[\"position.x\"]},{\"runBehavior\":\"score\"}],\"every\":0.5,\"screenshots\":[1],\"screenshotDir\":\"shots\"}";
 		Test.Assert(Pump(server, "pie_run", args, out answer) == .NotFinished);
 		Test.Assert(host.IsScripted && (host.ScriptsBegun == 1));
 		host.Score = 7;
@@ -711,7 +711,7 @@ class PieMcpToolsTests
 			// Walked while D was held (a second, give or take a frame), then stood.
 			let x = samples.At(samples.Count - 1).Get("values").Get("Player.position.x").AsNumber();
 			Test.Assert(Math.Abs(x - 1.0) <= 0.1, scope $"x {x}");
-			Test.Assert(samples.At(4).Get("values").Get("script.score").AsNumber() == 7);
+			Test.Assert(samples.At(4).Get("values").Get("runBehavior.score").AsNumber() == 7);
 			let shots = result.Get("screenshots");
 			Test.Assert(shots.Count == 1);
 			Test.Assert(shots.At(0).Get("at").AsNumber() == 1);
@@ -750,7 +750,7 @@ class PieMcpToolsTests
 			Test.Assert(answer.Payload.Get("samples").Count == 0, "no probes, no rows");
 		}
 		{
-			let badOp = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"script\":\"score\",\"op\":\"~\",\"value\":1}}");
+			let badOp = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"runBehavior\":\"score\",\"op\":\"~\",\"value\":1}}");
 			defer delete badOp;
 			Test.Assert(badOp.Error.StartsWith("`until.op` takes"), badOp.Error);
 		}
@@ -770,10 +770,10 @@ class PieMcpToolsTests
 		Test.Assert(!answer.Payload.Get("state").Get("running").AsBool());
 	}
 
-	/// A run reads the scene's level script as `level.<name>`, and ends on it; a property it
+	/// A run reads the scene's behavior as `sceneBehavior.<name>`, and ends on it; a field it
 	/// does not have is refused before the run starts.
 	[Test]
-	public static void ARunReadsTheScenesLevelScriptAndEndsOnIt()
+	public static void ARunReadsTheScenesBehaviorAndEndsOnIt()
 	{
 		let context = scope EditorContext();
 		let host = RunningPie(context, "game-page");
@@ -783,15 +783,15 @@ class PieMcpToolsTests
 		Answer answer;
 
 		{
-			let missing = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"level\":\"lives\"}]}");
+			let missing = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"sceneBehavior\":\"lives\"}]}");
 			defer delete missing;
 			Test.Assert(!missing.Ok);
-			Test.Assert(missing.Error.StartsWith("the level script of PIE instance 'game-page' has no property 'lives'"), missing.Error);
+			Test.Assert(missing.Error.StartsWith("the scene behavior of PIE instance 'game-page' has no field 'lives'"), missing.Error);
 			Test.Assert(host.ScriptsBegun == 0);
 		}
 
 		host.Wave = 2;
-		let sample = "{\"duration\":1,\"probes\":[{\"level\":\"wave\"}],\"every\":0.5}";
+		let sample = "{\"duration\":1,\"probes\":[{\"sceneBehavior\":\"wave\"}],\"every\":0.5}";
 		while (Pump(server, "pie_run", sample, out answer) == .NotFinished)
 			PlayFrame(host, 0.05);
 		{
@@ -799,11 +799,11 @@ class PieMcpToolsTests
 			Test.Assert(answer.Ok, answer.Error);
 			let samples = answer.Payload.Get("samples");
 			Test.Assert(samples.Count > 0);
-			Test.Assert(samples.At(samples.Count - 1).Get("values").Get("level.wave").AsNumber() == 2);
+			Test.Assert(samples.At(samples.Count - 1).Get("values").Get("sceneBehavior.wave").AsNumber() == 2);
 		}
 
 		PlayFrame(host, 0.1); // the ended script goes
-		let until = "{\"duration\":10,\"until\":{\"level\":\"wave\",\"op\":\">=\",\"value\":3}}";
+		let until = "{\"duration\":10,\"until\":{\"sceneBehavior\":\"wave\",\"op\":\">=\",\"value\":3}}";
 		Test.Assert(Pump(server, "pie_run", until, out answer) == .NotFinished);
 		PlayFrame(host, 0.1);
 		Test.Assert(Pump(server, "pie_run", until, out answer) == .NotFinished, "below 3, it plays on");
@@ -813,7 +813,7 @@ class PieMcpToolsTests
 		defer delete answer;
 		Test.Assert(answer.Ok, answer.Error);
 		Test.Assert(answer.Payload.Get("endedBy").AsString() == "until");
-		Test.Assert(answer.Payload.Get("until").Get("probe").AsString() == "level.wave");
+		Test.Assert(answer.Payload.Get("until").Get("probe").AsString() == "sceneBehavior.wave");
 	}
 
 	/// A second run on a busy instance is refused, not taken for the first's re-entry; a run

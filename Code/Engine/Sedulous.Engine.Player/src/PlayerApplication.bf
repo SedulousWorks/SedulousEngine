@@ -35,7 +35,7 @@ namespace Sedulous.Engine.Player;
 /// understood, and a staged distribution WINS where both are present, because a distribution
 /// can sit inside the project tree it was built from.
 ///
-/// The project's game script is launched before the scene, so a script can own boot
+/// The project's run behavior is launched before the scene, so a script can own boot
 /// entirely: a project with no default scene and a running script has something to run.
 class PlayerApplication : DefaultApplication
 {
@@ -250,7 +250,7 @@ class PlayerApplication : DefaultApplication
 			Instance.SetSaveFile(PathJoin(savePath, saveName, .. scope String()));
 		}
 
-		// The game script launches FIRST: its onStart() may load the first level itself, and
+		// The run behavior launches FIRST: its onStart() may load the first level itself, and
 		// a startup scene, when the manifest names one, loads behind it. The player's one run
 		// plays one session, from here to OnExit.
 		Instance.Start();
@@ -259,13 +259,13 @@ class PlayerApplication : DefaultApplication
 		if (instance != null)
 			BeginBootScene(host, instance);
 		else if (RunBehaviorRunning)
-			GlobalLog(.Information, "Player: no startup scene; the game script owns boot");
+			GlobalLog(.Information, "Player: no startup scene; the run behavior owns boot");
 		else
 			GlobalLog(.Information,
-				"Player: no startup scene resolved, and no game script to own boot, so nothing is running");
+				"Player: no startup scene resolved, and no run behavior to own boot, so nothing is running");
 	}
 
-	/// The manifest's startup script is a cooked BehaviorClass, bound from the content
+	/// The manifest's run behavior is a cooked BehaviorClass, bound from the content
 	/// database by id. None is fine; one that does not resolve is an error the run survives.
 	private void LoadAndStartRunBehavior()
 	{
@@ -275,7 +275,7 @@ class PlayerApplication : DefaultApplication
 		let scriptClass = Resources.Bind<BehaviorClass>(scriptId).Get;
 		if (scriptClass == null)
 		{
-			GlobalLog(.Error, "Player: the startup script asset did not resolve");
+			GlobalLog(.Error, "Player: the run behavior asset did not resolve");
 			return;
 		}
 		StartRunBehavior(scriptClass);

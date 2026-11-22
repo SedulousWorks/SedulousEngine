@@ -18,7 +18,7 @@ def read(run):
 
 def state():
     r = mcp("pie_run", {"duration": 0.02, "probes": [
-        {"entity": "Bike", "fields": ["worldPosition", "rotation"]}, {"script": "m_delivered"}]})
+        {"entity": "Bike", "fields": ["worldPosition", "rotation"]}, {"runBehavior": "m_delivered"}]})
     return read(r)
 
 
@@ -72,7 +72,7 @@ def main():
                 print("throw at zone", zi, "from", [round(v, 1) for v in pos], "dist", round(d, 1))
                 break
         r = mcp("pie_run", {"duration": STEP, "input": inputs, "probes": [
-            {"entity": "Bike", "fields": ["worldPosition", "rotation"]}, {"script": "m_delivered"}], "every": 1.0})
+            {"entity": "Bike", "fields": ["worldPosition", "rotation"]}, {"runBehavior": "m_delivered"}], "every": 1.0})
         s = read(r)
         if i % 10 == 0:
             print(i, [round(v, 1) for v in s["Bike.worldPosition"]], "heading", round(math.degrees(heading(s["Bike.rotation"]))),

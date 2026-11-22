@@ -100,14 +100,14 @@ stopped by the user: ask before anything else.
 Play in editor (PIE) is the editor's too, and it is how gameplay is tested: `simulate_start`
 previews ONE scene in its page (its scripts as the page's own run: their screens over the page's
 viewport, their sound heard while it has the focus), while PIE runs the project as the player does (the default
-scene, the startup script, the input map). PIE is not one game: every Game tab runs its own
+scene, the run behavior, the input map). PIE is not one game: every Game tab runs its own
 instance, addressed by its `pie` id (`game-page`, the primary; `game-page-1`, ... for each new
 instance), default the primary. `pie_start` cooks, opens and runs the primary (or with
 `newInstance` another tab, a host and a client say) and answers once the first frame has
 rendered; `pie_state` reports whether it runs, its scene, `runTime` (seconds of frames since
 the start, unscaled, so it keeps going while the game pauses its scene at time scale 0, as
 behind a menu), the frames rendered
-and the startup script (`running`, or `faulted` with the reason);
+and the run behavior (`runBehavior`: `running`, or `faulted` with the reason);
 `pie_list` shows every instance, the ones the user started too; `pie_stop` stops one (or
 `all`), its tab staying open and the others running. `pie_screenshot` writes what an
 instance's tab renders, the game through its own camera with its UI, as `viewport_screenshot`
@@ -146,13 +146,13 @@ into each run and back out, and a mouse move turns the view by the move between 
 move to a point, then by the turn you want from there. `probes` read entities (by guid, name or slash path) at field
 paths (`worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>`
 as `entity_inspect` names them, or `<BehaviorClass>.<field>` for a behaviour running on the
-entity, private fields too, then `.x`/`.y`/`.z` or a key or an index) and game script
-fields, private ones too (`{"script": "m_score"}`; an enum reads as its number), and the scene's
-level script's (`{"level": "m_round"}`), sampled `every` N seconds (0.5 by default) or at
+entity, private fields too, then `.x`/`.y`/`.z` or a key or an index) and the run behavior's
+fields, private ones too (`{"runBehavior": "m_score"}`; an enum reads as its number), and the scene
+behavior's (`{"sceneBehavior": "m_round"}`), sampled `every` N seconds (0.5 by default) or at
 `sampleAt` times; each row is `{t, frame, values}`, the last one at the end, and an entity
 gone by then reads null. `screenshots` writes the tab at those run times. `until` ends the
 run early, on a death or a win: `{"entity": "Player", "field": "worldPosition.y", "op": "<",
-"value": -10}`, or on a script's value (`{"level": "m_over", "op": "==", "value": true}`). `endedBy` says why it stopped: `duration`, `until`, `stopped` or `timeout`. A menu
+"value": -10}`, or on a behavior's value (`{"sceneBehavior": "m_over", "op": "==", "value": true}`). `endedBy` says why it stopped: `duration`, `until`, `stopped` or `timeout`. A menu
 is played the same way: `pie_screenshot`, find the button, click it with a timeline. The tools
 check probes and names against the running game before the run starts, so a typo fails at
 once. Runs are real frames at real frame rates: a time lands within a frame of where it was
@@ -562,7 +562,7 @@ template lacks or carries older, one enabled where it is not supported, the proj
 not built). The response's `player` says which ran and why. Each enabled plugin's deploy files ship
 beside the player, and a plugin's export hooks run over the staged dist; one that fails fails the
 export with its reason. A preset with `pruneToReachable` ships only what its entry points reach (the
-project's default scene, startup script and manifest assets, and what is flagged Always Export),
+project's default scene, run behavior and manifest assets, and what is flagged Always Export),
 following each scene and prefab to what its components and settings name, the prefabs it places
 (with what each placement's overrides name) and the assets its scripts' properties hold, and each asset to what it needs (a material's textures);
 the response's `pruning` counts what was kept and dropped. An Android64 preset exports an app: its
