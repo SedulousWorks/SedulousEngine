@@ -209,6 +209,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Bodies hung on a joint stay where they hang. A body's scale read back as 1.0 one frame and
+  0.9999999 the next, which rebuilt it and remade its joint lower each time: Snowline's gate flags
+  slid down their poles and through the ground.
 - Terrain draws in a view with MSAA on. Its pipelines were always single-sample, so at a quality
   level with MSAA the view showed no terrain and a small copy of the scene in its corner.
 - Spot and point lights light their whole cone again. Their shadow pass clamped casters onto its

@@ -715,8 +715,32 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 		mWorld.CreateBody(desc);
 	}
 
-	/// What a body is built from: its authored fields, its resources and its entity's scale.
-	private uint64 BuiltSignature(RigidBodyComponent* component, EntityHandle entity)
+	/// The entity's world scale, the body built at.
+	private Float3 WorldScale(EntityHandle entity)
+	{
+		if (Decompose(mScene.GetWorldMatrix(entity), ?, ?, let scale))
+			return scale;
+		return .(1, 1, 1);
+	}
+
+	/// Whether the entity's scale moved off the one the body was built at. Compared with a
+	/// tolerance: a decomposed matrix's scale wavers in its last bits from frame to frame (1.0,
+	/// then 0.9999999), and a body rebuilt for that lost its joints, made again at the body's pose
+	/// then, so a hinged flag slid down its pole a little each time.
+	private bool Rescaled(RigidBodyComponent* component, EntityHandle entity)
+	{
+		let scale = WorldScale(entity);
+		let built = component.BuiltScale;
+		return Moved(scale.X, built.X) || Moved(scale.Y, built.Y) || Moved(scale.Z, built.Z);
+	}
+
+	private static bool Moved(float now, float built)
+	{
+		return Math.Abs(now - built) > 1e-4f * Math.Max(Math.Abs(built), 1.0f);
+	}
+
+	/// What a body is built from besides its entity's scale: its authored fields and resources.
+	private static uint64 BuiltSignature(RigidBodyComponent* component)
 	{
 		var hash = 1469598103934665603UL;
 		Mix(ref hash, component.Motion);
@@ -737,13 +761,6 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 		Mix(ref hash, Internal.UnsafeCastToPtr(component.CollisionShape.Get));
 		Mix(ref hash, Internal.UnsafeCastToPtr(component.Heightfield.Get));
 		Mix(ref hash, Internal.UnsafeCastToPtr(component.Material.Get));
-		if (Decompose(mScene.GetWorldMatrix(entity), ?, ?, let scale))
-		{
-			// Rounded, so the drift of a decomposed matrix does not read as a new scale.
-			Mix(ref hash, (int32)(scale.X * 1000.0f));
-			Mix(ref hash, (int32)(scale.Y * 1000.0f));
-			Mix(ref hash, (int32)(scale.Z * 1000.0f));
-		}
 		return hash;
 	}
 
@@ -779,7 +796,8 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 		component.PrevRotation = rotation;
 		component.CurrRotation = rotation;
 		component.WrittenRotation = rotation;
-		component.BuiltSignature = BuiltSignature(component, entity);
+		component.BuiltSignature = BuiltSignature(component);
+		component.BuiltScale = WorldScale(entity);
 
 		if (!component.Body.IsValid)
 		{
@@ -1092,7 +1110,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 				{
 					let effective = mScene.IsEffectivelyActive(entity);
 					if ((effective == component.SimActive) && component.Body.IsValid
-						&& (BuiltSignature(component, entity) != component.BuiltSignature))
+						&& ((BuiltSignature(component) != component.BuiltSignature) || Rescaled(component, entity)))
 					{
 						// Edited while live (an inspector field, a script, a rescale): built
 						// again from what it is now, keeping its motion.

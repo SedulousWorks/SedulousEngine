@@ -127,10 +127,13 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 	public Float3 WrittenPosition = .(0, 0, 0);
 	[Hidden]
 	public Quaternion WrittenRotation = Quaternion.Identity;
-	/// What the body was built from (the authored fields and the entity's scale): a change
-	/// rebuilds it.
+	/// What the body was built from besides its entity's scale (the authored fields and
+	/// resources): a change rebuilds it.
 	[Hidden]
 	public uint64 BuiltSignature = 0;
+	/// The entity's world scale the body was built at: a scale moved off it rebuilds the body.
+	[Hidden]
+	public Float3 BuiltScale = .(1, 1, 1);
 
 	public this() {}
 
