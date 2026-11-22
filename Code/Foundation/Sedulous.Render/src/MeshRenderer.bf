@@ -2554,8 +2554,9 @@ class MeshRenderer : Renderer
 			config.DepthBiasSlopeScale = Depth.SlopeBiasAwayFromViewer(1.5f);
 			// The cascade fit bounds the receivers the camera sees; a tall caster toward the light
 			// reaches past its near plane and was clipped away, its shadow with it. Clamped, it
-			// lands on the near plane and still occludes everything behind it.
-			config.DepthClamp = true;
+			// lands on the near plane and still occludes everything behind it. Only a directional
+			// cascade's pass clamps: a spot's or point's would clamp its own lamp's housing.
+			config.DepthClamp = context.ClampShadowCasters;
 		}
 
 		return config;

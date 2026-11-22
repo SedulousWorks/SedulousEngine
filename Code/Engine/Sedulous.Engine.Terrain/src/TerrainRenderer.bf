@@ -224,10 +224,10 @@ class TerrainRenderer : Renderer
 	/// The colour pass, and its HOLES twin for a holed chunk.
 	private ColorPso mColorPso = .();
 	private ColorPso mHoleColorPso = .();
-	/// Nought is the camera prepass, which takes no bias; one is the shadow cascade, which
-	/// does.
-	private DepthPso[2] mDepthPso = .();
-	private DepthPso[2] mHoleDepthPso = .();
+	/// Nought is the camera prepass, which takes no bias; one is the shadow cascade, biased and
+	/// clamped; two is a local light's shadow, biased and not clamped.
+	private DepthPso[3] mDepthPso = .();
+	private DepthPso[3] mHoleDepthPso = .();
 	private PickPso mPickPso = .();
 	private PickPso mHolePickPso = .();
 	private TextureFormat mDepthFormat = .Undefined;
@@ -492,7 +492,7 @@ class TerrainRenderer : Renderer
 
 		let pso = pick
 			? EnsurePickPipeline(context.ColorFormat, context.DepthFormat)
-			: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass);
+			: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass, context.ClampShadowCasters);
 		let viewBindGroup = EnsureDepthViewBindGroup();
 		let chunkBindGroup = EnsureChunkBindGroup();
 		if ((pso == null) || (viewBindGroup == null) || (chunkBindGroup == null))
@@ -555,7 +555,7 @@ class TerrainRenderer : Renderer
 			{
 				holePso = pick
 					? EnsurePickPipeline(context.ColorFormat, context.DepthFormat, true)
-					: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass, true);
+					: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass, context.ClampShadowCasters, true);
 				holeBindGroup = EnsureHeightHoleBindGroup(data.HeightView, data.HoleView);
 			}
 
@@ -1070,10 +1070,11 @@ class TerrainRenderer : Renderer
 	/// subset. A holed chunk is rare, so the cascade's extra interpolants cost nothing that
 	/// matters, and its prepass and colour draws then share one vertex bytecode.
 	private IRenderPipeline EnsureDepthPipeline(TextureFormat depthFormat, bool biased,
-		bool holes = false)
+		bool clamped, bool holes = false)
 	{
 		let shaderName = (biased && !holes) ? "terrain_depth" : "terrain";
-		let entry = holes ? &mHoleDepthPso[biased ? 1 : 0] : &mDepthPso[biased ? 1 : 0];
+		let slot = !biased ? 0 : (clamped ? 1 : 2);
+		let entry = holes ? &mHoleDepthPso[slot] : &mDepthPso[slot];
 
 		let shaderVersion = mShaders.Version(shaderName);
 		if ((entry.Pso != null) && (entry.Format == depthFormat)
@@ -1123,9 +1124,10 @@ class TerrainRenderer : Renderer
 		desc.DepthStencil = depthStencil;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .Back;
-		// A shadow pass clamps depth where the device can: terrain rising toward the light past the
-		// cascade's near plane still casts, as the mesh renderer's casters do.
-		desc.Primitive.DepthClipEnabled = !(biased && mDevice.Features.DepthClamp);
+		// A cascade's shadow pass clamps depth where the device can: terrain rising toward the light
+		// past the cascade's near plane still casts, as the mesh renderer's casters do. A spot's or
+		// point's does not (RenderRecordContext.ClampShadowCasters).
+		desc.Primitive.DepthClipEnabled = !(clamped && mDevice.Features.DepthClamp);
 		desc.Label = holes ? "terrain.depth.holes" : "terrain.depth";
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pso)))

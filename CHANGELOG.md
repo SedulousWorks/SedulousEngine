@@ -209,6 +209,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Spot and point lights light their whole cone again. Their shadow pass clamped casters onto its
+  near plane as the sun's does, so a lamp's own housing shadowed what it lit: a dark square under
+  each post lamp, and a lantern lighting only a small patch.
 - Editor: dragging entities in the scene hierarchy moves them again: onto a row puts them under it,
   at a row's edge before or after it, onto the scene's row makes them roots.
 - A masked material's shadow, and its pick in the editor, cut out at the material's own Alpha

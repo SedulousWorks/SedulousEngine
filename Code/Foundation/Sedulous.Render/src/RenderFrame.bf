@@ -557,9 +557,10 @@ class RenderFrame
 	private void RecordShadowCasters(IRenderPassEncoder encoder, Span<DrawItem> casters,
 		RendererRegistry registry, Float4x4 lightViewProj, Float3 cullCenter = .(0, 0, 0),
 		float cullRadius = 0.0f, bool frustumCull = false, Span<Float4> cullBounds = default,
-		RenderView lodView = null, ExtractedScene scene = null)
+		RenderView lodView = null, ExtractedScene scene = null, bool clampCasters = false)
 	{
 		var context = RenderRecordContext();
+		context.ClampShadowCasters = clampCasters;
 		// The WIND clock: the CASTERS' scene clock, else the frame's fallback. A caster sways
 		// with the scene it belongs to, which need not be the one the level view came from.
 		context.TimeSeconds = mTimeSeconds;
@@ -1435,7 +1436,7 @@ class RenderFrame
 								// shadow matches what that view draws.
 								RecordShadowCasters(encoder, kept, mRegistry,
 									cascadeViewProj, .(0, 0, 0), 0.0f, true, keptBounds,
-									view, context.Scene);
+									view, context.Scene, true);
 							});
 					});
 			}

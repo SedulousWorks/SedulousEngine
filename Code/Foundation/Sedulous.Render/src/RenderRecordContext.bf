@@ -65,6 +65,10 @@ struct RenderRecordContext
 	/// The camera's depth only prepass, which applies NO depth bias so it matches the forward
 	/// pass exactly.
 	public bool DepthPrepass = false;
+	/// A directional cascade's shadow pass: casters past its near plane are clamped onto it, so a
+	/// tall caster toward the light still shadows. Never a spot's or point's: there what surrounds
+	/// the light itself (a lamp's housing) would land on the near plane and shadow its whole cone.
+	public bool ClampShadowCasters = false;
 	/// False while capturing a probe: the capture reflects the sky rather than the probe, or
 	/// a probe would reflect itself into black.
 	public bool ProbesEnabled = true;
