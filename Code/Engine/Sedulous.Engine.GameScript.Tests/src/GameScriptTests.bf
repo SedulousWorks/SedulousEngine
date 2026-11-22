@@ -961,4 +961,31 @@ static class GameScriptTests
 		Test.Assert(context.FindService(typeof(SaveFacade)) === idleSave);
 		Test.Assert(context.FindService(typeof(ApplicationRun)) == null);
 	}
+
+	/// Min, Max and Clamp take floats, so whole-number arithmetic through them came back a float
+	/// the script truncated into its int, with a compiler warning on every such line. MinInt,
+	/// MaxInt and ClampInt take and return whole numbers.
+	[Test]
+	public static void WholeNumberMinMaxAndClampReturnInts()
+	{
+		let run = scope GameRun("scratch_game_int_math");
+		let game = run.Class("Game", """
+			class Game
+			{
+				int low = 0;
+				int high = 0;
+				int held = 0;
+				void onStart()
+				{
+					low = MinInt(7, -3);
+					high = MaxInt(7, -3);
+					held = ClampInt(12, 1, 10);
+				}
+			}
+			""");
+		Test.Assert(run.Instance.StartRunBehavior(game), scope String(run.Instance.RunBehaviorFault));
+		Test.Assert(run.PropInt("low") == -3);
+		Test.Assert(run.PropInt("high") == 7);
+		Test.Assert(run.PropInt("held") == 10);
+	}
 }

@@ -92,6 +92,16 @@ static
 	[Scriptable]
 	[Inline] public static float Clamp(float x, float lo, float hi) => (x < lo) ? lo : ((hi < x) ? hi : x);
 
+	// The whole-number twins, so a script's integer arithmetic stays integer. Names of their own
+	// on the script surface: a dynamically typed number picks neither of two overloads of one
+	// arity, and a float pair taken for an int pair truncates what comes back.
+	[Scriptable, ScriptName("MinInt")]
+	[Inline] public static int32 Min(int32 a, int32 b) => (b < a) ? b : a;
+	[Scriptable, ScriptName("MaxInt")]
+	[Inline] public static int32 Max(int32 a, int32 b) => (a < b) ? b : a;
+	[Scriptable, ScriptName("ClampInt")]
+	[Inline] public static int32 Clamp(int32 x, int32 lo, int32 hi) => (x < lo) ? lo : ((hi < x) ? hi : x);
+
 	[Scriptable]
 	[Inline]
 	public static bool NearlyEqual(float a, float b, float epsilon = Epsilon) =>
