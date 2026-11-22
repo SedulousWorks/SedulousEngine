@@ -65,6 +65,6 @@ sheet = mcp("asset_import", {"source": checked(os.path.join(HERE, "ui", "Snowlin
 print("sheet SnowlineSheet", sheet["guid"])
 
 mcp("project_settings_set", {"defaultSceneId": have("Meadow", "SceneDocument"),
-                             "startupScriptId": have("Snowline", "ScriptClassAsset"),
+                             "runBehaviorId": have("Snowline", "ScriptClassAsset"),
                              "guiStyleSheetIds": [sheet["guid"]]}) # the game's look, over the GUI's theme
 print(mcp("asset_cook", {}))

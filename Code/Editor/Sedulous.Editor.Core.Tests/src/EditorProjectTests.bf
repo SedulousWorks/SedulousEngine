@@ -129,13 +129,13 @@ static class EditorProjectTests
 			let project = EditorProject.Open(dir);
 			Test.Assert(project != null);
 			defer delete project;
-			Test.Assert(!project.Settings.StartupScriptId.IsSet);
+			Test.Assert(!project.Settings.RunBehaviorId.IsSet);
 			project.Settings.DefaultScene.Set("scenes/main");
 			project.Settings.DefaultSceneId = sceneId;
 			project.Settings.GuiLoadingDocumentId = loadingId;
 			project.Settings.DefaultInputMapId = mapId;
 			project.Settings.DefaultUiFontId = fontId;
-			project.Settings.StartupScriptId = scriptId;
+			project.Settings.RunBehaviorId = scriptId;
 			Test.Assert(project.SaveSettings() case .Ok);
 		}
 		{
@@ -149,7 +149,7 @@ static class EditorProjectTests
 			Test.Assert(project.Settings.GuiLoadingDocumentId == loadingId);
 			Test.Assert(project.Settings.DefaultInputMapId == mapId);
 			Test.Assert(project.Settings.DefaultUiFontId == fontId);
-			Test.Assert(project.Settings.StartupScriptId == scriptId);
+			Test.Assert(project.Settings.RunBehaviorId == scriptId);
 		}
 	}
 
@@ -232,7 +232,7 @@ static class EditorProjectTests
 		let bytes = scope List<uint8>();
 		Test.Assert(ReadFile(path, bytes) case .Ok);
 		let text = scope String(StringView((char8*)bytes.Ptr, bytes.Count));
-		let current = "<u32 name=\"version\">11</u32>";
+		let current = "<u32 name=\"version\">12</u32>";
 		Test.Assert(text.Contains(current), text);
 		text.Replace(current, "<u32 name=\"version\">10</u32>");
 		// After the settings' fields, where a reader still to come finds it: their object closes

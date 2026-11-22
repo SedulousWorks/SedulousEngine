@@ -51,7 +51,7 @@ static class ExportDriverTests
 		let fx = scope ExportProjectFixture("scratch_export_e2e");
 		let distDir = PathJoin(fx.OutRoot, "dist", .. scope .());
 		let scriptId = Guid.Parse("abcd1234-0000-0000-0000-5678ef900000").Get();
-		fx.Project.Settings.StartupScriptId = scriptId;
+		fx.Project.Settings.RunBehaviorId = scriptId;
 		let titleFontId = Guid.Create();
 		fx.Project.Settings.WindowResizable = false;
 		fx.Project.Settings.UiFontIds.Add(titleFontId);
@@ -97,7 +97,7 @@ static class ExportDriverTests
 		let distRoot = scope NativeFileSystem(distDir);
 		let manifest = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(distRoot, manifest, ProjectLayout.DistManifestFile) case .Ok);
-		Test.Assert((manifest.DefaultScene == "Scenes/Main") && (manifest.DefaultSceneId == fx.SceneId) && (manifest.StartupScriptId == scriptId));
+		Test.Assert((manifest.DefaultScene == "Scenes/Main") && (manifest.DefaultSceneId == fx.SceneId) && (manifest.RunBehaviorId == scriptId));
 		// And everything else the player reads: the window, the other fonts, the GUI's sheets and
 		// loading screen.
 		Test.Assert(!manifest.WindowResizable, "the window");
@@ -763,7 +763,7 @@ static class ExportDriverTests
 		asset.FileName.Set("Game.as");
 		asset.Language.Set("angelscript");
 		Test.Assert(scriptInstance.WriteObject(asset) case .Ok);
-		fx.Project.Settings.StartupScriptId = scriptInstance.Id;
+		fx.Project.Settings.RunBehaviorId = scriptInstance.Id;
 		Test.Assert(fx.Project.SaveSettings() case .Ok);
 		fx.Builders.Register(new Sedulous.Script.Pipeline.ScriptClassAssetBuilder());
 
@@ -775,12 +775,12 @@ static class ExportDriverTests
 		let distRoot = scope NativeFileSystem(distDir);
 		let manifest = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(distRoot, manifest, ProjectLayout.DistManifestFile) case .Ok);
-		Test.Assert(manifest.StartupScriptId == scriptInstance.Id);
+		Test.Assert(manifest.RunBehaviorId == scriptInstance.Id);
 		SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
 		let pak = scope PakFileSystem(PathJoin(distDir, ProjectLayout.DistContentPak, .. scope .()));
 		let db = OpenDistPak(distDir, pak, binary);
 		defer delete db;
-		let product = db.ReadObject(manifest.StartupScriptId);
+		let product = db.ReadObject(manifest.RunBehaviorId);
 		Test.Assert(product != null, "the script class is in the pak by the source's guid");
 		defer delete product;
 		let record = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(product)) as Sedulous.Script.Resource.BehaviorClassSource;

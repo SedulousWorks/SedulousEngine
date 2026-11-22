@@ -224,7 +224,7 @@ Project does: Roboto as a distance-field font set as the default UI font (what a
 game's text draws with: the engine's built-in font is not in a dist), the default sky, and a
 cube, sphere and plane. Then `project_open` then `project_info`, which also reports the
 settings play reads, keyed by their names: the asset settings (`defaultSceneId`,
-`startupScriptId`, `defaultInputMapId`, `defaultBusLayoutId`, `defaultUiFontId`, each
+`runBehaviorId`, `defaultInputMapId`, `defaultBusLayoutId`, `defaultUiFontId`, each
 {guid, path} or null), `uiFontIds`, the other fonts
 the game UI loads beside the default, each a family a label picks with
 `font-family="<family>"`, a title face say; `guiStyleSheetIds`, the engine GUI's `.css` sheets in
@@ -495,7 +495,7 @@ read the file before trusting it, and leave the judgement of how it looks to the
   `renderWidth`/`renderHeight`, 1280 x 720 for a README) and put it back after (0 / 0 when it
   was unset); the PNG is scaled to the tab when the tab is smaller (the answer's `scale`).
   Reach a screen by playing to it: a menu by a timeline (`Right`, `Return`), a level by a scene
-  override (`project_settings_set` `defaultSceneId` to the level and `startupScriptId` to
+  override (`project_settings_set` `defaultSceneId` to the level and `runBehaviorId` to
   `""`, restored after, in a `finally`), a late moment by a scripted route, and a results
   screen by finishing a run. Take a few times around the moment (`[23.9, 24.3, 24.7, 25.1]`)
   and pick one. A run that finishes writes the game's save: copy the project's

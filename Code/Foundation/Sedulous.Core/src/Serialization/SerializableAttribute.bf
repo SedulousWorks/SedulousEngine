@@ -159,6 +159,13 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 					body.AppendF("\tif ((ar.Mode == .Read) && (ar.Version < {}) && ar.HasKey(\"{}\"))\n\t{{\n\t\tar.Key(\"{}\");\n\t\t{}\n\t}}\n", retired.Until, storedKey, storedKey, move);
 					continue;
 				}
+				// Renamed: data stored before the version that renamed it carries it under its
+				// former key. Only a keyed payload has that key; a positional one reads in place.
+				if (field.GetCustomAttribute<RenamedAttribute>() case .Ok(let renamed))
+				{
+					body.AppendF("\tar.Key(((ar.Mode == .Read) && (ar.Version < {}) && ar.HasKey(\"{}\")) ? \"{}\" : \"{}\");\n\t{}\n", renamed.Since, renamed.FormerKey, renamed.FormerKey, key, move);
+					continue;
+				}
 				// Appended: a keyed payload from before the field has no key for it, and the
 				// field keeps its default rather than failing the read.
 				// Appended at a version: read only from data stored at it or later, which a

@@ -73,7 +73,7 @@ class ProjectManifestTests
 		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
 		let saved = scope String();
 		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
-		Test.Assert(saved.Contains("<u32 name=\"version\">11</u32>"));
+		Test.Assert(saved.Contains("<u32 name=\"version\">12</u32>"));
 		Test.Assert(!saved.Contains("defaultUiThemeId") && !saved.Contains("name=\"loadingDocumentId\""));
 		Test.Assert(!saved.Contains("renderMsaaSamples"), "the count is a quality level's now");
 	}
@@ -118,8 +118,55 @@ class ProjectManifestTests
 		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
 		let saved = scope String();
 		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
-		Test.Assert(saved.Contains("<u32 name=\"version\">11</u32>"));
+		Test.Assert(saved.Contains("<u32 name=\"version\">12</u32>"));
 		Test.Assert(!saved.Contains("nativeModule") && !saved.Contains("renderMsaaSamples"));
+	}
+
+	/// A manifest of version 11 or before names the run behavior startupScript and
+	/// startupScriptId: it still opens with them read, and a save writes the new keys alone.
+	[Test]
+	public static void AVersion11ManifestsStartupScriptIsItsRunBehavior()
+	{
+		FreshScratch();
+		const String cVersion11 = """
+			<root>
+				<array name="dataVersions" count="1">
+					<u64 name="type">15697994609334965484</u64>
+					<u32 name="version">11</u32>
+				</array>
+				<object>
+					<string name="name">Old</string>
+					<string name="engineVersion">0.1.0</string>
+					<string name="defaultSceneId">abf41c6a-3a62-4a4f-830f-47fb88f610ff</string>
+					<string name="defaultScene">Scenes/Start</string>
+					<string name="startupScript">Scripts/Game</string>
+					<string name="defaultInputMapId">7c0d2a51-0f6e-4b8e-9a3d-5e2f1c4b6a70</string>
+					<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+					<string name="startupScriptId">5d3e1a2b-8c4f-4e6a-9b7d-0f1e2d3c4b5a</string>
+					<string name="defaultUiFontId">23da25e1-47fe-2044-a727-d7fbcde40a8f</string>
+				</object>
+			</root>
+			""";
+		let fs = scope NativeFileSystem(kScratch);
+		Test.Assert(fs.Save("Project.xml", .((uint8*)cVersion11.Ptr, cVersion11.Length)) case .Ok);
+		let settings = scope ProjectSettings();
+		Test.Assert(ProjectManifest.Load(fs, settings, "Project.xml") case .Ok);
+		Test.Assert(settings.RunBehavior == "Scripts/Game");
+		Test.Assert(settings.RunBehaviorId == Guid.Parse("5d3e1a2b-8c4f-4e6a-9b7d-0f1e2d3c4b5a").Get());
+		Test.Assert(settings.DefaultUiFontId == Guid.Parse("23da25e1-47fe-2044-a727-d7fbcde40a8f").Get(), "after it");
+
+		Test.Assert(ProjectManifest.Save(fs, settings, "Project.xml") case .Ok);
+		let saved = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(kScratch, "Project.xml", .. scope .()), saved) case .Ok);
+		Test.Assert(saved.Contains("<u32 name=\"version\">12</u32>"));
+		Test.Assert(saved.Contains("<string name=\"runBehavior\">Scripts/Game</string>"), saved);
+		Test.Assert(saved.Contains("<string name=\"runBehaviorId\">5d3e1a2b-8c4f-4e6a-9b7d-0f1e2d3c4b5a</string>"), saved);
+		Test.Assert(!saved.Contains("startupScript"), "the old keys are not written");
+
+		// Read again, the new keys alone carry it.
+		let reread = scope ProjectSettings();
+		Test.Assert(ProjectManifest.Load(fs, reread, "Project.xml") case .Ok);
+		Test.Assert((reread.RunBehavior == "Scripts/Game") && (reread.RunBehaviorId == settings.RunBehaviorId));
 	}
 
 	/// A copy goes through the settings' own serialization, so it carries every field, the
@@ -168,7 +215,7 @@ class ProjectManifestTests
 		written.Name.Set("Demo");
 		written.DefaultSceneId = .(0x11223344, 0x5566, 0x7788, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00);
 		written.DefaultScene.Set("Scenes/Main");
-		written.StartupScript.Set("Scripts/Game");
+		written.RunBehavior.Set("Scripts/Game");
 		written.RenderWidth = 640;
 
 		{
@@ -183,7 +230,7 @@ class ProjectManifestTests
 		Test.Assert(read.Name == "Demo");
 		Test.Assert(read.DefaultSceneId == written.DefaultSceneId);
 		Test.Assert(read.DefaultScene == "Scenes/Main");
-		Test.Assert(read.StartupScript == "Scripts/Game");
+		Test.Assert(read.RunBehavior == "Scripts/Game");
 		Test.Assert(read.RenderWidth == 640);
 	}
 

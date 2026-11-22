@@ -136,7 +136,7 @@ class ProjectHomeTests
 		Test.Assert(rows[1] == scope $"Engine version: {project.Settings.EngineVersion}");
 		Test.Assert(rows[2] == "Default scene: Docks", rows[2]);
 		Test.Assert(rows[3] == "Input map: (missing)", rows[3]);
-		Test.Assert(rows[4] == "Startup script: (none)", rows[4]);
+		Test.Assert(rows[4] == "Run behavior: (none)", rows[4]);
 		Test.Assert(rows[5].StartsWith("UI font: "), rows[5]);
 		Test.Assert(rows[6] == "Window: 1280 × 720, windowed", rows[6]);
 		Test.Assert(!Has(rows, "Default bus layout: (built-in)"));
@@ -146,7 +146,7 @@ class ProjectHomeTests
 		Test.Assert((defaultScene != null) && defaultScene.HasClass("link") && (defaultScene.Text == "Docks"));
 		let missing = ValueOf(content, "Input map") as Sedulous.GUI.Label;
 		Test.Assert((missing != null) && missing.HasClass("missing"));
-		let unset = ValueOf(content, "Startup script") as Sedulous.GUI.Label;
+		let unset = ValueOf(content, "Run behavior") as Sedulous.GUI.Label;
 		Test.Assert((unset != null) && unset.HasClass("dim") && !unset.HasClass("missing"));
 
 		// Its buttons.

@@ -28,8 +28,10 @@ namespace Sedulous.Engine.Project;
 /// of a game's native module, went when a game's native code became a package of the
 /// project's (Plugins/<Name>), and a manifest that names one reads with the path dropped.
 /// Version 11 dropped the scene pass's MSAA count, a quality level's now: a manifest of 9 or
-/// 10 still reads, its count into MsaaSamplesBeforeLevels.
-[Serializable(11, false, 9)]
+/// 10 still reads, its count into MsaaSamplesBeforeLevels. Version 12 named the run behavior
+/// for what it is: a manifest of 9 to 11 carries it as startupScript and startupScriptId, which
+/// still read, and a manifest saved again writes the new keys alone.
+[Serializable(12, false, 9)]
 class ProjectSettings
 {
 	[Setting("Name", "General")]
@@ -42,8 +44,9 @@ class ProjectSettings
 	public Guid DefaultSceneId;
 	/// The default scene's source database path.
 	public String DefaultScene = new .() ~ delete _;
-	/// The startup script's source database path. Superseded by StartupScriptId.
-	public String StartupScript = new .() ~ delete _;
+	/// The run behavior's source database path. Superseded by RunBehaviorId.
+	[Renamed(12, "startupScript")]
+	public String RunBehavior = new .() ~ delete _;
 
 	/// The input map bound at startup. Nil for none.
 	[Setting("Default input map", "InputMapAsset", "(none)", "Startup"), SettingSummary("Input map")]
@@ -51,9 +54,10 @@ class ProjectSettings
 	/// The mixer layout applied at startup. Nil for the built in one.
 	[Setting("Default bus layout", "AudioBusLayoutAsset", "(built-in)", "Audio")]
 	public Guid DefaultBusLayoutId;
-	/// The cooked script class the player launches. Nil for none.
-	[Setting("Startup script", "ScriptClassAsset", "(none)", "Startup"), SettingSummary("Startup script")]
-	public Guid StartupScriptId;
+	/// The run behavior the player and the Game tab start: a script asset whose class derives
+	/// from RunBehavior. Nil for none.
+	[Setting("Run behavior", "ScriptClassAsset", "(none)", "Startup"), SettingSummary("Run behavior"), Renamed(12, "startupScriptId")]
+	public Guid RunBehaviorId;
 	/// The cooked font the game UI defaults to. Nil for the development fallback.
 	[Setting("Default UI font", "FontAsset", "(built-in)", "UI"), SettingSummary("UI font")]
 	public Guid DefaultUiFontId;
@@ -166,16 +170,16 @@ class ProjectSettings
 			outText.AppendF("{} × {}, {}", WindowWidth, WindowHeight, (WindowMode == .Fullscreen) ? "fullscreen" : "windowed");
 	}
 
-	/// Rewrites the readable path mirrors from their guids (the default scene's, the startup
-	/// script's), after a settings editor changed the guids. `pathOf` appends an asset's path,
+	/// Rewrites the readable path mirrors from their guids (the default scene's, the run
+	/// behavior's), after a settings editor changed the guids. `pathOf` appends an asset's path,
 	/// or nothing for a guid that names none.
 	public void RefreshPathMirrors(delegate void(Guid id, String outPath) pathOf)
 	{
 		DefaultScene.Clear();
 		if (DefaultSceneId.IsSet)
 			pathOf(DefaultSceneId, DefaultScene);
-		StartupScript.Clear();
-		if (StartupScriptId.IsSet)
-			pathOf(StartupScriptId, StartupScript);
+		RunBehavior.Clear();
+		if (RunBehaviorId.IsSet)
+			pathOf(RunBehaviorId, RunBehavior);
 	}
 }

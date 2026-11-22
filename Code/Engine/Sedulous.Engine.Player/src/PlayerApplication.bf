@@ -269,7 +269,7 @@ class PlayerApplication : DefaultApplication
 	/// database by id. None is fine; one that does not resolve is an error the run survives.
 	private void LoadAndStartRunBehavior()
 	{
-		let scriptId = mSettings.StartupScriptId;
+		let scriptId = mSettings.RunBehaviorId;
 		if ((scriptId == Guid()) || (Resources == null))
 			return;
 		let scriptClass = Resources.Bind<BehaviorClass>(scriptId).Get;

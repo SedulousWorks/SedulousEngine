@@ -1,17 +1,17 @@
 <root>
 	<array name="dataVersions" count="1">
 		<u64 name="type">15697994609334965484</u64>
-		<u32 name="version">11</u32>
+		<u32 name="version">12</u32>
 	</array>
 	<object>
 		<string name="name">PaperKid</string>
 		<string name="engineVersion">0.1.0</string>
 		<string name="defaultSceneId">abf41c6a-3a62-4a4f-830f-47fb88f610ff</string>
 		<string name="defaultScene">Scenes/Start</string>
-		<string name="startupScript">Scripts/PaperKidGame</string>
+		<string name="runBehavior">Scripts/PaperKidGame</string>
 		<string name="defaultInputMapId">edd0a22c-5ef7-0646-9fca-43f85d40012f</string>
 		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
-		<string name="startupScriptId">ba2bb78e-5e43-c64d-85bd-8101fe5d230c</string>
+		<string name="runBehaviorId">ba2bb78e-5e43-c64d-85bd-8101fe5d230c</string>
 		<string name="defaultUiFontId">23da25e1-47fe-2044-a727-d7fbcde40a8f</string>
 		<array name="uiFontIds" count="3">
 			<string>14c23b32-0f13-4a47-9761-c4010f0cd3ae</string>

@@ -525,4 +525,47 @@ class VersionedPayloadTests
 			Test.Assert((target.Before == 1) && (target.Carried == 0) && (target.After == 2));
 		}
 	}
+
+	/// A field [Renamed(version)] reads from data stored before the version in its old place,
+	/// positional binary included, and is written under its own key alone.
+	[Test]
+	public static void ARenamedFieldReadsOlderDataInPlaceAndWritesItsNewKey()
+	{
+		// Version 1, by hand: the chain, then the three fields.
+		{
+			let stream = scope MemoryStream();
+			{
+				let writer = scope BinaryWriter(stream);
+				Test.Assert(writer.Write((uint32)1));
+				Test.Assert(writer.Write(RenamedVersionedSample.TypeId));
+				Test.Assert(writer.Write((uint32)1));
+				Test.Assert(writer.Write((int32)7));
+				Test.Assert(writer.Write((int32)4));
+				Test.Assert(writer.Write((int32)9));
+				Test.Assert(stream.Seek(0, .Begin) == 0);
+			}
+			let target = scope RenamedVersionedSample();
+			let reader = scope BinarySerializer(stream, .Read);
+			Serialize(reader, (ISerializable)target);
+			Test.Assert(reader.IsOk);
+			Test.Assert((target.Before == 7) && (target.Moved == 4) && (target.After == 9), "in its old place");
+		}
+
+		// The current version writes the new key, never the former one.
+		{
+			let stream = scope MemoryStream();
+			let writer = scope KeyRecordingSerializer(stream, .Write);
+			let sample = scope RenamedVersionedSample();
+			sample.Moved = 5;
+			Serialize(writer, (ISerializable)sample);
+			Test.Assert(writer.IsOk);
+			bool wroteMoved = false;
+			for (let key in writer.Keys)
+			{
+				Test.Assert(key != "oldName", key);
+				wroteMoved |= (key == "moved");
+			}
+			Test.Assert(wroteMoved);
+		}
+	}
 }

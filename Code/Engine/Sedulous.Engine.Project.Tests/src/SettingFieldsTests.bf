@@ -41,7 +41,7 @@ class SettingFieldsTests
 			if (let label = SettingFields.Summary(field))
 				summary.AppendF("{}{}", summary.IsEmpty ? "" : ",", label);
 		}
-		Test.Assert(summary == "Default scene,Input map,Startup script,UI font", summary);
+		Test.Assert(summary == "Default scene,Input map,Run behavior,UI font", summary);
 	}
 
 	/// Each setting names the group it shows in, the Project Settings dialog's tab; one that
@@ -99,7 +99,7 @@ class SettingFieldsTests
 			SettingFields.Key(field, keys);
 		}
 		// The engine stamp, the path mirrors and an older manifest's MSAA count are not settings.
-		Test.Assert(keys == "name,defaultSceneId,defaultInputMapId,defaultBusLayoutId,startupScriptId,defaultUiFontId,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId,qualityLevelIds,defaultQualityId", keys);
+		Test.Assert(keys == "name,defaultSceneId,defaultInputMapId,defaultBusLayoutId,runBehaviorId,defaultUiFontId,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId,qualityLevelIds,defaultQualityId", keys);
 
 		SettingKind Kind(StringView name)
 		{
@@ -198,13 +198,13 @@ class SettingFieldsTests
 		let settings = scope ProjectSettings();
 		let scene = Guid.Create();
 		settings.DefaultSceneId = scene;
-		settings.StartupScript.Set("stale/path");
+		settings.RunBehavior.Set("stale/path");
 		settings.RefreshPathMirrors(scope (id, outPath) =>
 			{
 				if (id == scene)
 					outPath.Append("Scenes/Main.scene");
 			});
 		Test.Assert(settings.DefaultScene == "Scenes/Main.scene");
-		Test.Assert(settings.StartupScript.IsEmpty, "an unset guid clears its mirror");
+		Test.Assert(settings.RunBehavior.IsEmpty, "an unset guid clears its mirror");
 	}
 }

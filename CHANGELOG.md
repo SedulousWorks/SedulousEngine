@@ -202,6 +202,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   button.
 - Editor: a scene's Simulate runs on its own, apart from every other page: its scripts' screens
   draw over the page's viewport while it simulates and go when it stops.
+- Project settings: the Startup script is the Run behavior (`runBehaviorId` for MCP's
+  `project_settings_set`). A project file saved by an earlier release still opens.
 
 ### Fixed
 

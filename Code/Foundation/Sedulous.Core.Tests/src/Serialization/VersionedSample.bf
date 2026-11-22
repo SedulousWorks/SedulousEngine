@@ -32,3 +32,14 @@ class ShrunkVersionedSample
 	public int32 Carried = 0;
 	public int32 After;
 }
+
+/// A record whose field took a new key at version 2: version 1 stored `Moved` as `oldName`.
+/// Its legacy reader still decodes version 1.
+[Serializable(2, false, 1)]
+class RenamedVersionedSample
+{
+	public int32 Before;
+	[Renamed(2, "oldName")]
+	public int32 Moved;
+	public int32 After;
+}

@@ -282,7 +282,7 @@ extension GameEditorPage
 
 	private void StartGameScriptFromProject()
 	{
-		let scriptId = mContext.Project.Settings.StartupScriptId;
+		let scriptId = mContext.Project.Settings.RunBehaviorId;
 		if (scriptId.IsNil || (mContext.Resources == null))
 			return;
 		let scriptClass = mContext.Resources.Bind<BehaviorClass>(scriptId).Get;

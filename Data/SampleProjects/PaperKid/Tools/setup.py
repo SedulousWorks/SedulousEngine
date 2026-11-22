@@ -155,7 +155,7 @@ for scene in ("Start", "Block1", "Block2", "Block3", "Block4", "Block5"):
 have = existing()
 mcp("project_settings_set", {
     "defaultSceneId": have[("Start", "SceneDocument")],
-    "startupScriptId": have[("PaperKidGame", "ScriptClassAsset")],
+    "runBehaviorId": have[("PaperKidGame", "ScriptClassAsset")],
     "defaultInputMapId": have[("Controls", "InputMapAsset")],
     "defaultUiThemeId": "", # cleared: the newsprint look is the GUI sheet's now (importui.py)
     "defaultUiFontId": have[("Oswald-SemiBold", "FontAsset")],
