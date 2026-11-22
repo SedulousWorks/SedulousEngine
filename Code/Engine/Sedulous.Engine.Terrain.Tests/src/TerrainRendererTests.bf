@@ -5,6 +5,7 @@ using Sedulous.Engine.Terrain;
 using Sedulous.Heightfield;
 using Sedulous.Render;
 using Sedulous.RHI;
+using Sedulous.RHI.Null;
 using Sedulous.Terrain;
 
 namespace Sedulous.Engine.Terrain.Tests;
@@ -366,6 +367,56 @@ class TerrainRendererTests
 		let colorDraws = scope List<ResolvedDraw>();
 		renderer.Resolve(colorContext, .(&items[0], 3), colorDraws);
 		Test.Assert(colorDraws.Count == 4);
+
+		heightCache.Clear(fixture.Device);
+	}
+
+	/// In a view with scene-pass MSAA the terrain's prepass and colour pipelines take the view's
+	/// sample count. They were always single sampled, so its prepass and colour draws went into 4x
+	/// targets through 1x pipelines: no terrain in the view, and a small copy in a corner.
+	[Test]
+	public static void InAMultisampledViewItsPrepassAndColourPipelinesTakeTheViewsSamples()
+	{
+		let fixture = scope TerrainRenderFixture(256, 256);
+		if (!fixture.Ready)
+			return;
+
+		let renderer = scope TerrainRenderer(fixture.Device, fixture.Shaders, 2);
+		Test.Assert(renderer.Initialize() case .Ok);
+		let registry = scope RendererRegistry();
+		registry.Register(renderer);
+		let frame = scope RenderFrame(fixture.Device, registry, 2);
+
+		let grid = MakeRampX();
+		defer delete grid;
+		let chunks = scope List<TerrainChunk>();
+		TerrainChunks.BuildChunks(grid, chunks);
+		let tree = scope TerrainQuadtree();
+		tree.Build(chunks, TerrainChunks.ChunksPerSide(grid.Size));
+		let heightCache = scope TerrainHeightTextureCache();
+		let heightView = heightCache.GetOrCreate(fixture.Device, grid, 1);
+		Test.Assert(heightView != null);
+		let scene = scope ExtractedScene();
+		let data = scene.Add<TerrainRenderData>();
+		FillTerrainRenderData(data, grid, chunks, tree, heightView, renderer.RendererId);
+
+		var camera = ViewCamera();
+		camera.View = Float4x4.LookAtRH(.(0.0f, 300.0f, 0.1f), .(0.0f, 0.0f, 0.0f), .(0.0f, 0.0f, 1.0f));
+		camera.Projection = Float4x4.PerspectiveFovRH(1.2f, 1.0f, 1.0f, 2000.0f);
+		camera.Position = .(0.0f, 300.0f, 0.1f);
+		var settings = ViewSettings();
+		settings.Post.MsaaSamples = 4;
+
+		frame.Begin(fixture.Encoder, 0);
+		frame.AddView(scene, camera, settings, fixture.ColorView, .BGRA8Unorm, 256, 256);
+		frame.End();
+		Test.Assert(renderer.MaxChunksDrawn == 4);
+
+		// No shadow system here: the one depth pipeline built is the camera prepass's.
+		let color = renderer.[Friend]mColorPso.Pso as NullRenderPipeline;
+		let prepass = renderer.[Friend]mDepthPso[0].Pso as NullRenderPipeline;
+		Test.Assert((color != null) && (color.Multisample.Count == 4), "the colour pipeline");
+		Test.Assert((prepass != null) && (prepass.Multisample.Count == 4), "the prepass pipeline");
 
 		heightCache.Clear(fixture.Device);
 	}

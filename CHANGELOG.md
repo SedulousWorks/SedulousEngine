@@ -209,6 +209,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Terrain draws in a view with MSAA on. Its pipelines were always single-sample, so at a quality
+  level with MSAA the view showed no terrain and a small copy of the scene in its corner.
 - Spot and point lights light their whole cone again. Their shadow pass clamped casters onto its
   near plane as the sun's does, so a lamp's own housing shadowed what it lit: a dark square under
   each post lamp, and a lantern lighting only a small patch.

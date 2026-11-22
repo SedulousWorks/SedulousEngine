@@ -77,6 +77,7 @@ class TerrainRenderer : Renderer
 	{
 		public IRenderPipeline Pso = null;
 		public TextureFormat Format = .Undefined;
+		public uint32 Samples = 1;
 		public uint64 ShaderVersion = 0;
 
 		public this() {}
@@ -86,6 +87,7 @@ class TerrainRenderer : Renderer
 	{
 		public IRenderPipeline Pso = null;
 		public TextureFormat Format = .Undefined;
+		public uint32 Samples = 1;
 		public uint64 ShaderVersion = 0;
 
 		public this() {}
@@ -310,7 +312,7 @@ class TerrainRenderer : Renderer
 
 		mDepthFormat = context.DepthFormat;
 
-		let pso = EnsurePipeline(context.ColorFormat);
+		let pso = EnsurePipeline(context.ColorFormat, context.SampleCount);
 		if (pso == null)
 			return;
 
@@ -411,7 +413,7 @@ class TerrainRenderer : Renderer
 				continue;
 
 			// A cut terrain also carries the HOLES twin and the mask set, for its holed chunks.
-			let holePso = (data.HoleView != null) ? EnsurePipeline(context.ColorFormat, true) : null;
+			let holePso = (data.HoleView != null) ? EnsurePipeline(context.ColorFormat, context.SampleCount, true) : null;
 			let holeBindGroup = (data.HoleView != null)
 				? EnsureHeightHoleBindGroup(data.HeightView, data.HoleView)
 				: null;
@@ -492,7 +494,7 @@ class TerrainRenderer : Renderer
 
 		let pso = pick
 			? EnsurePickPipeline(context.ColorFormat, context.DepthFormat)
-			: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass, context.ClampShadowCasters);
+			: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass, context.ClampShadowCasters, DepthSamples(context));
 		let viewBindGroup = EnsureDepthViewBindGroup();
 		let chunkBindGroup = EnsureChunkBindGroup();
 		if ((pso == null) || (viewBindGroup == null) || (chunkBindGroup == null))
@@ -555,7 +557,7 @@ class TerrainRenderer : Renderer
 			{
 				holePso = pick
 					? EnsurePickPipeline(context.ColorFormat, context.DepthFormat, true)
-					: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass, context.ClampShadowCasters, true);
+					: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass, context.ClampShadowCasters, DepthSamples(context), true);
 				holeBindGroup = EnsureHeightHoleBindGroup(data.HeightView, data.HoleView);
 			}
 
@@ -979,13 +981,21 @@ class TerrainRenderer : Renderer
 
 	// ==================== Pipelines ====================
 
+	/// The depth pass's sample count: the camera prepass is multisampled with the scene pass (its
+	/// depth is the forward's), shadow maps never are.
+	private static uint32 DepthSamples(RenderRecordContext context)
+	{
+		return context.DepthPrepass ? Math.Max((uint32)context.SampleCount, 1) : 1;
+	}
+
 	/// `holes` selects the HOLES twin, which a holed chunk draws with: set two carries the
-	/// mask and the pixel shader discards by it.
-	private IRenderPipeline EnsurePipeline(TextureFormat colorFormat, bool holes = false)
+	/// mask and the pixel shader discards by it. `samples` is the scene pass's MSAA count: the
+	/// pipeline's must equal its targets'.
+	private IRenderPipeline EnsurePipeline(TextureFormat colorFormat, uint32 samples, bool holes = false)
 	{
 		let shaderVersion = mShaders.Version("terrain");
 		let entry = holes ? &mHoleColorPso : &mColorPso;
-		if ((entry.Pso != null) && (entry.Format == colorFormat)
+		if ((entry.Pso != null) && (entry.Format == colorFormat) && (entry.Samples == samples)
 			&& (entry.ShaderVersion == shaderVersion))
 			return entry.Pso;
 
@@ -1037,6 +1047,7 @@ class TerrainRenderer : Renderer
 		// so the top surface IS the front: cull the backs. Getting this the other way round
 		// culls the top and the frame goes black.
 		desc.Primitive.CullMode = .Back;
+		desc.Multisample.Count = samples;
 		desc.Label = holes ? "terrain.holes" : "terrain";
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pso)))
@@ -1044,6 +1055,7 @@ class TerrainRenderer : Renderer
 
 		entry.Pso = pso;
 		entry.Format = colorFormat;
+		entry.Samples = samples;
 		entry.ShaderVersion = shaderVersion;
 		return pso;
 	}
@@ -1070,14 +1082,14 @@ class TerrainRenderer : Renderer
 	/// subset. A holed chunk is rare, so the cascade's extra interpolants cost nothing that
 	/// matters, and its prepass and colour draws then share one vertex bytecode.
 	private IRenderPipeline EnsureDepthPipeline(TextureFormat depthFormat, bool biased,
-		bool clamped, bool holes = false)
+		bool clamped, uint32 samples, bool holes = false)
 	{
 		let shaderName = (biased && !holes) ? "terrain_depth" : "terrain";
 		let slot = !biased ? 0 : (clamped ? 1 : 2);
 		let entry = holes ? &mHoleDepthPso[slot] : &mDepthPso[slot];
 
 		let shaderVersion = mShaders.Version(shaderName);
-		if ((entry.Pso != null) && (entry.Format == depthFormat)
+		if ((entry.Pso != null) && (entry.Format == depthFormat) && (entry.Samples == samples)
 			&& (entry.ShaderVersion == shaderVersion))
 			return entry.Pso;
 
@@ -1128,6 +1140,7 @@ class TerrainRenderer : Renderer
 		// past the cascade's near plane still casts, as the mesh renderer's casters do. A spot's or
 		// point's does not (RenderRecordContext.ClampShadowCasters).
 		desc.Primitive.DepthClipEnabled = !(clamped && mDevice.Features.DepthClamp);
+		desc.Multisample.Count = samples;
 		desc.Label = holes ? "terrain.depth.holes" : "terrain.depth";
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pso)))
@@ -1135,6 +1148,7 @@ class TerrainRenderer : Renderer
 
 		entry.Pso = pso;
 		entry.Format = depthFormat;
+		entry.Samples = samples;
 		entry.ShaderVersion = shaderVersion;
 		return pso;
 	}
