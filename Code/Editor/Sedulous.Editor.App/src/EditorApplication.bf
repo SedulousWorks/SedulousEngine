@@ -714,6 +714,8 @@ class EditorApplication : IApplication
 		mcpServices.DataRoot.Set(mConfig.DataRoot);
 		mcpServices.ForceEnabled = mConfig.McpEnabled;
 		mcpServices.Port = mConfig.McpPort;
+		for (let folder in mConfig.McpAllowedFolders)
+			mcpServices.AllowedFolders.Add(new .(folder));
 		mcpServices.TemplatesRoot = new (outPath) => { mExport.TemplatesRoot(outPath); };
 		mcpServices.OnCreated = new (creator, instance) => { mCreation.AfterCreate(creator, instance); };
 		// What follows an import, as the Import dialog's: the editor told (a model's prefab made).

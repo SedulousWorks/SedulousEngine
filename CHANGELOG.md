@@ -9,6 +9,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Editor: `--mcp-allow-path <dir>`, repeatable, lets the MCP tools reach a folder outside the
+  project for that run, as `Sedulous.Tools.Mcp --allow-path` does, without adding it to Preferences.
 - Scripting: `MinInt`, `MaxInt` and `ClampInt` take and return whole numbers. `Min`, `Max` and
   `Clamp` are float only, so whole-number arithmetic through them came back a float and warned
   when stored in an int.

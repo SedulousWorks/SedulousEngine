@@ -200,7 +200,7 @@ behaviour's properties under `live` beside what is authored.
   inside the open project, the user-data folder, the temp folder, the engine's data root, or a
   folder the user allowed: for `Sedulous.Tools.Mcp`, the folder it was started in and each
   `--allow-path <dir>`; for the editor, the MCP settings' `allowedFolders` (in the editor's
-  settings file). Anything else is refused, naming the folders that are allowed; ask the user to
+  settings file) and, for one run, each `--mcp-allow-path <dir>` it was started with. Anything else is refused, naming the folders that are allowed; ask the user to
   allow a folder (a downloads folder to import from) rather than copying the file around it. A
   relative path is taken against the host's working directory. plugin_enable's `path` stays
   inside the project. The tools that take such paths outside the project say so with

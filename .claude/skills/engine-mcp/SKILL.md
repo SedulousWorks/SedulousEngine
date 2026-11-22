@@ -33,7 +33,9 @@ The editor serves the same engine tools over HTTP for the project it has open (s
 looking at: one content database, one writer. Enable it in Preferences (MCP: enabled, port,
 token), start it from the MCP panel (the status bar's MCP item opens it; its Copy Connect
 Command gives the wiring line with the token), or for one run:
-`Sedulous.Tools.Editor <project> --mcp [--mcp-port <n>]`. The default
+`Sedulous.Tools.Editor <project> --mcp [--mcp-port <n>] [--mcp-allow-path <dir>]...` (each
+`--mcp-allow-path` lets the tools reach a folder outside the project for that run, as
+Tools.Mcp's `--allow-path` does). The default
 port is 7405; the token is minted on first enable and written to `<user-data>/mcp-token`
 (`~/.local/share/Sedulous/mcp-token` on Linux).
 

@@ -405,6 +405,27 @@ class EditorMcpServiceTests
 		Test.Assert((folders.Count == 1) && (folders[0] == "/mcp_allowed_downloads"));
 	}
 
+	/// A folder this run was started with (--mcp-allow-path) is in the tools' reach for the run;
+	/// one it was not is not, and the preference is untouched. The allowed folders were a saved
+	/// preference alone, so a game's tools beside its project could not reach them for one session.
+	[Test]
+	public static void AFolderThisRunWasStartedWithIsInReachAndThePreferenceIsUntouched()
+	{
+		let bench = scope Bench("mcp_service_run_paths");
+		bench.Preference.Enabled = true;
+		bench.Preference.Port = 0; // the OS's choice
+		let services = bench.Services();
+		services.AllowedFolders.Add(new .("/mcp_run_outside"));
+		let service = scope EditorMcpService(services);
+		Test.Assert(service.Start(bench.Project));
+		let policy = service.Host.Server.Paths;
+		let resolved = scope String();
+		let refusal = scope String();
+		Test.Assert(policy.Check("/mcp_run_outside/generated/Hud.xml", resolved, refusal), refusal);
+		Test.Assert(!policy.Check("/mcp_run_other/Hud.xml", resolved, refusal));
+		Test.Assert(bench.Preference.AllowedFolders.IsEmpty, "the folder is this run's alone");
+	}
+
 	[Test]
 	public static void StartingWhileRunningAndStoppingWhenStoppedAreHarmless()
 	{

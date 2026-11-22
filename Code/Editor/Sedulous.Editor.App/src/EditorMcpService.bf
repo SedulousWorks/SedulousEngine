@@ -37,6 +37,8 @@ class EditorMcpServiceServices
 	/// its own (0: the preference's).
 	public bool ForceEnabled = false;
 	public uint32 Port = 0;
+	/// The command line's --mcp-allow-path: folders the tools reach for this run only.
+	public List<String> AllowedFolders = new .() ~ DeleteContainerAndItems!(_);
 	/// Where the token file, the settings a minted token is saved with and the profiler's
 	/// captures go. Empty: the user data directory, as the editor runs; a test points it at a
 	/// scratch folder so a run leaves the user's own token alone.
@@ -197,13 +199,16 @@ class EditorMcpService
 		mHost = new EditorMcpHost(mServices.Context, mSession, mServices.Log, mServices.Builders, mServices.Context.Importers,
 			paths, mOperations, BuildStamp(.. scope .()));
 		// Where the tools may read and write by a path an agent gives: the project, the user-data
-		// and temp folders, the engine's data root, and the folders the user allowed in the settings.
+		// and temp folders, the engine's data root, the folders the user allowed in the settings,
+		// and those this run was started with.
 		let allowed = mHost.Server.Paths;
 		allowed.SetProject((project != null) ? project.Directory : "");
 		allowed.AddStandardFolders();
 		allowed.AddFolder(userData);
 		allowed.AddFolder(mServices.DataRoot); // the engine's own data (its fonts, say)
 		for (let folder in settings.AllowedFolders)
+			allowed.AddFolder(folder);
+		for (let folder in mServices.AllowedFolders)
 			allowed.AddFolder(folder);
 		let context = mServices.Context;
 		mHost.OnCall = new [=] (report) =>

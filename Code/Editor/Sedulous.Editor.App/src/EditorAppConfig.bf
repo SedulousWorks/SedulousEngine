@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Runtime.Client;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -43,11 +44,14 @@ class EditorAppConfig
 	/// --screenshot-exit: request the clean shutdown once that capture is written (or has
 	/// failed), the player's flag of the same name, so a capture run needs no --exit-after guess.
 	public bool ScreenshotExit = false;
-	/// The MCP host for THIS run: --mcp enables it regardless of the preference and
+	/// The MCP host for THIS run: --mcp enables it regardless of the preference,
 	/// --mcp-port <n> picks its port (0 is the preference's), so an agent that launches the
-	/// editor itself needs no UI. EditorMcpSettings is the persisted preference.
+	/// editor itself needs no UI, and each --mcp-allow-path <dir> lets its tools reach a folder
+	/// for this run, beside the ones the preference allows. EditorMcpSettings is the persisted
+	/// preference.
 	public bool McpEnabled = false;
 	public uint32 McpPort = 0;
+	public List<String> McpAllowedFolders = new .() ~ DeleteContainerAndItems!(_);
 	/// --release-files <url or folder>: where the Samples tab reads this version's release files
 	/// instead of GitHub: a base URL, or a folder Code/Tools/pack-samples.py wrote, served on
 	/// loopback (to try the tab before a release carries samples). Empty: the release itself.

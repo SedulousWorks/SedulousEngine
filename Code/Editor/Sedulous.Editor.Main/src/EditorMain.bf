@@ -29,6 +29,8 @@ namespace Sedulous.Editor.Main;
 ///   [--screenshot-exit]] (the main window as a PNG; --screenshot-exit quits once it is written)
 ///   [--mcp] [--mcp-port <n>] (the MCP host for this run: agent access to the open project
 ///   over 127.0.0.1; the persisted preference is in Preferences)
+///   [--mcp-allow-path <dir>]... (each lets the MCP tools reach a folder outside the project for
+///   this run, beside the folders Preferences allows)
 ///   [--release-files <url or folder>] (where the project manager's Samples tab reads this version's
 ///   release files instead of GitHub: a base URL, or a folder Code/Tools/pack-samples.py wrote)
 ///   [--seed] [--seed-primitives] [--version]
@@ -165,6 +167,8 @@ static class EditorMain
 				config.ScreenshotAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
 			else if (args[i] == "--release-files")
 				config.ReleaseFiles.Set(args[i + 1]);
+			else if (args[i] == "--mcp-allow-path")
+				config.McpAllowedFolders.Add(new .(args[i + 1]));
 			else if (args[i] == "--mcp-port")
 			{
 				config.McpPort = uint32.Parse(args[i + 1]).GetValueOrDefault();
