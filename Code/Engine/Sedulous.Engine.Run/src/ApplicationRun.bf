@@ -78,6 +78,8 @@ class ApplicationRun : RunBase, IRunInput
 
 	/// OWNED: this run's action state, so one instance's input never reaches another's.
 	private ActionRuntime mInputRuntime = new .() ~ delete _;
+	/// The player's rebinding of mInputRuntime, kept in mSave.
+	private PlayerBindings mBindings = new .() ~ delete _;
 	/// BORROWED: the viewport or the shell's devices. Null means no input at all.
 	private IInputSourceProvider mInputSource = null;
 
@@ -148,7 +150,7 @@ class ApplicationRun : RunBase, IRunInput
 		// nothing relaying between them) and run scoped systems (audio) group them by it. Set on
 		// the GROUP, so each scene has it as it is created, before its systems bind.
 		mSceneManager.SetSceneRun(this);
-		mInputFacade = new InputFacade(mInputRuntime);
+		mInputFacade = new InputFacade(mInputRuntime, mBindings);
 		mSaveFacade = new SaveFacade(mSave);
 		mNetFacade = new NetFacade(mNetwork);
 		// Every context of this run finds this run's services through the run (Run, its input, its
@@ -171,6 +173,8 @@ class ApplicationRun : RunBase, IRunInput
 		Register<ActionRuntime>(mInputRuntime);
 		Register<IRunInput>(this); // the input subsystem drives it as the frame begins
 		Register<RunSave>(mSave);
+		Register<PlayerBindings>(mBindings); // the Input facade's rebinding
+		mBindings.SetStore(mSave.Bindings, new () => { mSave.MarkChanged(); });
 		Register<BehaviorRunHost>(mRunHost);
 		Register<HttpFacade>(mHttpFacade);
 		Register<RenderQualityFacade>(mQualityFacade);
@@ -740,6 +744,7 @@ class ApplicationRun : RunBase, IRunInput
 		}
 		// So do its HTTP requests: no answer reaches a script that has stopped.
 		mHttpFacade.Reset();
+		mBindings.CancelCapture(); // a rebinding the game left listening ends with it
 	}
 
 	/// Ticks the game script and moves the run's clock: once per frame, before the run bus
@@ -857,7 +862,16 @@ class ApplicationRun : RunBase, IRunInput
 	/// project Editor/ folder). The run's scripts reach it through the `Save` service, and the
 	/// run writes it when its script stops if anything changed. Empty: values kept for the run
 	/// only.
-	public void SetSaveFile(StringView path) => mSave.Open(path);
+	/// The player's bindings in it apply over the game's controls.
+	public void SetSaveFile(StringView path)
+	{
+		mSave.Open(path);
+		mBindings.SetStore(mSave.Bindings, new () => { mSave.MarkChanged(); });
+		mBindings.Reapply();
+	}
+
+	/// The player's bindings over the game's controls: rebinding, kept in the run's save.
+	public PlayerBindings Bindings => mBindings;
 
 	/// This run's save.
 	public RunSave Saves => mSave;
@@ -874,7 +888,8 @@ class ApplicationRun : RunBase, IRunInput
 	}
 
 	/// Installs the action map. Each instance has its own runtime and its own copy.
-	public void SetInputMap(InputMap map) => mInputRuntime.SetMap(map);
+	/// The player's own bindings saved with the run (SetSaveFile) lie over it.
+	public void SetInputMap(InputMap map) => mBindings.Install(mInputRuntime, map);
 
 	/// This run's action runtime.
 	public ActionRuntime InputRuntime => mInputRuntime;
@@ -887,6 +902,7 @@ class ApplicationRun : RunBase, IRunInput
 			return;
 
 		mInputRuntime.SetTimeScale(contextTimeScale);
+		mBindings.Poll(mInputSource); // a capture takes its press before the actions read
 		mInputRuntime.Update(mInputSource, deltaTime);
 		TraceInput();
 	}

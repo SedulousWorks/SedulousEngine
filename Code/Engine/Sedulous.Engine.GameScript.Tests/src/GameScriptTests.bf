@@ -687,6 +687,55 @@ static class GameScriptTests
 		Test.Assert(input.IsSetEnabled("Gameplay"));
 	}
 
+	/// A script rebinds by name, waits for a press and resets, through its run's bindings; an
+	/// unknown control is refused.
+	[Test]
+	public static void AScriptRebindsByNameWaitsForAPressAndResets()
+	{
+		const String cRebind = """
+			class Game
+			{
+				bool known;
+				bool unknown;
+				string shown;
+				bool started;
+				bool waiting;
+				bool stopped;
+				string afterReset;
+				void onStart()
+				{
+					known = Input.SetBinding("Jump", "Key.J");
+					unknown = Input.SetBinding("Jump", "Key.Nothing");
+					shown = Input.Describe("Jump");
+					started = Input.Rebind("Jump");
+					waiting = Input.IsRebinding();
+					Input.CancelRebind();
+					stopped = !Input.IsRebinding();
+					Input.ResetBinding("Jump");
+					afterReset = Input.Describe("Jump");
+				}
+			}
+			""";
+		let run = scope GameRun("scratch_game_rebind");
+		let map = scope Sedulous.Input.InputMap();
+		Sedulous.Input.Binding space = .();
+		space.Source = .Key;
+		space.Code = (uint32)Sedulous.Shell.KeyCode.Space;
+		let set = new Sedulous.Input.ActionSet();
+		set.Name.Set("Gameplay");
+		let action = new Sedulous.Input.InputAction();
+		action.Name.Set("Jump");
+		action.Bindings.Add(space);
+		set.Actions.Add(action);
+		map.Sets.Add(set);
+		run.Instance.SetInputMap(map);
+		Test.Assert(run.Instance.StartRunBehavior(run.Class("Game", cRebind)), scope String(run.Instance.RunBehaviorFault));
+		Test.Assert(run.PropBool("known") && !run.PropBool("unknown"));
+		Test.Assert(run.Prop("shown").AsString == "J", scope $"{run.Prop("shown").AsString}");
+		Test.Assert(run.PropBool("started") && run.PropBool("waiting") && run.PropBool("stopped"));
+		Test.Assert(run.Prop("afterReset").AsString == "Space", scope $"{run.Prop("afterReset").AsString}");
+	}
+
 	/// A script names the control an action takes on the device in hand, as a prompt shows it:
 	/// the keyboard's until a pad is picked up, then the pad's; a named set's; nothing for an
 	/// action with no binding.

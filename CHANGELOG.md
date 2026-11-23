@@ -9,6 +9,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Scripting: players can rebind controls. `Input.Rebind(action)` takes the player's next press,
+  `Input.SetBinding(action, "Key.Space")` sets one by name, and `Input.ResetBinding` /
+  `Input.ResetAllBindings` undo them; the bindings are kept in the game's save and apply when it
+  next starts.
 - Animation graphs: a transition can be marked Interruptible, so the state it goes to may leave
   while the blend still runs, blending on from the pose of that moment.
 - Projects: `mcpFolders` lists folders outside the project that its MCP tools work in, such as a

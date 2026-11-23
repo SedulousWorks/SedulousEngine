@@ -54,6 +54,50 @@ class ApplicationRunTests
 		Test.Assert(instance.RunTime == 0);
 	}
 
+	/// The player's rebinding is kept in the run's save and lies over the game's controls the next
+	/// run, whether the map is installed before the save opens or after.
+	[Test]
+	public static void ThePlayersRebindingIsKeptInTheSaveAndLiesOverTheControlsTheNextRun()
+	{
+		let scratch = "scratch_run_bindings";
+		RemoveDirectoryRecursive(scratch);
+		defer RemoveDirectoryRecursive(scratch);
+		Test.Assert(CreateDirectory(scratch));
+		let path = PathJoin(scratch, "game_bindings.xml", .. scope String());
+		var space = Binding();
+		space.Code = (uint32)KeyCode.Space;
+		var j = Binding();
+		j.Code = (uint32)KeyCode.J;
+		let map = scope InputMap();
+		{
+			let gameplay = new ActionSet();
+			gameplay.Name.Set("Gameplay");
+			let jump = new InputAction();
+			jump.Name.Set("Jump");
+			jump.Bindings.Add(space);
+			gameplay.Actions.Add(jump);
+			map.Sets.Add(gameplay);
+		}
+		{
+			let run = scope ApplicationRun();
+			run.SetSaveFile(path);
+			run.SetInputMap(map);
+			run.Saves.Values.SetInt("runs", 1);
+			Test.Assert(run.Bindings.Set("", "Jump", j));
+			Test.Assert(run.Saves.HasChanges);
+			Test.Assert(run.Saves.Flush());
+		}
+		{
+			// The map installed before the save opens: the save's bindings apply as it opens.
+			let run = scope ApplicationRun();
+			run.SetInputMap(map);
+			Test.Assert(run.InputRuntime.FindAction("Gameplay", "Jump").Bindings[0].Code == (uint32)KeyCode.Space);
+			run.SetSaveFile(path);
+			Test.Assert(run.InputRuntime.FindAction("Gameplay", "Jump").Bindings[0].Code == j.Code);
+			Test.Assert(run.Saves.Values.GetInt("runs", 0) == 1, "the values beside them");
+		}
+	}
+
 	[Test]
 	public static void AFreshInstanceIsIdleAndOwnsAUsableGroup()
 	{

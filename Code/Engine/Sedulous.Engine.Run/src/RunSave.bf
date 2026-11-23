@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
+using Sedulous.Input; // InputBindingOverrides: the player's rebinding, kept in the save
 using Sedulous.Settings;
 using Sedulous.Script;
 using Sedulous.Xml.Serialization;
@@ -38,8 +39,9 @@ class RunSave
 		if (mPath.IsEmpty || !FileExists(mPath))
 			return;
 
-		// The load instantiates the section by its name.
+		// The load instantiates each section by its name: the values and the player's bindings.
 		SaveValues.Register();
+		InputBindingOverrides.Register();
 		bool read;
 		{
 			// Closed at the end of this block, before the file may be moved aside below.
@@ -66,6 +68,9 @@ class RunSave
 	public bool IsOpen => !mPath.IsEmpty;
 	public StringView Path => mPath;
 	public SaveValues Values => mStore.Section<SaveValues>();
+	/// The player's own bindings of the game's controls, a section of their own beside the values
+	/// (so clearing the values keeps them). Open replaces the store: ask again after it.
+	public InputBindingOverrides Bindings => mStore.Section<InputBindingOverrides>();
 
 	/// A change the next Flush writes. The facade calls it when a setter reports a change.
 	public void MarkChanged() => mChanged = true;

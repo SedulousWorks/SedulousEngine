@@ -128,6 +128,21 @@ builds, `Input.Describe(action)` (or `Input.Describe(action, set)`) gives the sa
 for the device in hand, "" when the action has no binding: `"Hold " + Input.Describe("Interact") +
 ": pick the lock"`. Build such a sentence when it is shown, not once, so it follows a pad picked up.
 
+A player can change what they press for an action, and the change is kept in the game's save:
+
+- `Input.Rebind("Jump")` waits for the player's next press on the device in hand (the keyboard and
+  mouse, or a pad) and makes it Jump's control for that device; the other device keeps its own.
+  Every action reads released while it waits. Escape, or the pad's Back, cancels;
+  `Input.CancelRebind()` does from a script. `Input.IsRebinding()` is true until then, and
+  `Input.Describe("Jump")` names the new control after. It works on button actions.
+- `Input.SetBinding("Jump", "Key.Space")` sets it by name: `Key.<key>`, `Mouse.<button>`,
+  `Pad.<button>` or `PadAxis.<axis>`, named as the engine spells them (`Key.LeftShift`,
+  `Pad.South`, `PadAxis.RightTrigger`). False for a name or action it does not know.
+- `Input.ResetBinding("Jump")` gives the action the game's own controls back;
+  `Input.ResetAllBindings()` does it for every action.
+- Each takes the action's set as a last argument when the name is in more than one; without it,
+  the set the action is read from now.
+
 `Audio` plays a clip or a cue by its asset id (`Audio.PlayOneShot(id)`, `PlayCue`, `PlayMusic`),
 or by its content path as the project names it: `Audio.PlayOneShotPath("Audio/Jump")`,
 `PlayOneShot3DPath(path, position)`, `PlayCuePath(path)`, `PlayMusicPath(path, fadeSeconds)`. A

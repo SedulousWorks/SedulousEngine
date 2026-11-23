@@ -14,6 +14,13 @@ class InputBindingOverrides : ISerializable
 {
 	public List<InputBindingOverride> Overrides = new .() ~ DeleteContainerAndItems!(_);
 
+	/// Makes the section loadable by its type name (a save file holds it). Safe to call again.
+	public static void Register(SerializableRegistry registry = null)
+	{
+		let target = (registry != null) ? registry : GlobalSerializableRegistry;
+		target.Register(TypeIdOf("Sedulous.Input.InputBindingOverrides"), () => new InputBindingOverrides());
+	}
+
 	/// Sets, or replaces, the bindings for one action.
 	public void Set(StringView setName, StringView actionName, Span<Binding> bindings)
 	{

@@ -18,10 +18,13 @@ class InputFacade
 	private InputKindTracker mInputKinds = null;
 	/// What Describe hands back, until its next call.
 	private String mDescribed = new .() ~ delete _;
+	/// BORROWED: the run's player bindings, which the rebinding goes through; null outside a run.
+	private PlayerBindings mBindings = null;
 
-	public this(ActionRuntime runtime)
+	public this(ActionRuntime runtime, PlayerBindings bindings = null)
 	{
 		mRuntime = runtime;
+		mBindings = bindings;
 	}
 
 	/// The input kind Describe follows: the input subsystem points its own and each run's at its
@@ -31,6 +34,50 @@ class InputFacade
 		get => mInputKinds;
 		set => mInputKinds = value;
 	}
+
+	// ---- the player's rebinding, kept in the game's save ----
+
+	/// Takes the player's next press on the device in hand (the keyboard and mouse, or a pad) as
+	/// `action`'s binding for that device, in place of its old one; every action reads released
+	/// until then. Escape, or the pad's Back, cancels. False when the action is not a button of the
+	/// game's controls.
+	[Scriptable]
+	public bool Rebind(StringView action) => Rebind(action, "");
+	/// The same, for the action in `set`.
+	[Scriptable]
+	public bool Rebind(StringView action, StringView set) =>
+		(mBindings != null) && mBindings.BeginCapture(set, action, (mInputKinds != null) ? mInputKinds.Kind : .Keyboard);
+	/// Whether a rebind is waiting for the player's press.
+	[Scriptable]
+	public bool IsRebinding() => (mBindings != null) && mBindings.IsCapturing;
+	/// Stops waiting; the action keeps its binding.
+	[Scriptable]
+	public void CancelRebind() => mBindings?.CancelCapture();
+	/// Binds `action` to a control by name ("Key.Space", "Mouse.Left", "Pad.South",
+	/// "PadAxis.RightTrigger"), in place of its binding for that device. False for an unknown
+	/// control or action, or a two dimensional action.
+	[Scriptable]
+	public bool SetBinding(StringView action, StringView control) => SetBinding(action, control, "");
+	/// The same, for the action in `set`.
+	[Scriptable]
+	public bool SetBinding(StringView action, StringView control, StringView set)
+	{
+		if (mBindings == null)
+			return false;
+		Binding binding;
+		if (!PlayerBindings.ParseControl(control, out binding))
+			return false;
+		return mBindings.Set(set, action, binding);
+	}
+	/// Gives `action` the game's own bindings again. False for an unknown action.
+	[Scriptable]
+	public bool ResetBinding(StringView action) => ResetBinding(action, "");
+	/// The same, for the action in `set`.
+	[Scriptable]
+	public bool ResetBinding(StringView action, StringView set) => (mBindings != null) && mBindings.Reset(set, action);
+	/// Every action back to the game's own bindings.
+	[Scriptable]
+	public void ResetAllBindings() => mBindings?.ResetAll();
 
 	/// Held this frame.
 	[Scriptable]

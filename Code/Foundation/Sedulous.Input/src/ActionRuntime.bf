@@ -90,6 +90,8 @@ class ActionRuntime
 	private bool mLatchHeldOnce = false;
 	/// BindingsVersion.
 	private uint64 mBindingsVersion = 0;
+	/// A press is being taken for a binding: every action reads released.
+	private bool mListening = false;
 
 	/// A rumble asked for, waiting for the next Update's devices.
 	private struct RumbleRequest
@@ -153,6 +155,66 @@ class ActionRuntime
 	/// enabled or disabled, an exclusive set pushed or popped): a reader of the bindings (a GUI's
 	/// prompts) reads them again when it moves, rather than each frame.
 	public uint64 BindingsVersion => mBindingsVersion;
+
+	/// While listening, every action reads released, as in a disabled set (a held press is
+	/// latched, so it does not fire once listening ends): the player's next press is being taken
+	/// for a binding, not played.
+	public void SetListening(bool listening) => mListening = listening;
+	public bool IsListening => mListening;
+
+	/// The action named `action` in the set named `set`, or null. BORROWED.
+	public InputAction FindAction(StringView set, StringView action)
+	{
+		for (let candidate in mMap.Sets)
+		{
+			if (candidate.Name != set)
+				continue;
+			for (let a in candidate.Actions)
+			{
+				if (a.Name == action)
+					return a;
+			}
+		}
+		return null;
+	}
+
+	/// The set `action` is read from: the highest priority enabled set that has it, else the
+	/// highest priority set that has it; empty when none has.
+	public StringView SetOf(StringView action)
+	{
+		ActionSet best = null;
+		bool bestEnabled = false;
+		for (int i < mMap.Sets.Count)
+		{
+			let candidate = mMap.Sets[i];
+			bool has = false;
+			for (let a in candidate.Actions)
+				has = has || (a.Name == action);
+			if (!has)
+				continue;
+			let enabled = mSetEnabled[i];
+			if ((best == null) || (enabled && !bestEnabled) || ((enabled == bestEnabled) && (candidate.Priority > best.Priority)))
+			{
+				best = candidate;
+				bestEnabled = enabled;
+			}
+		}
+		return (best != null) ? best.Name : StringView();
+	}
+
+	/// Gives `action` in `set` these bindings, keeping every set's enabled state, the exclusive
+	/// stack and the actions' states (a player's rebinding mid-game). False when there is no such
+	/// action.
+	public bool ReplaceBindings(StringView set, StringView action, Span<Binding> bindings)
+	{
+		let found = FindAction(set, action);
+		if (found == null)
+			return false;
+		found.Bindings.Clear();
+		found.Bindings.AddRange(bindings);
+		mBindingsVersion++;
+		return true;
+	}
 
 	// ---- sets ----
 
@@ -350,7 +412,7 @@ class ActionRuntime
 		{
 			// A disabled set behaves exactly like an exclusively suppressed one: released,
 			// and latching. Two ways to say "not now" that differ only in who said it.
-			let suppressed = !mSetEnabled[s] || ((exclusiveTop >= 0) && (s != exclusiveTop));
+			let suppressed = mListening || !mSetEnabled[s] || ((exclusiveTop >= 0) && (s != exclusiveTop));
 
 			for (int a = 0; a < mMap.Sets[s].Actions.Count; a++, flat++)
 			{
