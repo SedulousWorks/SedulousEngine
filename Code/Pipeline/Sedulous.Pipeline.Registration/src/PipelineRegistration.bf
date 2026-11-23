@@ -17,6 +17,7 @@ using Sedulous.Particles.Resource;
 using Sedulous.Physics.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.PropertyAnimation.Resource;
+using Sedulous.Sequence.Resource;
 using Sedulous.Scene.Resource;
 using Sedulous.Script.Resource;
 using Sedulous.Shaders.Resource;
@@ -41,6 +42,7 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.ScriptSurface;
 using Sedulous.PropertyAnimation.Pipeline;
+using Sedulous.Sequence.Pipeline;
 using Sedulous.Script.AngelScript.Pipeline;
 using Sedulous.Script.Pipeline;
 using Sedulous.Scene.Pipeline;
@@ -71,12 +73,13 @@ static class PipelineRegistration
 	/// The GUI's asset kinds: a document and a style sheet (Sedulous.GUI.Pipeline).
 	public const int cGuiAssetKinds = 2;
 	/// 31 and 13: the old UI's document and theme builders and its importer gone with it, a
-	/// Render Quality's builder added, and a script project's builder and importer.
-	public const int cBuilderCount = 31 + cGuiAssetKinds;
+	/// Render Quality's builder added, and a script project's builder and importer; 32 with the
+	/// sequence's.
+	public const int cBuilderCount = 32 + cGuiAssetKinds;
 	public const int cImporterCount = 13;
 	/// The creators every build has; the scripts add three per language with a cook on top, and
 	/// a project creator for each whose classes build together (ScriptCreators.CountFor).
-	public const int cCreatorCount = 31 + cGuiAssetKinds; // 31: the old UI's document and theme gone, a Render Quality added
+	public const int cCreatorCount = 32 + cGuiAssetKinds; // 31: the old UI's document and theme gone, a Render Quality added; 32: a Sequence
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -105,6 +108,7 @@ static class PipelineRegistration
 		ParticleResources.RegisterAll();
 		PhysicsResources.RegisterAll();
 		PropertyAnimationResources.RegisterAll();
+		SequenceResources.RegisterAll();
 		RenderProfileResources.RegisterAll();
 		SceneResources.RegisterAll();
 		ScriptResources.RegisterAll();
@@ -129,6 +133,7 @@ static class PipelineRegistration
 		ParticlesPipeline.RegisterAll();
 		PhysicsPipeline.RegisterAll();
 		PropertyAnimationPipeline.RegisterAll();
+		SequencePipeline.RegisterAll();
 		RenderPipeline.RegisterAll();
 		ScriptPipeline.RegisterAll();
 		ShadersPipeline.RegisterAll();
@@ -179,6 +184,7 @@ static class PipelineRegistration
 		registry.Register(new AnimationClipAssetBuilder());
 		registry.Register(new AnimationGraphAssetBuilder());
 		registry.Register(new PropertyAnimationClipAssetBuilder());
+		registry.Register(new SequenceAssetBuilder());
 		registry.Register(new MaterialAssetBuilder());
 		registry.Register(new ShaderAssetBuilder(dataRoot));
 		registry.Register(new ParticleEffectAssetBuilder());
@@ -222,6 +228,7 @@ static class PipelineRegistration
 		MaterialCreators.Register(registry);
 		AnimationCreators.Register(registry);
 		PropertyAnimationCreators.Register(registry);
+		SequenceCreators.Register(registry);
 		GeometryCreators.Register(registry);
 		PhysicsCreators.Register(registry);
 		RenderCreators.Register(registry);
