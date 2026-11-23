@@ -391,6 +391,7 @@ static class ExportDriver
 				GlobalLog(.Error, "Export: failed to copy the project settings into the dist manifest");
 				return .Err(.Internal);
 			}
+			ClearAndDeleteItems!(dist.McpFolders); // the authoring machine's folders: nothing a player reads
 			if (ProjectManifest.Save(outMount, dist, ProjectLayout.DistManifestFile) case .Err)
 			{
 				GlobalLog(.Error, "Export: failed to write the dist manifest");

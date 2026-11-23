@@ -271,6 +271,39 @@ class ProjectManifestTests
 		}
 	}
 
+	/// A project names the folders outside it that its MCP tools work in (a game's sources beside
+	/// it). Set, they round trip; a manifest saved before them (no mcpFolders element) reads none.
+	[Test]
+	public static void TheMcpFoldersRoundTripAndAnOlderManifestReadsNone()
+	{
+		FreshScratch();
+		let fs = scope NativeFileSystem(kScratch);
+
+		let written = scope ProjectSettings();
+		written.Name.Set("Folders");
+		written.McpFolders.Add(new .("../Game"));
+		Test.Assert(ProjectManifest.Save(fs, written) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok);
+			Test.Assert((read.McpFolders.Count == 1) && (read.McpFolders[0] == "../Game"));
+		}
+
+		let path = scope $"{kScratch}/{ProjectLayout.ManifestFile}";
+		let text = scope String();
+		Test.Assert(File.ReadAllText(path, text) case .Ok);
+		let start = text.IndexOf("<array name=\"mcpFolders\"");
+		Test.Assert(start >= 0, text);
+		let end = text.IndexOf("</array>", start) + "</array>".Length;
+		text.Remove(start, end - start);
+		Test.Assert(File.WriteAllText(path, text) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok, "an older manifest loads");
+			Test.Assert((read.Name == "Folders") && read.McpFolders.IsEmpty);
+		}
+	}
+
 	/// The engine GUI's sheets round trip in their order (the game's over the shared) with its
 	/// loading screen, and a manifest saved before either existed still loads, with none.
 	[Test]

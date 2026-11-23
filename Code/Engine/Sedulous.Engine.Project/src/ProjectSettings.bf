@@ -129,6 +129,14 @@ class ProjectSettings
 	[Appended, Setting("Default quality", "RenderQualityAsset", "(the last level)", "Quality")]
 	public Guid DefaultQualityId;
 
+	/// Folders outside the project its MCP tools work in (a game's sources beside it, "../Game"),
+	/// relative to the project's folder. Listing one grants nothing by itself: a host lets its
+	/// tools reach a listed folder only once the user has approved it for this project, a record
+	/// kept in the user's data, never in the project. An export leaves the list out: it is the
+	/// authoring machine's. [Appended], so a manifest saved before it reads none.
+	[Appended, Setting("MCP folders", "General")]
+	public List<String> McpFolders = new .() ~ DeleteContainerAndItems!(_);
+
 	/// The project's entry for plugin `id`, or null when it enables no such plugin. BORROWED.
 	public EnabledPlugin FindPlugin(StringView id)
 	{

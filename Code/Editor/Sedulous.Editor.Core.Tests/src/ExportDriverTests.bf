@@ -52,6 +52,7 @@ static class ExportDriverTests
 		let distDir = PathJoin(fx.OutRoot, "dist", .. scope .());
 		let scriptId = Guid.Parse("abcd1234-0000-0000-0000-5678ef900000").Get();
 		fx.Project.Settings.RunBehaviorId = scriptId;
+		fx.Project.Settings.McpFolders.Add(new .("../Game")); // the authoring machine's: dropped
 		let titleFontId = Guid.Create();
 		fx.Project.Settings.WindowResizable = false;
 		fx.Project.Settings.UiFontIds.Add(titleFontId);
@@ -98,6 +99,7 @@ static class ExportDriverTests
 		let manifest = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(distRoot, manifest, ProjectLayout.DistManifestFile) case .Ok);
 		Test.Assert((manifest.DefaultScene == "Scenes/Main") && (manifest.DefaultSceneId == fx.SceneId) && (manifest.RunBehaviorId == scriptId));
+		Test.Assert(manifest.McpFolders.IsEmpty, "the MCP folders stay with the project");
 		// And everything else the player reads: the window, the other fonts, the GUI's sheets and
 		// loading screen.
 		Test.Assert(!manifest.WindowResizable, "the window");

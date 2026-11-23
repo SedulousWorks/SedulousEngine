@@ -99,7 +99,7 @@ class SettingFieldsTests
 			SettingFields.Key(field, keys);
 		}
 		// The engine stamp, the path mirrors and an older manifest's MSAA count are not settings.
-		Test.Assert(keys == "name,defaultSceneId,defaultInputMapId,defaultBusLayoutId,runBehaviorId,defaultUiFontId,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId,qualityLevelIds,defaultQualityId", keys);
+		Test.Assert(keys == "name,defaultSceneId,defaultInputMapId,defaultBusLayoutId,runBehaviorId,defaultUiFontId,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId,qualityLevelIds,defaultQualityId,mcpFolders", keys);
 
 		SettingKind Kind(StringView name)
 		{
@@ -122,6 +122,7 @@ class SettingFieldsTests
 		Test.Assert(Kind("QualityLevelIds") == .AssetList);
 		Test.Assert(Kind("DefaultQualityId") == .Asset);
 		Test.Assert(Kind("RenderWidth") == .Count);
+		Test.Assert(Kind("McpFolders") == .TextList);
 		Test.Assert(Kind("RenderFit") == .Choice);
 		Test.Assert(Kind("WindowResizable") == .Flag);
 		Test.Assert(Kind("Orientation") == .Choice);

@@ -421,8 +421,7 @@ class ProjectSettingsDialog
 		return changed;
 	}
 
-	/// The row a setting is, or null for one no row shows (a text list: the MCP tools set it
-	/// whole).
+	/// The row a setting is, or null for a kind no row shows.
 	private PropertyInfo AddRow(Object settings, FieldInfo field, StringView name)
 	{
 		SettingFields.KindOf(field, let kind);
@@ -450,6 +449,16 @@ class ProjectSettingsDialog
 			}
 			if (let element = mBag.FindElementInfo(name))
 				element.ReferenceType = SourceTypeNamed(setting.AssetType);
+			return row;
+		case .TextList:
+			let texts = *(List<String>*)address;
+			let row = mBag.AddList(name, .String, Sedulous.GUI.Variant(StringView()), texts.Count);
+			let path = scope String();
+			for (int i < texts.Count)
+			{
+				path..Clear()..AppendF("{}.{}", name, i);
+				mBag.SetValue(path, 0, Sedulous.GUI.Variant(texts[i]));
+			}
 			return row;
 		case .Count:
 			let value = *(uint32*)address;
@@ -530,6 +539,17 @@ class ProjectSettingsDialog
 					// A slot never picked is dropped, and an asset listed twice is listed once.
 					if (id.IsSet && !ids.Contains(id))
 						ids.Add(id);
+				}
+			case .TextList:
+				let texts = *(List<String>*)address;
+				ClearAndDeleteItems!(texts);
+				for (int i < mBag.ElementCount(key, 0))
+				{
+					var element = mBag.GetValue(path..Clear()..AppendF("{}.{}", key, i), 0);
+					// An entry left empty is dropped.
+					if (!element.AsString.IsEmpty)
+						texts.Add(new String(element.AsString));
+					element.Dispose();
 				}
 			case .Count:
 				// Held within its range: the bag keeps whatever it is given.

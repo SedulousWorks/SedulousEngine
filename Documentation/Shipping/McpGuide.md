@@ -238,12 +238,14 @@ size, `renderFit`, and the player's
 window of the other shape, a landscape game on a phone held upright); and
 the quality: `qualityLevelIds`, the game's `Render Quality` levels in the order an options menu
 lists them, and `defaultQualityId`, the one it starts at where no export preset picks another,
-null for the list's last. Beside them, `settingCategories` says how they group: the Project
+null for the list's last; and `mcpFolders`, the folders outside the project its MCP tools work
+in (relative to it, `../Game`), each reached once the user approves it; an export leaves them out.
+Beside them, `settingCategories` says how they group: the Project
 Settings dialog's tabs in order (General, Startup, Audio, UI, Display, Quality), each with the
 names of its settings.
 `project_settings_set` changes them by the names `project_info` reports (a name that is no
 setting is refused with the list): each asset setting must name an asset of its type, `""`
-clears it, `uiFontIds`, `guiStyleSheetIds` and `qualityLevelIds` take the whole list,
+clears it, `uiFontIds`, `guiStyleSheetIds`, `qualityLevelIds` and `mcpFolders` take the whole list,
 `defaultQualityId` must be one of the levels as the call leaves them, a choice takes one of its
 values by name (`Borderless`, `IntegerScale`), and nothing changes when any of it is refused.
 `plugin_list` reports the plugins the project enables, in order: each

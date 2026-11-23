@@ -228,6 +228,9 @@ class ProjectSettingsTests
 		bed.Edit("windowResizable", Sedulous.GUI.Variant(false));
 		bed.Bag.ResizeList("uiFontIds", 0, 3);
 		bed.Bag.SetValue("uiFontIds.1", 0, Sedulous.GUI.Variant(Text(Bed.sFont, .. scope .())));
+		// A text list: its entries in order, an empty one dropped.
+		bed.Bag.ResizeList("mcpFolders", 0, 2);
+		bed.Bag.SetValue("mcpFolders.0", 0, Sedulous.GUI.Variant("../Game"));
 		Test.Assert(bed.Dialog.Save());
 		Test.Assert(!bed.Dialog.IsOpen);
 		let saved = bed.Project.Settings;
@@ -236,6 +239,7 @@ class ProjectSettingsTests
 		Test.Assert(!saved.WindowResizable);
 		Test.Assert(saved.UiFontIds.Count == 1);
 		Test.Assert(saved.UiFontIds[0] == Bed.sFont);
+		Test.Assert((saved.McpFolders.Count == 1) && (saved.McpFolders[0] == "../Game"));
 
 		// Persisted: a project opened again reads it.
 		let again = EditorProject.Open(Bed.cDir);
@@ -244,6 +248,7 @@ class ProjectSettingsTests
 		Test.Assert(again.Settings.Name == "Renamed");
 		Test.Assert(!again.Settings.WindowResizable);
 		Test.Assert((again.Settings.UiFontIds.Count == 1) && (again.Settings.UiFontIds[0] == Bed.sFont));
+		Test.Assert((again.Settings.McpFolders.Count == 1) && (again.Settings.McpFolders[0] == "../Game"));
 	}
 
 	/// A section per category the settings name, in the order they first name them (General, the
