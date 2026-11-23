@@ -7,8 +7,9 @@ using Sedulous.Json;
 namespace Sedulous.Mcp;
 
 /// The folders a tool may read or write a file in by a path an agent gives it: the open
-/// project, the user's data folder, the temp folder, and folders the user named (the host's
-/// start folder, --allow-path, the editor's MCP allowedFolders). A path anywhere else is
+/// project and the folders outside it the user approved for it, the user's data folder, the
+/// temp folder, and folders the user named (the host's start folder, --allow-path, the editor's
+/// --mcp-allow-path and MCP allowedFolders). A path anywhere else is
 /// refused, so an agent cannot be led to write over, or read, a file the user never put in
 /// its reach. Paths are compared by their text (PathNormalizeLexically): a link inside an
 /// allowed folder can still lead out of it.
@@ -16,19 +17,30 @@ class McpPathPolicy
 {
 	private String mProject = new .() ~ delete _;
 	private List<String> mFolders = new .() ~ DeleteContainerAndItems!(_);
+	private List<String> mProjectFolders = new .() ~ DeleteContainerAndItems!(_);
 
 	/// The open project's folder, absolute and normalised; empty when none is open.
 	public StringView Project => mProject;
 	/// How many folders are allowed beside the project.
 	public int FolderCount => mFolders.Count;
 
-	/// The open project's folder; empty when none is open.
-	public void SetProject(StringView folder)
+	/// The open project's folder, empty when none is open, and the folders outside it the user
+	/// approved for it (they go with it when another opens).
+	public void SetProject(StringView folder, Span<String> projectFolders = default)
 	{
 		mProject.Clear();
 		if (!folder.IsEmpty)
 			Resolve(folder, mProject);
+		ClearAndDeleteItems!(mProjectFolders);
+		for (let extra in projectFolders)
+		{
+			if (!extra.IsEmpty)
+				mProjectFolders.Add(Resolve(extra, .. new String()));
+		}
 	}
+
+	/// The folders outside the open project the user approved for it, absolute and normalised.
+	public Span<String> ProjectFolders => mProjectFolders;
 
 	/// Allows `folder` and everything under it; empty is ignored, and a folder already allowed is
 	/// not listed twice.
@@ -68,6 +80,11 @@ class McpPathPolicy
 		Resolve(path, outResolved);
 		if (!mProject.IsEmpty && PathIsInside(outResolved, mProject))
 			return true;
+		for (let folder in mProjectFolders)
+		{
+			if (PathIsInside(outResolved, folder))
+				return true;
+		}
 		for (let folder in mFolders)
 		{
 			if (PathIsInside(outResolved, folder))
@@ -81,6 +98,13 @@ class McpPathPolicy
 			outError.Append(mProject);
 			first = false;
 		}
+		for (let folder in mProjectFolders)
+		{
+			if (!first)
+				outError.Append(", ");
+			outError.Append(folder);
+			first = false;
+		}
 		for (let folder in mFolders)
 		{
 			if (!first)
@@ -90,7 +114,7 @@ class McpPathPolicy
 		}
 		if (first)
 			outError.Append("none");
-		outError.Append("); the user can allow a folder (Sedulous.Tools.Mcp --allow-path <dir>, or the editor's MCP allowedFolders setting)");
+		outError.Append("); the user can allow a folder (Sedulous.Tools.Mcp --allow-path <dir>, the editor's --mcp-allow-path or its MCP allowedFolders setting, or the project's mcpFolders once the user approves them in the editor)");
 		return false;
 	}
 

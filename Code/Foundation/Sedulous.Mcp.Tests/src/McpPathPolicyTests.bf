@@ -47,6 +47,23 @@ class McpPathPolicyTests
 		Test.Assert(!policy.Check("/home/someone/project/a.png", resolved, refusal));
 	}
 
+	/// A project's folders outside it that the user approved belong to that project: opening
+	/// another takes them away.
+	[Test]
+	public static void AProjectsApprovedFoldersAreAllowedWhileThatProjectIsOpen()
+	{
+		let policy = scope McpPathPolicy();
+		let resolved = scope String();
+		let refusal = scope String();
+		String[1] game = .("/home/someone/game/Game");
+		policy.SetProject("/home/someone/game/Project", game);
+		Test.Assert(policy.Check("/home/someone/game/Game/generated/Hud.xml", resolved, refusal), refusal);
+		Test.Assert(!policy.Check("/home/someone/game/Tools/x.py", resolved, refusal));
+		Test.Assert(refusal.Contains("/home/someone/game/Game"), refusal);
+		policy.SetProject("/home/someone/other");
+		Test.Assert(!policy.Check("/home/someone/game/Game/generated/Hud.xml", resolved, refusal));
+	}
+
 	/// A relative path is taken against the working directory, as the file it names would be.
 	[Test]
 	public static void ARelativePathIsTakenAgainstTheWorkingDirectory()

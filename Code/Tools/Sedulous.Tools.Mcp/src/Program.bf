@@ -111,7 +111,8 @@ class Program
 		operations.OnImported = new (primary, options) => { PipelineRegistration.AfterImport(primary, options); };
 		EngineTools.Register(server, session, builders, importers, creators, logBuffer, paths, operations);
 		// This host's additions: an agent opens, or scaffolds, the project it wants.
-		ProjectOpenTools.Register(server, session, owner, dataRoot);
+		ProjectOpenTools.Register(server, session, owner, dataRoot,
+			GetUserDataDirectory(.. scope .())); // the user's answers on a project's MCP folders
 
 		// The build stamp is the executable's own write time: what was linked, whatever
 		// was or was not recompiled into it.

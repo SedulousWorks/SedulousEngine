@@ -426,6 +426,34 @@ class EditorMcpServiceTests
 		Test.Assert(bench.Preference.AllowedFolders.IsEmpty, "the folder is this run's alone");
 	}
 
+	/// The open project's folders outside it reach the tools once the user approved them for it,
+	/// and a folder it lists that the user has not answered does not.
+	[Test]
+	public static void TheProjectsApprovedFoldersAreInReachAndAnUnansweredOneIsNot()
+	{
+		let bench = scope Bench("mcp_service_project_folders");
+		bench.Preference.Enabled = true;
+		bench.Preference.Port = 0; // the OS's choice
+		bench.Project.Settings.McpFolders.Add(new .("../mcp_folders_game"));
+		bench.Project.Settings.McpFolders.Add(new .("../mcp_folders_art"));
+		let listed = scope List<String>();
+		defer { ClearAndDeleteItems!(listed); }
+		McpFolders.Resolve(bench.Project.Directory, bench.Project.Settings, listed);
+		{
+			let store = scope Settings();
+			let projectKey = McpFolders.ProjectKey(bench.Project.Directory, .. scope .());
+			store.Section<McpFolderAnswers>().Record(projectKey, listed[0], true);
+			Test.Assert(McpFolders.Save(scope NativeFileSystem(bench.UserData), store) case .Ok);
+		}
+		let service = scope EditorMcpService(bench.Services());
+		Test.Assert(service.Start(bench.Project));
+		let policy = service.Host.Server.Paths;
+		let resolved = scope String();
+		let refusal = scope String();
+		Test.Assert(policy.Check(PathJoin(listed[0], "generated/Hud.xml", .. scope .()), resolved, refusal), refusal);
+		Test.Assert(!policy.Check(PathJoin(listed[1], "Rock.glb", .. scope .()), resolved, refusal));
+	}
+
 	[Test]
 	public static void StartingWhileRunningAndStoppingWhenStoppedAreHarmless()
 	{

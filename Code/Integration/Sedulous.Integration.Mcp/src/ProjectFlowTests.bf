@@ -898,4 +898,50 @@ static class ProjectFlowTests
 		}
 		Test.Assert(!Named(tools, "name", "asset_cook").Get("annotations").Get("openWorldHint").AsBool());
 	}
+
+	/// A project lists folders outside it for its tools (a game's sources beside it). Opened by an
+	/// agent through the headless host, which has no one to ask, it reaches only those the user
+	/// approved in the editor, and says which it does not.
+	[Test]
+	public static void ProjectOpenReachesTheMcpFoldersTheUserApprovedAndNamesTheRest()
+	{
+		let answersDir = Scratch("mcp_open_folders_answers", .. scope .());
+		defer RemoveDirectoryRecursive(answersDir);
+		Test.Assert(CreateDirectory(answersDir));
+		let dir = Scratch("mcp_open_folders_project", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(Sedulous.Editor.Project.EditorProject.Create(dir, "Folders") case .Ok);
+		let listed = scope List<String>();
+		defer { ClearAndDeleteItems!(listed); }
+		{
+			let project = Sedulous.Editor.Project.EditorProject.Open(dir);
+			Test.Assert(project != null);
+			defer delete project;
+			project.Settings.McpFolders.Add(new .("../mcp_open_folders_game"));
+			project.Settings.McpFolders.Add(new .("../mcp_open_folders_art"));
+			Test.Assert(project.SaveSettings() case .Ok);
+			Sedulous.Editor.Project.McpFolders.Resolve(project.Directory, project.Settings, listed);
+			let store = scope Sedulous.Settings.Settings();
+			let projectKey = Sedulous.Editor.Project.McpFolders.ProjectKey(project.Directory, .. scope .());
+			store.Section<Sedulous.Editor.Project.McpFolderAnswers>().Record(projectKey, listed[0], true);
+			Test.Assert(Sedulous.Editor.Project.McpFolders.Save(scope NativeFileSystem(answersDir), store) case .Ok);
+		}
+		Test.Assert(listed.Count == 2);
+
+		let server = scope McpServer();
+		server.Paths.AddFolder(dir); // the project alone: the folders beside it are the answers' to give
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner, "", answersDir);
+		let opened = CallOk(server, "project_open", With(Obj(), "directory", dir));
+		defer delete opened;
+		Test.Assert(opened.Get("mcpFolders").Count == 1);
+		Test.Assert(opened.Get("mcpFolders").At(0).AsString() == listed[0]);
+		Test.Assert(opened.Get("mcpFoldersNotApproved").Count == 1);
+		Test.Assert(opened.Get("mcpFoldersNotApproved").At(0).AsString() == listed[1]);
+		let resolved = scope String();
+		let refusal = scope String();
+		Test.Assert(server.Paths.Check(PathJoin(listed[0], "generated/Hud.xml", .. scope .()), resolved, refusal), refusal);
+		Test.Assert(!server.Paths.Check(PathJoin(listed[1], "Rock.glb", .. scope .()), resolved, refusal));
+	}
 }

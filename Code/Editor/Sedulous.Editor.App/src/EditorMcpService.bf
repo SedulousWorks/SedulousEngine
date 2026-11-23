@@ -198,11 +198,11 @@ class EditorMcpService
 		mOperations = new EditorProjectOperations(operations);
 		mHost = new EditorMcpHost(mServices.Context, mSession, mServices.Log, mServices.Builders, mServices.Context.Importers,
 			paths, mOperations, BuildStamp(.. scope .()));
-		// Where the tools may read and write by a path an agent gives: the project, the user-data
-		// and temp folders, the engine's data root, the folders the user allowed in the settings,
-		// and those this run was started with.
+		// Where the tools may read and write by a path an agent gives: the project and the folders
+		// outside it the user approved for it, the user-data and temp folders, the engine's data
+		// root, the folders the user allowed in the settings, and those this run was started with.
 		let allowed = mHost.Server.Paths;
-		allowed.SetProject((project != null) ? project.Directory : "");
+		ApplyProjectPaths(project);
 		allowed.AddStandardFolders();
 		allowed.AddFolder(userData);
 		allowed.AddFolder(mServices.DataRoot); // the engine's own data (its fonts, say)
@@ -389,6 +389,21 @@ class EditorMcpService
 	public static void BuildStamp(String outStamp) => Sedulous.Engine.Project.EngineVersion.ExecutableStamp(outStamp);
 
 	/// The services' directory, or the user data directory when they name none.
+	/// The open project's folder and the folders outside it the user approved for it (the
+	/// project's McpFolders, as answered in <user-data>/mcp-folders.xml).
+	private void ApplyProjectPaths(EditorProject project)
+	{
+		let allowed = mHost.Server.Paths;
+		if (project == null)
+		{
+			allowed.SetProject("");
+			return;
+		}
+		let folders = scope McpFolderStanding();
+		McpFolders.Stand(UserDataDirectory(.. scope .()), project.Directory, project.Settings, folders);
+		allowed.SetProject(project.Directory, folders.Approved);
+	}
+
 	private void UserDataDirectory(String outPath)
 	{
 		if (mServices.UserDataDirectory.IsEmpty)
