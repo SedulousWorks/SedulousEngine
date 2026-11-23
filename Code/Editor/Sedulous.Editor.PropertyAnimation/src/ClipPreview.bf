@@ -12,7 +12,7 @@ namespace Sedulous.Editor.PropertyAnimation;
 class ClipPreview
 {
 	/// The entity's own transform, animated by this name (it is the scene's, not a component).
-	public const String cTransformName = "Transform";
+	public const String cTransformName = TrackTargets.cTransform;
 
 	/// Borrowed: the scene outlives it.
 	private Sedulous.Scene.Scene mScene;
@@ -122,62 +122,18 @@ class ClipPreview
 		mPosing = false;
 	}
 
-	private ComponentManagerBase ManagerNamed(StringView name)
-	{
-		ComponentManagerBase found = null;
-		let typeName = scope String();
-		mScene.ForEachManager(scope [&] (manager) =>
-			{
-				if ((found != null) || (manager.ComponentType == null))
-					return;
-				typeName.Clear();
-				manager.ComponentType.GetName(typeName);
-				if (typeName == name)
-					found = manager;
-			});
-		return found;
-	}
-
 	private PropertyValue ReadTarget(EntityHandle entity, StringView componentType, StringView propertyPath)
 	{
-		let binding = scope PropertyBinding();
-		if (componentType == cTransformName)
-		{
-			PropertyBindingResolver.Resolve(typeof(Transform), propertyPath, binding);
-			if (!binding.IsResolved)
-				return .Empty;
-			var local = mScene.GetLocalTransform(entity);
-			return PropertyBindingResolver.Read(binding, &local, typeof(Transform));
-		}
-		let manager = ManagerNamed(componentType);
-		if ((manager == null) || !manager.HasComponent(entity))
-			return .Empty;
-		PropertyBindingResolver.Resolve(manager.ComponentType, propertyPath, binding);
-		if (!binding.IsResolved)
-			return .Empty;
-		return PropertyBindingResolver.Read(binding, manager.GetComponentAddress(entity), manager.ComponentType);
+		let target = scope TrackTarget();
+		TrackTargets.Resolve(mScene, componentType, propertyPath, target);
+		return TrackTargets.Read(mScene, target, entity);
 	}
 
 	private void WriteTarget(EntityHandle entity, StringView componentType, StringView propertyPath, PropertyValue value)
 	{
-		let binding = scope PropertyBinding();
-		if (componentType == cTransformName)
-		{
-			PropertyBindingResolver.Resolve(typeof(Transform), propertyPath, binding);
-			if (!binding.IsResolved)
-				return;
-			// Through SetLocalTransform, so the world matrix follows.
-			var local = mScene.GetLocalTransform(entity);
-			if (PropertyBindingResolver.Write(binding, &local, typeof(Transform), value) case .Ok)
-				mScene.SetLocalTransform(entity, local);
-			return;
-		}
-		let manager = ManagerNamed(componentType);
-		if ((manager == null) || !manager.HasComponent(entity))
-			return;
-		PropertyBindingResolver.Resolve(manager.ComponentType, propertyPath, binding);
-		if (binding.IsResolved)
-			PropertyBindingResolver.Write(binding, manager.GetComponentAddress(entity), manager.ComponentType, value).IgnoreError();
+		let target = scope TrackTarget();
+		TrackTargets.Resolve(mScene, componentType, propertyPath, target);
+		TrackTargets.Write(mScene, target, entity, value);
 	}
 }
 

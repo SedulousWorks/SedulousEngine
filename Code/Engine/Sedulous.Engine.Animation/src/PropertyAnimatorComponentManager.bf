@@ -23,9 +23,8 @@ namespace Sedulous.Engine.Animation;
 class PropertyAnimatorComponentManager : ResourceBindingComponentManager<PropertyAnimatorComponent>
 {
 	/// The entity's local transform is not a reflected COMPONENT, being baked into the scene,
-	/// so a track names it with this RESERVED type name and binds against the transform value
-	/// instead. A real component may not take the name.
-	public const String cTransformComponentName = "Transform";
+	/// so a track names it with this RESERVED type name (TrackTargets.cTransform).
+	public const String cTransformComponentName = TrackTargets.cTransform;
 
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
@@ -40,7 +39,7 @@ class PropertyAnimatorComponentManager : ResourceBindingComponentManager<Propert
 	protected override void OnComponentCreated(PropertyAnimatorComponent* component,
 		EntityHandle entity)
 	{
-		component.Bindings = new List<PropertyTrackBinding>();
+		component.Bindings = new List<TrackTarget>();
 	}
 
 	protected override void OnComponentDestroyed(PropertyAnimatorComponent* component,
@@ -100,145 +99,44 @@ class PropertyAnimatorComponentManager : ResourceBindingComponentManager<Propert
 
 		for (int i < trackCount)
 		{
-			let bound = animator.Bindings[i];
-			if (bound.Disabled || !bound.Binding.IsResolved)
-				continue;
-
-			let track = clip.Tracks[i];
-
-			if (bound.IsTransform)
-			{
-				// Read, modify and write the scene transform through the scene's own setter,
-				// which is what flags the world matrix dirty; writing the field directly would
-				// leave the matrix stale. The merged sample keeps the LIVE value for a channel
-				// the track does not drive, so a position only track does not teleport the
-				// rotation to identity.
-				var local = mScene.GetLocalTransform(owner);
-				let current = PropertyBindingResolver.Read(bound.Binding, &local,
-					typeof(Transform));
-				let value = track.SampleMerged(evalTime, current);
-				if (PropertyBindingResolver.Write(bound.Binding, &local, typeof(Transform), value)
-					case .Ok)
-					mScene.SetLocalTransform(owner, local);
-				continue;
-			}
-
-			if (bound.Manager == null)
-				continue;
-
-			let address = bound.Manager.GetComponentAddress(owner);
-			// Removed this frame: skip it and keep the binding, since the component may come
-			// back before the clip ends.
-			if (address == null)
-				continue;
-
-			let type = bound.Manager.ComponentType;
-			let current = PropertyBindingResolver.Read(bound.Binding, address, type);
-			let value = track.SampleMerged(evalTime, current);
-			PropertyBindingResolver.Write(bound.Binding, address, type, value).IgnoreError();
+			// A channel the track does not drive keeps the live value, so a position only track
+			// does not teleport the rotation to identity; a component removed this frame is
+			// skipped and its target kept, since it may come back before the clip ends.
+			let target = animator.Bindings[i];
+			if (target.IsResolved)
+				TrackTargets.Apply(mScene, target, owner, clip.Tracks[i], evalTime);
 		}
 	}
 
-	/// Resolves each track's target manager, by component type name, and its property chain,
-	/// ONCE. A track whose type or path will not resolve is disabled with one warning.
+	/// Resolves each track's target ONCE. A track whose type or path will not resolve, or whose
+	/// kind does not match its property, is disabled with one warning: it would be a silent write
+	/// failure every frame.
 	private void BuildBindings(PropertyAnimatorComponent* animator, PropertyAnimationClip clip)
 	{
 		ClearAndDeleteItems!(animator.Bindings);
 
 		for (let track in clip.Tracks)
 		{
-			let bound = new PropertyTrackBinding();
-			animator.Bindings.Add(bound);
-
-			// The built in transform target binds against the transform value itself.
-			if (track.ComponentType == cTransformComponentName)
+			let target = new TrackTarget();
+			animator.Bindings.Add(target);
+			TrackTargets.Resolve(mScene, track, target);
+			switch (target.Status)
 			{
-				bound.IsTransform = true;
-				PropertyBindingResolver.Resolve(typeof(Transform), track.PropertyPath,
-					bound.Binding);
-				if (!bound.Binding.IsResolved)
-				{
-					GlobalLog(.Warning,
-						"PropertyAnimation: the track property 'Transform.{}' was not found, so it is disabled",
-						track.PropertyPath);
-					bound.Disabled = true;
-				}
-				CheckKind(bound, track);
-				continue;
-			}
-
-			let manager = FindManagerByComponentTypeName(track.ComponentType);
-			if ((manager == null) || (manager.ComponentType == null))
-			{
+			case .Resolved:
+			case .UnknownComponent:
 				GlobalLog(.Warning,
 					"PropertyAnimation: the track targets the unknown component type '{}', so it is disabled",
 					track.ComponentType);
-				bound.Disabled = true;
-				continue;
-			}
-
-			bound.Manager = manager;
-			PropertyBindingResolver.Resolve(manager.ComponentType, track.PropertyPath,
-				bound.Binding);
-			if (!bound.Binding.IsResolved)
-			{
+			case .UnknownProperty:
 				GlobalLog(.Warning,
 					"PropertyAnimation: the track property '{}' was not found on '{}', so it is disabled",
 					track.PropertyPath, track.ComponentType);
-				bound.Disabled = true;
+			case .KindMismatch:
+				GlobalLog(.Warning,
+					"PropertyAnimation: the track '{}.{}' does not match the property's type, so it is disabled",
+					track.ComponentType, track.PropertyPath);
 			}
-			CheckKind(bound, track);
 		}
-	}
-
-	/// The reflected leaf type a kind writes as.
-	private static Type ExpectedLeafType(TrackValueKind kind)
-	{
-		switch (kind)
-		{
-		case .Float: return typeof(float);
-		case .Float3: return typeof(Float3);
-		case .Color: return typeof(Color);
-		case .Quat: return typeof(Quaternion);
-		}
-	}
-
-	/// A track whose kind does not match its resolved leaf would be a silent write failure
-	/// every frame. Disable it once, with a warning, exactly as a failed resolve is.
-	private void CheckKind(PropertyTrackBinding bound, PropertyTrack track)
-	{
-		if (bound.Disabled || !bound.Binding.IsResolved)
-			return;
-
-		let chain = bound.Binding.Chain;
-		let leaf = chain[chain.Length - 1];
-		if (leaf.FieldType != ExpectedLeafType(track.Kind))
-		{
-			GlobalLog(.Warning,
-				"PropertyAnimation: the track '{}.{}' does not match the property's type, so it is disabled",
-				track.ComponentType, track.PropertyPath);
-			bound.Disabled = true;
-		}
-	}
-
-	/// The scene's manager whose reflected component type carries this name, or null.
-	private ComponentManagerBase FindManagerByComponentTypeName(StringView name)
-	{
-		ComponentManagerBase found = null;
-		mScene.ForEachManager(scope [&] (manager) =>
-			{
-				if (found != null)
-					return;
-				let type = manager.ComponentType;
-				if (type == null)
-					return;
-
-				let typeName = scope String();
-				type.GetName(typeName);
-				if (typeName == name)
-					found = manager;
-			});
-		return found;
 	}
 
 	/// Advances the clock under the loop mode, answering the evaluation time. The speed may be

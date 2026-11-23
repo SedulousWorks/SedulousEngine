@@ -61,7 +61,7 @@ class PropertyAnimatorTests
 		// Binding happens here, and the mismatch is caught with it.
 		scene.Update(0.0f);
 		Test.Assert(animator.Bindings.Count == 1);
-		Test.Assert(animator.Bindings[0].Disabled);
+		Test.Assert(animator.Bindings[0].Status == .KindMismatch);
 
 		scene.Update(0.5f);
 		// Never written.

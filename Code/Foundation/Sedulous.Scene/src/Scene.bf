@@ -915,6 +915,26 @@ class Scene : IScriptWeaklyHeld
 		return null;
 	}
 
+	/// The component manager whose component type's reflected name is `name`, or null: for data
+	/// that names a component as text (an animation track's target).
+	public ComponentManagerBase FindManagerByComponentName(StringView name)
+	{
+		let typeName = scope String();
+		for (let system in mSortedSystems)
+		{
+			if (let manager = system.AsComponentManager)
+			{
+				if (manager.ComponentType == null)
+					continue;
+				typeName.Clear();
+				manager.ComponentType.GetName(typeName);
+				if (typeName == name)
+					return manager;
+			}
+		}
+		return null;
+	}
+
 	/// Removes and destroys the system registered under `systemType`; a manager's pool dies
 	/// with it. Returns whether there was one.
 	///

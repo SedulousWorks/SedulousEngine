@@ -54,7 +54,7 @@ struct PropertyAnimatorComponent : ISerializable, IComponentResources
 	public PropertyAnimationClip BoundClip = null;
 	/// OWNED BY THE MANAGER, like every other list a component points at.
 	[Hidden]
-	public List<PropertyTrackBinding> Bindings = null;
+	public List<TrackTarget> Bindings = null;
 
 	public this() {}
 
