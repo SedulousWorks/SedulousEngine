@@ -997,6 +997,52 @@ class Scene : IScriptWeaklyHeld
 		mRun = run;
 	}
 
+	// ---- entity events ----
+
+	/// BORROWED, in the order added.
+	private List<IEntityEventSink> mEntityEventSinks = new .() ~ delete _;
+	/// A post is calling the sinks.
+	private bool mPostingEntityEvent = false;
+
+	/// Adds a listener for this scene's entity events (borrowed; remove it before it goes). Not
+	/// during a post. A sink already added is not added twice.
+	public void AddEntityEventSink(IEntityEventSink sink)
+	{
+		System.Diagnostics.Debug.Assert(!mPostingEntityEvent, "an entity event sink added during a post");
+		for (let existing in mEntityEventSinks)
+		{
+			if (existing === sink)
+				return;
+		}
+		mEntityEventSinks.Add(sink);
+	}
+
+	public void RemoveEntityEventSink(IEntityEventSink sink)
+	{
+		System.Diagnostics.Debug.Assert(!mPostingEntityEvent, "an entity event sink removed during a post");
+		for (int i < mEntityEventSinks.Count)
+		{
+			if (mEntityEventSinks[i] === sink)
+			{
+				mEntityEventSinks.RemoveAt(i);
+				return;
+			}
+		}
+	}
+
+	/// Whether anything listens: a poster with nothing to tell builds no event.
+	public bool WantsEntityEvents => !mEntityEventSinks.IsEmpty;
+
+	/// Tells every sink, at once and in the order they were added. The scene stores nothing; each
+	/// sink keeps its own queue and delivers at its own safe point.
+	public void PostEntityEvent(EntityEvent entityEvent)
+	{
+		mPostingEntityEvent = true;
+		for (let sink in mEntityEventSinks)
+			sink.OnEntityEvent(this, entityEvent);
+		mPostingEntityEvent = false;
+	}
+
 	// ---- play and edit state ----
 
 	public bool IsStarted => mStarted;
