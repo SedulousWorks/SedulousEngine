@@ -3362,6 +3362,20 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	// The widget's own handler for an input event.
 	protected void InvokeInputHandler(Event e)
 	{
+		// A scroll container's bars are its own: a press on one, the drag it starts and the pointer
+		// moving over them go to the bars and not to the widget, which takes presses and moves as its
+		// content's (a code editor placing its caret took every press, and its bars could not be
+		// dragged). Which bar part the pointer is over is tracked for every move, whatever the widget
+		// does with it, for the bars' hover look and the cursor.
+		let container = IsScrollContainer;
+		if (container && IsBarPointerEvent(e))
+		{
+			ScrollDefaultAction(e);
+			return;
+		}
+		let hover = container && IsHoverEvent(e);
+		if (hover)
+			ScrollDefaultAction(e);
 		switch (e.Type)
 		{
 		case .MouseDown: OnMouseDown((MouseEvent)e);
@@ -3380,9 +3394,38 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 		case .PointerCancel: OnPointerCancel((MouseEvent)e);
 		default:
 		}
-		if (!e.Handled && IsScrollContainer)
+		if (!e.Handled && container && !hover)
 			ScrollDefaultAction(e);
 	}
+
+	private static bool IsHoverEvent(Event e) => (e.Type == .MouseMove) || (e.Type == .MouseEnter) || (e.Type == .MouseLeave);
+
+	/// An event that is the bars' own: a left press on a bar, a move while a thumb is dragged or over
+	/// a bar, and the release or loss that ends a thumb's drag.
+	private bool IsBarPointerEvent(Event e)
+	{
+		switch (e.Type)
+		{
+		case .MouseDown:
+			let mouse = (MouseEvent)e;
+			if (mouse.Button != .Left)
+				return false;
+			let p = ConvertToNodeSpace(mouse.Position);
+			return ScrollBarTrack(0).Contains(p) || ScrollBarTrack(1).Contains(p);
+		case .MouseMove:
+			if (mScrollDragAxis <= 1)
+				return true;
+			let p = ConvertToNodeSpace(((MouseEvent)e).Position);
+			return ScrollBarTrack(0).Contains(p) || ScrollBarTrack(1).Contains(p);
+		case .MouseUp, .PointerCancel, .PointerCaptureLost:
+			return mScrollDragAxis <= 1;
+		default:
+			return false;
+		}
+	}
+
+	/// The pointer is on this scroll container's bars: over one, or dragging a thumb.
+	public bool IsPointerOnBars => (mScrollHover != 0) || (mScrollDragAxis <= 1);
 
 	/// Moves the offset (clamped as ScrollOffset says) and reports the scroll; a smooth scroll's
 	/// steps come here without ending it.

@@ -975,8 +975,8 @@ class EventDispatcher
 	public float Time => mTime;
 
 	/// The pointer's look now: the nearest set `cursor` up from the node under the pointer (from
-	/// the captured node while one holds the pointer, so a drag keeps its look), else Default. The
-	/// host shows it (the shell bridge does).
+	/// the captured node while one holds the pointer, so a drag keeps its look), else Default; over
+	/// a scroll container's bars, Default. The host shows it (the shell bridge does).
 	public Sedulous.GUI.Cursor Cursor
 	{
 		get
@@ -988,6 +988,8 @@ class EventDispatcher
 			let from = (mCaptureNode != null) ? mCaptureNode : (mDownNode != null) ? mDownNode : mOverNode;
 			for (var n = from; n != null; n = n.Parent)
 			{
+				if (n.IsPointerOnBars)
+					return .Default; // a scroll bar is not its content (a code editor's text)
 				let cursor = n.CursorNow;
 				if (cursor != .Auto)
 					return cursor;

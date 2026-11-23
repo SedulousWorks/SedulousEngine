@@ -364,6 +364,65 @@ class ScrollTests
 		s.D.InjectMouseUp(.(96.0f, 90.0f), .Left);
 	}
 
+	/// A view that takes every press and move as its content's, as the code editor places its caret.
+	private class PressTakingView : ScrollView
+	{
+		public int Presses = 0;
+		public int Moves = 0;
+
+		protected override void OnMouseDown(MouseEvent e)
+		{
+			Presses++;
+			e.Handled = true;
+		}
+
+		protected override void OnMouseMove(MouseEvent e)
+		{
+			Moves++;
+			e.Handled = true;
+		}
+	}
+
+	/// Its bars were handled only when the widget left the event unhandled, so a widget taking
+	/// presses and moves as its content's left them undraggable, their hover unlit and the
+	/// content's cursor over them.
+	[Test]
+	public static void AWidgetThatTakesEveryPressStillLetsItsBarsBeDraggedWithTheArrowOverThem()
+	{
+		let s = scope Scroller(0);
+		let view = new PressTakingView();
+		view.Position = .(150.0f, 0.0f);
+		view.Size = .(100.0f, 100.0f);
+		s.Root.AddChild(view);
+		view.ReleaseRef();
+		for (int i < 6)
+			NewPanel(view, scope (st) => { st.Height = LayoutLength.Px(50.0f); });
+		view.Cursor = .Text; // its content takes text, as the code editor's does
+		s.Root.UpdateLayout();
+		let thumb = view.ScrollBarThumb(1);
+		Test.Assert(thumb.Height > 0.0f);
+		let grab = Float2(150.0f + 96.0f, thumb.Y + 5.0f);
+		s.D.InjectMouseMove(.(160.0f, 50.0f));
+		Test.Assert(s.D.Cursor == .Text);
+		Test.Assert(view.Moves == 1);
+		s.D.InjectMouseMove(grab);
+		Test.Assert(s.D.Cursor == .Default, "the arrow over a bar");
+		Test.Assert(view.Moves == 1, "a move over the bar is the bar's");
+		view.Moves = 0;
+		s.D.InjectMouseDown(grab, .Left);
+		Test.Assert(view.Presses == 0, "the bar's press, not the content's");
+		s.D.InjectMouseMove(.(grab.X, grab.Y + (100.0f - thumb.Height) * 0.5f));
+		Test.Assert(Near(view.ScrollOffset.Y, 100.0f));
+		Test.Assert(view.Moves == 0);
+		Test.Assert(s.D.Cursor == .Default, "the thumb's drag keeps the arrow");
+		s.D.InjectMouseUp(.(grab.X, 90.0f), .Left);
+		s.D.InjectMouseMove(.(160.0f, 50.0f)); // back over the content
+		Test.Assert(s.D.Cursor == .Text);
+		s.D.InjectMouseDown(.(160.0f, 50.0f), .Left);
+		Test.Assert(view.Presses == 1);
+		s.D.InjectMouseUp(.(160.0f, 50.0f), .Left);
+	}
+
 	[Test]
 	public static void AFocusedDescendantComesIntoViewByTheLeastThatShowsIt()
 	{
