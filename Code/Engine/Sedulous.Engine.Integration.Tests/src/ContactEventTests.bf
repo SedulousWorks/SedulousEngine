@@ -5,36 +5,13 @@ using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Behavior;
-using Sedulous.Engine.Integration;
 
 namespace Sedulous.Engine.Integration.Tests;
 
-/// The physics to script contact bridge: the kind map, the install contract, and a real
-/// Jolt collision and trigger reaching behaviours through it.
-static class ContactBridgeTests
+/// A real Jolt collision and trigger reaching behaviours: physics posts them to the scene, with
+/// nothing between it and the behavior system.
+static class ContactEventTests
 {
-	[Test]
-	public static void EveryPhysicsContactKindMapsOntoItsScriptKind()
-	{
-		Test.Assert(ScriptPhysicsContactBridge.ToScriptContactKind(.Begin) == .Begin);
-		Test.Assert(ScriptPhysicsContactBridge.ToScriptContactKind(.End) == .End);
-		Test.Assert(ScriptPhysicsContactBridge.ToScriptContactKind(.TriggerEnter) == .TriggerEnter);
-		Test.Assert(ScriptPhysicsContactBridge.ToScriptContactKind(.TriggerExit) == .TriggerExit);
-	}
-
-	[Test]
-	public static void AFreshBridgeIsNotInstalledAndUninstallIsASafeNoOp()
-	{
-		let bridge = scope ScriptPhysicsContactBridge();
-		Test.Assert(!bridge.Installed);
-		bridge.Uninstall();
-		Test.Assert(!bridge.Installed);
-		bridge.Install(null, null);
-		Test.Assert(!bridge.Installed, "half a wiring is no wiring");
-		// A contact with nothing behind it is dropped, not dereferenced.
-		bridge.OnContact(EntityContact());
-	}
-
 	[Test]
 	public static void AJoltCollisionDispatchesOnContactBeginWithAllFourArguments()
 	{

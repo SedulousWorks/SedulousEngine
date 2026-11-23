@@ -11,7 +11,6 @@ using Sedulous.Engine.Audio;
 using Sedulous.Engine.Run;
 using Sedulous.Engine.GUI;
 using Sedulous.Engine.Input;
-using Sedulous.Engine.Integration;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Net;
 using Sedulous.Engine.Particles;
@@ -117,10 +116,6 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	private NetworkStartup mNetStartup = .();
 
-	/// OWNED: physics contacts to script handlers. Uninstalled before the subsystems go.
-	private ScriptPhysicsContactBridge mContactBridge = new .() ~ delete _;
-	/// OWNED: the animation's events (a one-shot ended) to script handlers, likewise.
-	private ScriptAnimationBridge mAnimationBridge = new .() ~ delete _;
 	/// `Save` to scripts outside every run (the editor's Simulate): every fallback read, nothing
 	/// written, rather than a fault on a missing service. On the application's services, since no
 	/// subsystem sits beside RunSave's owner (ApplicationRun, a run); a run's own comes first.
@@ -428,12 +423,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		host.Subsystems.RegisterService(mIdleSave);
 		// The scene facades' drawer.
 		DebugFacade.Renderer = mRender;
-		// Physics contacts reach behaviours through the composition root's bridge: neither
-		// subsystem names the other.
-		mContactBridge.Install(mPhysics, scripts);
-		// The same for the animation's events: a one-shot ended reaches onAnimationFinished.
-		if (mAnimation != null)
-			mAnimationBridge.Install(mAnimation, scripts);
 		WireInstanceScripting(mInstance, host);
 
 		// The net subsystem injects the replication managers into every scene so authored
@@ -1039,8 +1028,6 @@ class DefaultApplication : IApplication, ISceneObserver
 			ShutdownGlobalProfiler();
 			mInstalledProfiler = false;
 		}
-		mContactBridge.Uninstall();
-		mAnimationBridge.Uninstall();
 		// The runs' games and scenes: gone already in the player (OnExit); for the editor here.
 		TearDownRuns();
 		DebugFacade.Renderer = null;

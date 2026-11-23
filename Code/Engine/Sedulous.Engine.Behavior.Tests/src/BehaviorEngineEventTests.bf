@@ -6,8 +6,8 @@ using Sedulous.Engine.Behavior;
 
 namespace Sedulous.Engine.Behavior.Tests;
 
-/// An engine event through the neutral queue (an animation's one-shot ending): its handler gets
-/// its arguments on the next drain, never inside the caller, and it is no bus subscription.
+/// An engine event posted to the scene (an animation's one-shot ending): its handler gets its
+/// arguments on the next drain, never inside the post, and it is no bus subscription.
 static class BehaviorEngineEventTests
 {
 	private const String cWatcher = """
@@ -34,15 +34,15 @@ static class BehaviorEngineEventTests
 		play.Step();
 
 		let clipId = Guid(0x51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9);
-		var args = ScriptValue[1](.FromGuid(clipId));
-		play.Scripts.EnqueueHandler(pet, "onAnimationFinished", .(&args[0], 1));
-		Test.Assert(play.PropInt(pet, "finished") == 0, "queued, not delivered inside the caller");
+		var clip = EntityEventArg.FromGuid(clipId);
+		play.Scene.PostEntityEvent(.(pet, "animationFinished", .(&clip, 1)));
+		Test.Assert(play.PropInt(pet, "finished") == 0, "queued, not delivered inside the post");
 		play.Step();
 
 		Test.Assert(play.PropInt(pet, "finished") == 1);
 		Test.Assert(play.Prop(pet, "clip").AsGuid == clipId, "the clip crossed");
-		// No handler name, nothing queued.
-		play.Scripts.EnqueueHandler(pet, "", .(&args[0], 1));
+		// No event name, nothing queued.
+		play.Scene.PostEntityEvent(.(pet, "", .(&clip, 1)));
 		play.Step();
 		Test.Assert(play.PropInt(pet, "finished") == 1);
 		Test.Assert(!play.BehaviorOf(pet).Faulted);

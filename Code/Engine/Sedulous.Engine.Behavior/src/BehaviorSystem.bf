@@ -230,54 +230,6 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 		mMessages.Add(pending);
 	}
 
-	/// A contact between two of this scene's entities, to BOTH sides' declared handlers,
-	/// each seeing the OTHER as the entity. A collision kind gets (other, point, normal,
-	/// speed); a trigger kind gets (other). Queued, never delivered inside the caller.
-	public void DeliverContact(EntityHandle a, EntityHandle b, ScriptContactKind kind, Float3 point,
-		Float3 normal, float speed)
-	{
-		StringView handler;
-		bool trigger = false;
-		switch (kind)
-		{
-		case .Begin: handler = "onContactBegin";
-		case .End: handler = "onContactEnd";
-		case .TriggerEnter: handler = "onTriggerEnter"; trigger = true;
-		case .TriggerExit: handler = "onTriggerExit"; trigger = true;
-		}
-		DeliverContactSide(a, b, handler, point, normal, speed, trigger);
-		DeliverContactSide(b, a, handler, point, normal, speed, trigger);
-	}
-
-	private void DeliverContactSide(EntityHandle self, EntityHandle other, StringView handler,
-		Float3 point, Float3 normal, float speed, bool trigger)
-	{
-		// A side whose body no longer maps to a live entity, an end after a destroy, has
-		// nobody to tell.
-		if (!self.IsAssigned)
-			return;
-		var args = ScriptValue[4](.FromEntity(other, mScene), .FromFloat3(point), .FromFloat3(normal),
-			.FromFloat(speed));
-		EnqueueHandler(self, handler, .(&args[0], trigger ? 1 : 4));
-	}
-
-	/// An engine event's handler call (a physics contact, an animation's one-shot ending): the
-	/// name already the final `on<Event>` such as "onContactBegin", with its arguments
-	/// marshalled. The SAME deferred queue as Send, so it drains at the tick's top level: the
-	/// subsystems push their events from their own ticks, never nested in a script call, and
-	/// delivery is gated by HasHandler like a message.
-	public void EnqueueHandler(EntityHandle target, StringView handler, Span<ScriptValue> args)
-	{
-		if (handler.IsEmpty)
-			return;
-		let pending = new PendingScriptMessage();
-		pending.Target = target;
-		pending.Handler.Set(handler);
-		for (let arg in args)
-			pending.AddArg(arg);
-		mMessages.Add(pending);
-	}
-
 	/// "heal" -> "onHeal": the send convention. The first character uppercased.
 	public static void HandlerNameOf(StringView message, String outHandler)
 	{

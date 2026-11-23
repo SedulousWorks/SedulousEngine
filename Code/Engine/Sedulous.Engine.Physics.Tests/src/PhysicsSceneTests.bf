@@ -184,10 +184,9 @@ class PhysicsSceneTests
 		let faller = play.AddBox(6.0f);
 		play.Start();
 
-		let recorder = scope RecordingContactListener();
-		let listeners = scope List<IContactListener>();
-		listeners.Add(recorder);
-		play.Physics.SetContactListeners(listeners);
+		let recorder = scope RecordingContactSink();
+		play.Scene.AddEntityEventSink(recorder);
+		defer play.Scene.RemoveEntityEventSink(recorder);
 
 		var entered = false;
 		for (int i = 0; (i < 240) && !entered; i++)

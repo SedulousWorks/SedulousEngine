@@ -195,10 +195,9 @@ class PhysicsCharacterTests
 		play.Start();
 		play.Step(20);
 
-		let recorder = scope RecordingContactListener();
-		let listeners = scope List<IContactListener>();
-		listeners.Add(recorder);
-		play.Physics.SetContactListeners(listeners);
+		let recorder = scope RecordingContactSink();
+		play.Scene.AddEntityEventSink(recorder);
+		defer play.Scene.RemoveEntityEventSink(recorder);
 
 		// Straight through where the trigger is (x 2.3 to 3.7) and out past it.
 		let character = play.Characters.Get(hero);
@@ -212,8 +211,8 @@ class PhysicsCharacterTests
 			play.Step(1);
 			for (let contact in recorder.Contacts)
 			{
-				if (!(((contact.A == volume) && (contact.B == hero))
-					|| ((contact.A == hero) && (contact.B == volume))))
+				// The volume's own event: each side of a contact is told once.
+				if (!((contact.A == volume) && (contact.B == hero)))
 					continue;
 				if ((contact.Kind == .TriggerEnter) && (entered++ == 0))
 					enteredAt = character.CurrPosition.X;

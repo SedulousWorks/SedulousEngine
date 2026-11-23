@@ -124,34 +124,6 @@ class BehaviorSubsystem : Subsystem, ISceneObserver
 		}
 	}
 
-	// ---- contact events, the neutral ingress ----
-
-	/// Delivers a resolved contact to BOTH entities' declared handlers, each seeing the
-	/// OTHER as the entity. Physics agnostic: the host bridges physics contacts to this. Only
-	/// ENQUEUES onto the owning scene's deferred queue, drained at the scene tick's top
-	/// level, so there is no re-entrancy even though physics stepped this frame.
-	public void DeliverContact(Scene scene, EntityHandle a, EntityHandle b, ScriptContactKind kind,
-		Float3 point, Float3 normal, float speed)
-	{
-		if (scene == null)
-			return;
-		if (let system = scene.GetSystem<BehaviorSystem>())
-			system.DeliverContact(a, b, kind, point, normal, speed);
-	}
-
-	/// An engine event for an entity's behaviours: `handler` (the final `on<Event>` name, such
-	/// as "onAnimationFinished") called with `args` on each of the entity's behaviours that has
-	/// it. As DeliverContact, it only ENQUEUES onto the scene's deferred queue, drained at the
-	/// scene tick's top level; a host bridges a subsystem's events to it, so the subsystem stays
-	/// script agnostic.
-	public void DeliverEvent(Scene scene, EntityHandle target, StringView handler, Span<ScriptValue> args)
-	{
-		if ((scene == null) || !target.IsAssigned)
-			return;
-		if (let system = scene.GetSystem<BehaviorSystem>())
-			system.EnqueueHandler(target, handler, args);
-	}
-
 	/// The host `scene`'s scripts run on: the one its run holds (a run registers its
 	/// BehaviorRunHost among its services), else the default host.
 	public BehaviorRunHost RunHostFor(Scene scene)

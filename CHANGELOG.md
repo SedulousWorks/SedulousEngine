@@ -128,6 +128,11 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Engine: a domain tells an entity's behaviors what happened to it by posting an entity event to the
+  scene (`Scene.PostEntityEvent`); native code listens with `IEntityEventSink`. Physics posts
+  contacts and triggers, animation its ended one-shots and clip events. `IContactListener`,
+  `IAnimationListener` and the `Sedulous.Engine.Integration` bridges are gone; behaviors' handlers
+  are unchanged.
 - Scripts: a run behavior's handlers take the names the other kinds use: `launch`, `update` and
   `exit` are now `onStart`, `onUpdate` and `onStop`.
 - Scripts: `scene.Scripts` is `scene.Behaviors`, and its `AddBehavior` takes a `behaviorClass`.

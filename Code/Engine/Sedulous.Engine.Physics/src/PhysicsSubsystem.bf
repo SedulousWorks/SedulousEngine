@@ -28,41 +28,10 @@ class PhysicsSubsystem : Subsystem, ISceneObserver
 	}
 
 	private List<SceneEntry> mSystems = new .() ~ delete _;
-	/// BORROWED consumers of resolved contacts. The list's address is stable, which is what
-	/// each scene system holds.
-	private List<IContactListener> mContactListeners = new .() ~ delete _;
 
 	/// BEFORE the scene subsystem: the interpolation's local writes must land before the
 	/// scene recomputes its world matrices, or extraction would draw poses a frame behind.
 	public override int32 UpdateOrder => -600;
-
-	/// Registers a consumer of resolved contacts. A duplicate is ignored, so registering
-	/// twice does not deliver twice.
-	public void RegisterContactListener(IContactListener listener)
-	{
-		if (listener == null)
-			return;
-
-		for (let existing in mContactListeners)
-		{
-			if (existing === listener)
-				return;
-		}
-
-		mContactListeners.Add(listener);
-	}
-
-	public void UnregisterContactListener(IContactListener listener)
-	{
-		for (int i = mContactListeners.Count - 1; i >= 0; i--)
-		{
-			if (mContactListeners[i] === listener)
-			{
-				mContactListeners.RemoveAt(i);
-				return;
-			}
-		}
-	}
 
 	public void OnSystemsReady(Scene scene)
 	{
@@ -70,7 +39,6 @@ class PhysicsSubsystem : Subsystem, ISceneObserver
 		if (system == null)
 			return;
 
-		system.SetContactListeners(mContactListeners);
 		mSystems.Add(SceneEntry(scene, system));
 	}
 

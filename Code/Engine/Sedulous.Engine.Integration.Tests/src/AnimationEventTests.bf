@@ -13,13 +13,12 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Integration;
 
 namespace Sedulous.Engine.Integration.Tests;
 
 /// A context with the scene, animation and script subsystems started and a live scene, acting
-/// as its OWN composition root: the animation's events reach the script subsystem through the
-/// SAME bridge DefaultApplication installs, as ContactWorld does for contacts.
+/// as its OWN composition root: the animation posts its events to the scene and the scene's
+/// behavior system hears them, as ContactWorld does for contacts.
 class AnimationWorld
 {
 	private static bool sRegistered = false;
@@ -28,7 +27,6 @@ class AnimationWorld
 	public SceneSubsystem Scenes;
 	public AnimationSubsystem Animations;
 	public BehaviorSubsystem Scripts;
-	public ScriptAnimationBridge Bridge = new .();
 	public SceneManager Manager = new .();
 	public RunBase SceneRun = new .("animations");
 	public Scene Scene;
@@ -63,7 +61,6 @@ class AnimationWorld
 		var modules = SceneModule*[2](&mScriptModule, &mAnimationModule);
 		Scenes.SetComposition(SceneComposition.Build(modules));
 		Context.Startup();
-		Bridge.Install(Animations, Scripts);
 
 		Scenes.RegisterManager(Manager);
 		Manager.SetSceneRun(SceneRun);
@@ -74,13 +71,10 @@ class AnimationWorld
 
 	public ~this()
 	{
-		// The bridge before the animation subsystem goes; the scenes before the host they
-		// script on, and before their manager is unregistered.
-		Bridge.Uninstall();
+		// The scenes before the host they script on, and before their manager is unregistered.
 		Manager.Clear();
 		Scenes.UnregisterManager(Manager);
 		Context.Shutdown();
-		delete Bridge;
 		delete Manager;
 		delete Context;
 		delete SceneRun;
@@ -156,31 +150,10 @@ class AnimationWorld
 	}
 }
 
-/// The animation to script bridge: the install contract, and a one-shot's end reaching the
-/// entity's behaviours as onAnimationFinished(clip).
-static class AnimationBridgeTests
+/// A real animation's one-shot ending reaching the entity's behaviours as
+/// onAnimationFinished(clip), posted to the scene with nothing between the two.
+static class AnimationEventTests
 {
-	[Test]
-	public static void TheAnimationBridgeInstallsOnTheAnimationSubsystemAndLetsGo()
-	{
-		let bridge = scope ScriptAnimationBridge();
-		Test.Assert(!bridge.Installed);
-		bridge.Uninstall(); // idempotent when never installed
-		bridge.Install(null, null);
-		Test.Assert(!bridge.Installed, "half a wiring is no wiring");
-		// An event with nothing behind it is dropped, not dereferenced.
-		bridge.OnOneShotEnded(.(null, .Invalid, Guid()));
-
-		let animation = scope AnimationSubsystem();
-		let scripts = scope BehaviorSubsystem();
-		bridge.Install(animation, scripts);
-		Test.Assert(bridge.Installed);
-		bridge.Install(animation, scripts); // re-points cleanly
-		Test.Assert(bridge.Installed);
-		bridge.Uninstall();
-		Test.Assert(!bridge.Installed);
-	}
-
 	[Test]
 	public static void AOneShotThatEndsCallsTheEntitysBehavioursOnAnimationFinished()
 	{

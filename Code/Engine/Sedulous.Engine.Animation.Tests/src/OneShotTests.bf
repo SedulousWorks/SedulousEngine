@@ -9,10 +9,10 @@ using Sedulous.Scene;
 namespace Sedulous.Engine.Animation.Tests;
 
 /// One-shots and crossfades on the animated entities: a one-shot asked for on an animator
-/// starts over its clip, plays and ends, and its end reaches the animation subsystem's
-/// listeners with the entity and the clip; the manager says it plays and stops it; a clip
-/// changed with a fade time eases in; a graph's entity takes a one-shot too. (The script side,
-/// onAnimationFinished, is the bridge's: Engine.Integration.)
+/// starts over its clip, plays and ends, and its end is posted to its scene as an entity event
+/// with the clip; the manager says it plays and stops it; a clip changed with a fade time eases
+/// in; a graph's entity takes a one-shot too. (The script side, onAnimationFinished, is the
+/// behavior system's, a sink on the scene.)
 static class OneShotTests
 {
 	private static bool Near(float a, float b, float epsilon = 1e-3f) => Math.Abs(a - b) <= epsilon;
@@ -24,21 +24,36 @@ static class OneShotTests
 		clip.GetOrCreatePositionTrack(0).AddKeyframe(clip.Duration, .(0, y, 0));
 	}
 
-	private class Listener : IAnimationListener
+	/// An ended one-shot as its entity event told it.
+	private struct EndedEvent
 	{
-		public List<AnimationOneShotEnded> Ended = new .() ~ delete _;
+		public Scene Scene;
+		public EntityHandle Entity;
+		public Guid Clip;
+	}
+
+	/// A sink on the scene, keeping the animation's entity events.
+	private class Listener : IEntityEventSink
+	{
+		public List<EndedEvent> Ended = new .() ~ delete _;
 		/// The clip events heard, by name.
 		public List<String> Events = new .() ~ DeleteContainerAndItems!(_);
 
-		public void OnOneShotEnded(AnimationOneShotEnded ended)
+		public void OnEntityEvent(Scene scene, EntityEvent entityEvent)
 		{
-			Ended.Add(ended);
-		}
-
-		public void OnClipEvent(AnimationClipEvent event)
-		{
-			Test.Assert(event.Entity.IsAssigned);
-			Events.Add(new String(event.Name));
+			Test.Assert(entityEvent.Target.IsAssigned);
+			if (entityEvent.Name == AnimationEntityEvents.Finished)
+			{
+				EndedEvent ended = default;
+				ended.Scene = scene;
+				ended.Entity = entityEvent.Target;
+				ended.Clip = entityEvent.Args[0].Guid;
+				Ended.Add(ended);
+			}
+			else if (entityEvent.Name == AnimationEntityEvents.ClipEvent)
+			{
+				Events.Add(new String(entityEvent.Args[0].String));
+			}
 		}
 	}
 
@@ -105,8 +120,7 @@ static class OneShotTests
 
 		let subsystem = scope AnimationSubsystem();
 		let listener = scope Listener();
-		subsystem.RegisterListener(listener);
-		subsystem.RegisterListener(listener); // twice is once
+		stage.Level.AddEntityEventSink(listener);
 		subsystem.OnSystemsReady(stage.Level);
 
 		stage.Run(0.25f);
@@ -136,7 +150,7 @@ static class OneShotTests
 		Test.Assert(!stage.Animators.IsPlayingOneShot(stage.Hero));
 		subsystem.Update(0.0f);
 		Test.Assert(listener.Ended.Count == 2);
-		subsystem.UnregisterListener(listener);
+		stage.Level.RemoveEntityEventSink(listener);
 		subsystem.OnDestroying(stage.Level);
 	}
 
@@ -229,7 +243,7 @@ static class OneShotTests
 
 		let subsystem = scope AnimationSubsystem();
 		let listener = scope Listener();
-		subsystem.RegisterListener(listener);
+		stage.Level.AddEntityEventSink(listener);
 		subsystem.OnSystemsReady(stage.Level);
 
 		stage.Run(0.5f);
@@ -244,7 +258,16 @@ static class OneShotTests
 		subsystem.Update(0.0f);
 		Test.Assert(listener.Events.Count == 2, "told once");
 
-		subsystem.UnregisterListener(listener);
+		stage.Level.RemoveEntityEventSink(listener);
 		subsystem.OnDestroying(stage.Level);
+	}
+
+	/// The names games' handlers are written against (onAnimationFinished, onAnimationEvent): a
+	/// rename here is a break in every game.
+	[Test]
+	public static void TheAnimationEventNamesAreTheOnesHandlersAreWrittenAgainst()
+	{
+		Test.Assert(AnimationEntityEvents.Finished == "animationFinished");
+		Test.Assert(AnimationEntityEvents.ClipEvent == "animationEvent");
 	}
 }

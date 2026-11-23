@@ -25,9 +25,6 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	private PhysicsSceneSettings mSettings = new .() ~ delete _;
 	private PhysicsWorld mWorld = null ~ delete _;
 	private List<ContactEvent> mEvents = new .() ~ delete _;
-	/// BORROWED from the subsystem, whose list has a stable address. Null means nothing is
-	/// listening, which is what a bare harness with no subsystem gets.
-	private List<IContactListener> mListeners = null;
 
 	/// Sample buffers held alive across ONE body build, because the backend copies them when
 	/// the body is created rather than when the shape is described.
@@ -75,12 +72,6 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	public PhysicsWorld World => mWorld;
 	public Scene OwningScene => mScene;
 	public Span<ContactEvent> Events => .(mEvents.Ptr, mEvents.Count);
-
-	/// The subsystem points this at its own list, whose address is stable.
-	public void SetContactListeners(List<IContactListener> listeners)
-	{
-		mListeners = listeners;
-	}
 
 	/// Launches a body, QUEUEING the impulse when the body does not exist yet.
 	///
@@ -454,9 +445,10 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 
 			mEvents.Clear();
 			mWorld.DrainContacts(mEvents);
-			// PUSHED here, at the tick. The list clears every substep, so a frame with several
-			// substeps would lose all but the last if a listener only read it once a frame.
-			DispatchContacts();
+			// Posted here, at the tick. The list clears every substep, so a frame with several
+			// substeps would lose all but the last if it were read once a frame. A safe top level,
+			// not nested in any script call: the sinks only queue.
+			PostContacts();
 
 			StepCharacters(fixedDeltaTime);
 
@@ -1192,34 +1184,39 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery, IPhysicsReleaser
 	///
 	/// A side that does not resolve, because its body was destroyed or its slot went stale,
 	/// arrives unassigned; a contact with NEITHER side live is dropped, having nothing to say.
-	private void DispatchContacts()
+	private void PostContacts()
 	{
-		if ((mListeners == null) || mListeners.IsEmpty || (mScene == null))
+		if ((mScene == null) || !mScene.WantsEntityEvents)
 			return;
 
-		for (let event in mEvents)
+		for (let contact in mEvents)
 		{
-			let a = PhysicsEntityPacking.UnpackEntity(event.UserA);
-			let b = PhysicsEntityPacking.UnpackEntity(event.UserB);
-
-			var contact = EntityContact();
-			contact.Kind = event.Kind;
-			contact.Scene = mScene;
-			contact.A = mScene.IsValid(a) ? a : EntityHandle();
-			contact.B = mScene.IsValid(b) ? b : EntityHandle();
-
-			if (!contact.A.IsAssigned && !contact.B.IsAssigned)
-				continue;
-
-			contact.Point = event.Point;
-			contact.Normal = event.Normal;
-			contact.Speed = event.Speed;
-
-			for (let listener in mListeners)
+			let unpackedA = PhysicsEntityPacking.UnpackEntity(contact.UserA);
+			let unpackedB = PhysicsEntityPacking.UnpackEntity(contact.UserB);
+			let a = mScene.IsValid(unpackedA) ? unpackedA : EntityHandle();
+			let b = mScene.IsValid(unpackedB) ? unpackedB : EntityHandle();
+			StringView name;
+			bool trigger = false;
+			switch (contact.Kind)
 			{
-				if (listener != null)
-					listener.OnContact(contact);
+			case .Begin: name = PhysicsEntityEvents.ContactBegin;
+			case .End: name = PhysicsEntityEvents.ContactEnd;
+			case .TriggerEnter: name = PhysicsEntityEvents.TriggerEnter; trigger = true;
+			case .TriggerExit: name = PhysicsEntityEvents.TriggerExit; trigger = true;
 			}
+			PostContactSide(a, b, name, contact, trigger);
+			PostContactSide(b, a, name, contact, trigger);
 		}
+	}
+
+	/// One side's event: a side that does not resolve (a destroyed body, a stale slot) gets none
+	/// and is the other side's unassigned entity.
+	private void PostContactSide(EntityHandle self, EntityHandle other, StringView name, ContactEvent contact, bool trigger)
+	{
+		if (!self.IsAssigned)
+			return;
+		var args = EntityEventArg[4](.FromEntity(other), .FromFloat3(contact.Point), .FromFloat3(contact.Normal),
+			.FromFloat(contact.Speed));
+		mScene.PostEntityEvent(.(self, name, .(&args[0], trigger ? 1 : 4)));
 	}
 }

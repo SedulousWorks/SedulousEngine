@@ -12,14 +12,12 @@ using Sedulous.Engine.Physics;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Composition;
-using Sedulous.Engine.Integration;
 
 namespace Sedulous.Engine.Integration.Tests;
 
 /// A context with the scene, physics and script subsystems started and a live scene, acting
-/// as its OWN composition root: physics contacts reach the script subsystem's neutral
-/// ingress through the SAME bridge DefaultApplication installs, so a contact test here
-/// exercises the adapter, and the script subsystem keeps no physics dependency.
+/// as its OWN composition root: physics posts its contacts to the scene and the scene's
+/// behavior system hears them, with nothing between the two, as in a real run.
 class ContactWorld
 {
 	private static bool sRegistered = false;
@@ -28,7 +26,6 @@ class ContactWorld
 	public SceneSubsystem Scenes;
 	public PhysicsSubsystem Physics;
 	public BehaviorSubsystem Scripts;
-	public ScriptPhysicsContactBridge Bridge = new .();
 	public SceneManager Manager = new .();
 	/// The scene's run: its bus is the scene's.
 	public RunBase SceneRun = new .("contacts");
@@ -64,7 +61,6 @@ class ContactWorld
 		var modules = SceneModule*[2](&mScriptModule, &mPhysicsModule);
 		Scenes.SetComposition(SceneComposition.Build(modules));
 		Context.Startup();
-		Bridge.Install(Physics, Scripts);
 
 		Scenes.RegisterManager(Manager);
 		Manager.SetSceneRun(SceneRun); // before the scene is made: its systems bind to the run's bus
@@ -73,14 +69,11 @@ class ContactWorld
 
 	public ~this()
 	{
-		// The bridge before the physics subsystem goes; the scenes before the host they
-		// script on, and before their manager is unregistered (which takes the uninstaller that
-		// tells the script subsystem they are gone).
-		Bridge.Uninstall();
+		// The scenes before the host they script on, and before their manager is unregistered
+		// (which takes the uninstaller that tells the script subsystem they are gone).
 		Manager.Clear();
 		Scenes.UnregisterManager(Manager);
 		Context.Shutdown();
-		delete Bridge;
 		delete Manager;
 		delete Context;
 		delete SceneRun;

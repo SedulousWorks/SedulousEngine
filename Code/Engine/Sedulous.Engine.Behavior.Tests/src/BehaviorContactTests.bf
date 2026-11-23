@@ -6,8 +6,9 @@ using Sedulous.Engine.Behavior;
 
 namespace Sedulous.Engine.Behavior.Tests;
 
-/// Contacts through the neutral ingress: a collision's four arguments reach both sides, a
-/// trigger's one does, a dead side is skipped, and delivery waits for the drain.
+/// Contacts as the scene's entity events, posted as physics posts them (one to each side): a
+/// collision's four arguments reach both sides, a trigger's one does, a dead side is skipped, and
+/// delivery waits for the drain.
 static class BehaviorContactTests
 {
 	private const String cBumper = """
@@ -37,6 +38,22 @@ static class BehaviorContactTests
 		}
 		""";
 
+	/// A contact between `a` and `b`, posted to each side as physics posts it: a collision with
+	/// (other, point, normal, speed), a trigger with (other) alone; an unassigned side gets none.
+	private static void Contact(ScriptPlayScene play, EntityHandle a, EntityHandle b, StringView name, Float3 point,
+		Float3 normal, float speed, bool trigger = false)
+	{
+		void Side(EntityHandle self, EntityHandle other)
+		{
+			if (!self.IsAssigned)
+				return;
+			var args = EntityEventArg[4](.FromEntity(other), .FromFloat3(point), .FromFloat3(normal), .FromFloat(speed));
+			play.Scene.PostEntityEvent(.(self, name, .(&args[0], trigger ? 1 : 4)));
+		}
+		Side(a, b);
+		Side(b, a);
+	}
+
 	[Test]
 	public static void ACollisionReachesBothSidesWithAllFourArguments()
 	{
@@ -47,7 +64,7 @@ static class BehaviorContactTests
 		play.Start();
 		play.Step();
 
-		play.Scripts.DeliverContact(crate, floor, .Begin, .(0, 0.5f, 0), .(0, 1, 0), 2.5f);
+		Contact(play, crate, floor, "contactBegin", .(0, 0.5f, 0), .(0, 1, 0), 2.5f);
 		Test.Assert(play.PropInt(crate, "contacts") == 0, "queued, not delivered inside the caller");
 		play.Step();
 
@@ -58,7 +75,7 @@ static class BehaviorContactTests
 		Test.Assert(Math.Abs(play.PropFloat(crate, "normalLength") - 1.0f) < 0.001f, "the normal crossed");
 		Test.Assert(Math.Abs(play.PropFloat(crate, "pointY") - 0.5f) < 0.001f, "the point crossed");
 
-		play.Scripts.DeliverContact(crate, floor, .End, .(0, 0.5f, 0), .(0, 1, 0), 0.0f);
+		Contact(play, crate, floor, "contactEnd", .(0, 0.5f, 0), .(0, 1, 0), 0.0f);
 		play.Step();
 		Test.Assert(play.Prop(floor, "left").AsString == "crate");
 		Test.Assert(!play.BehaviorOf(crate).Faulted && !play.BehaviorOf(floor).Faulted);
@@ -74,8 +91,8 @@ static class BehaviorContactTests
 		play.Start();
 		play.Step();
 
-		play.Scripts.DeliverContact(volume, faller, .TriggerEnter, .(0, 0, 0), .(0, 0, 0), 0.0f);
-		play.Scripts.DeliverContact(faller, volume, .TriggerExit, .(0, 0, 0), .(0, 0, 0), 0.0f);
+		Contact(play, volume, faller, "triggerEnter", .(0, 0, 0), .(0, 0, 0), 0.0f, true);
+		Contact(play, faller, volume, "triggerExit", .(0, 0, 0), .(0, 0, 0), 0.0f, true);
 		play.Step();
 
 		Test.Assert(play.Prop(volume, "sensed").AsString == "faller");
@@ -96,9 +113,9 @@ static class BehaviorContactTests
 		play.Step();
 
 		// The other side went away after a destroy: the crate still hears the end.
-		play.Scripts.DeliverContact(crate, EntityHandle.Invalid, .End, .(0, 0, 0), .(0, 1, 0), 0.0f);
+		Contact(play, crate, EntityHandle.Invalid, "contactEnd", .(0, 0, 0), .(0, 1, 0), 0.0f);
 		// A contact with an entity carrying no behaviours delivers to the crate alone.
-		play.Scripts.DeliverContact(bare, crate, .Begin, .(0, 0, 0), .(0, 1, 0), 1.0f);
+		Contact(play, bare, crate, "contactBegin", .(0, 0, 0), .(0, 1, 0), 1.0f);
 		play.Step();
 
 		Test.Assert(play.Prop(crate, "left").IsNil || (play.Prop(crate, "left").AsString == ""), "an unassigned other has no name, and nothing faulted");

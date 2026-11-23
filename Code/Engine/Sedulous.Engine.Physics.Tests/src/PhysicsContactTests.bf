@@ -14,9 +14,9 @@ class PhysicsContactTests
 	private static bool Near(float a, float b, float epsilon = 0.001f)
 		=> PhysicsPlayScene.Near(a, b, epsilon);
 
-	/// A collision reaches a listener with BOTH sides resolved and its geometry intact.
+	/// A collision is posted with BOTH sides resolved and its geometry intact.
 	[Test]
-	public static void ACollisionReachesAListenerWithResolvedEntitiesAndGeometry()
+	public static void ACollisionIsPostedToBothSidesWithResolvedEntitiesAndGeometry()
 	{
 		let play = scope PhysicsPlayScene();
 		let floor = play.AddFloor();
@@ -24,12 +24,13 @@ class PhysicsContactTests
 		let @box = play.AddBox(1.4f);
 		play.Start();
 
-		let recorder = scope RecordingContactListener();
-		let listeners = scope List<IContactListener>();
-		listeners.Add(recorder);
-		play.Physics.SetContactListeners(listeners);
+		let recorder = scope RecordingContactSink();
+		play.Scene.AddEntityEventSink(recorder);
+		defer play.Scene.RemoveEntityEventSink(recorder);
 
 		var sawBegin = false;
+		var boxTold = false;
+		var floorTold = false;
 		for (int i = 0; (i < 120) && !sawBegin; i++)
 		{
 			play.Step(1);
@@ -42,6 +43,8 @@ class PhysicsContactTests
 					|| ((contact.A == floor) && (contact.B == @box)))
 				{
 					sawBegin = true;
+					boxTold |= (contact.A == @box);
+					floorTold |= (contact.A == floor);
 					Test.Assert(contact.Scene === play.Scene);
 					// An APPROACH speed, so never negative.
 					Test.Assert(contact.Speed >= 0.0f);
@@ -52,6 +55,18 @@ class PhysicsContactTests
 		}
 
 		Test.Assert(sawBegin);
+		Test.Assert(boxTold && floorTold, "each side is told, the other as its other");
+	}
+
+	/// The names games' handlers are written against (onContactBegin, onTriggerEnter, ...): a
+	/// rename here is a break in every game.
+	[Test]
+	public static void TheContactEventNamesAreTheOnesHandlersAreWrittenAgainst()
+	{
+		Test.Assert(PhysicsEntityEvents.ContactBegin == "contactBegin");
+		Test.Assert(PhysicsEntityEvents.ContactEnd == "contactEnd");
+		Test.Assert(PhysicsEntityEvents.TriggerEnter == "triggerEnter");
+		Test.Assert(PhysicsEntityEvents.TriggerExit == "triggerExit");
 	}
 
 	/// An impulse applied before the body exists QUEUES, and the assembly flushes it.
