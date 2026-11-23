@@ -14,7 +14,8 @@ enum ScenePhase : uint8
 	PreUpdate,
 	/// Gameplay and AI. Sequential, so a cross component read is safe.
 	Update,
-	/// Parallel per system: a system may touch ONLY its own data here.
+	/// Each system's own work, in order like every phase: a system touches only its own data
+	/// here, so the phase could run its systems apart one day; it does not.
 	AsyncUpdate,
 	/// Animation, constraints, late logic.
 	PostUpdate,

@@ -22,7 +22,8 @@ class RenderGraphResource
 	public int32 RefCount = 0;
 	public PassHandle FirstWriter = .Invalid;
 	public PassHandle LastReader = .Invalid;
-	/// The execution range this resource is live over, which is what aliasing turns on.
+	/// The execution range this resource is live over. Transients are pooled, not aliased: the
+	/// range is worked out but nothing places two resources in one allocation by it.
 	public int32 FirstUsePass = -1;
 	public int32 LastUsePass = -1;
 
