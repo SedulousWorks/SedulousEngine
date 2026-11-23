@@ -223,6 +223,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting: an EntityBehavior's `onFixedUpdate(dt)` runs each fixed physics step, as a
+  SceneBehavior's does.
 - GUI: removing or resizing a world panel or render-texture canvas no longer waits for the GPU
   inside the frame, once per panel; on the web that wait could drop the frame.
 - GUI: a scroll bar can be dragged, and shows the arrow cursor, in a view that takes presses on its

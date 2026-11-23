@@ -51,6 +51,8 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 	private double mElapsed = 0.0;
 
 	private List<EntityHandle> mTickOwners = new .() ~ delete _;
+	/// The fixed step's snapshot of the owners, reused.
+	private List<EntityHandle> mFixedOwners = new .() ~ delete _;
 	private List<PendingScriptMessage> mMessages = new .() ~ DeleteContainerAndItems!(_);
 
 	/// The bus subscriptions, one per event name any loaded class handles.
@@ -310,10 +312,52 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 
 	public override void OnFixedUpdate(float fixedDeltaTime)
 	{
-		if ((mScene == null) || (mHost == null) || (mLevel == null) || mLevelFaulted || !mSettings.Enabled || mHost.IsDebugPaused)
+		if ((mScene == null) || (mHost == null) || mHost.IsDebugPaused)
 			return;
 		var dt = ScriptValue[1](.FromFloat(fixedDeltaTime));
-		InvokeLevel(cOnFixedUpdate, dt);
+		if ((mLevel != null) && !mLevelFaulted && mSettings.Enabled)
+		{
+			InvokeLevel(cOnFixedUpdate, dt);
+			if (mHost.IsDebugPaused)
+				return;
+		}
+		FixedTickBehaviors(dt);
+	}
+
+	/// Each fixed step, onFixedUpdate(dt) reaches every behaviour that has started and is running
+	/// (enabled, not faulted, its entity active). Starting stays with the frame's tick, so a
+	/// behaviour's first fixed step comes after its onStart.
+	private void FixedTickBehaviors(Span<ScriptValue> dt)
+	{
+		if (!mStarted)
+			return;
+		let components = mScene.GetSystem<BehaviorComponentManager>();
+		if ((components == null) || (components.ComponentCount == 0))
+			return;
+		using (ProfileScope("Script.FixedUpdate"))
+		{
+			// Snapshot the owners, as the frame's tick does: a script may destroy or spawn.
+			mFixedOwners.Clear();
+			components.ForEach(scope [&] (component, owner) => { mFixedOwners.Add(owner); });
+			for (let entity in mFixedOwners)
+			{
+				if (!mScene.IsEffectivelyActive(entity))
+					continue;
+				// Re-resolve per behaviour: any dispatch can mutate the pool.
+				for (int i = 0; ; i++)
+				{
+					let component = components.Get(entity);
+					if ((component == null) || (i >= component.Behaviors.Count))
+						break;
+					let behavior = component.Behaviors[i];
+					if (!behavior.Started || !behavior.Active || !behavior.Enabled || behavior.Faulted || (behavior.Instance == null))
+						continue;
+					Invoke(behavior, entity, cOnFixedUpdate, dt);
+					if (mHost.IsDebugPaused)
+						return;
+				}
+			}
+		}
 	}
 
 	// ---- behaviours ----

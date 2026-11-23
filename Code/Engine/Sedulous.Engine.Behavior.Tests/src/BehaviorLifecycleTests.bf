@@ -54,6 +54,40 @@ static class BehaviorLifecycleTests
 		Test.Assert(Math.Abs(play.PropFloat(e, "total") - 4.0f / 60.0f) < 1e-4f, "dt delivered");
 	}
 
+	/// onFixedUpdate was reserved for entity behaviours but never called. It now reaches each
+	/// started behaviour every fixed step, after its onStart, and not while its entity is inactive.
+	[Test]
+	public static void AStartedBehaviourGetsOnFixedUpdateEachFixedStepWhileItsEntityIsActive()
+	{
+		let play = scope ScriptPlayScene();
+		let mover = play.AddBehavior(play.Class("Mover", """
+			class Mover
+			{
+				int starts = 0;
+				int fixedSteps = 0;
+				float last = 0.0f;
+				void onStart() { starts++; }
+				void onFixedUpdate(float dt) { fixedSteps++; last = dt; }
+			}
+			"""), "mover");
+		play.Start();
+		play.Scene.FixedUpdate(1.0f / 50.0f);
+		Test.Assert(play.PropInt(mover, "fixedSteps") == 0, "not before its onStart");
+		play.Step();
+		Test.Assert(play.PropInt(mover, "starts") == 1);
+		play.Scene.FixedUpdate(1.0f / 50.0f);
+		play.Scene.FixedUpdate(1.0f / 50.0f);
+		Test.Assert(play.PropInt(mover, "fixedSteps") == 2);
+		Test.Assert(Math.Abs(play.PropFloat(mover, "last") - (1.0f / 50.0f)) < 0.0001f, "the fixed step's dt");
+
+		play.Scene.SetActive(mover, false);
+		play.Scene.FixedUpdate(1.0f / 50.0f);
+		Test.Assert(play.PropInt(mover, "fixedSteps") == 2, "not while its entity is inactive");
+		play.Scene.SetActive(mover, true);
+		play.Scene.FixedUpdate(1.0f / 50.0f);
+		Test.Assert(play.PropInt(mover, "fixedSteps") == 3);
+	}
+
 	[Test]
 	public static void AnInactiveEntityFreezesItsBehaviours()
 	{

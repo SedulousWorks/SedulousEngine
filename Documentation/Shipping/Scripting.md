@@ -52,7 +52,7 @@ each has the ones its scope needs:
 |---|---|---|---|
 | `onStart()` | yes | yes | yes |
 | `onUpdate(float dt)` | yes | yes | yes |
-| `onFixedUpdate(float dt)` | | yes | |
+| `onFixedUpdate(float dt)` | | yes | yes |
 | `onStop()` | yes | yes | |
 | `onEnable()`, `onDisable()`, `onDestroy()` | | | yes |
 | `on<Event>(...)` | yes | yes | yes |
@@ -66,6 +66,9 @@ each has the ones its scope needs:
   frames the quotient swings (a navigation agent's speed fed to its graph jerks its walk). Read
   the speed the system reports, a navigation agent's `DesiredVelocity` say. A scene's Level
   script updates before its entities' behaviors.
+- `onFixedUpdate(float dt)`: each fixed physics step, `dt` the step's length; for forces and other
+  work that belongs to the simulation's rate. An entity's behavior gets its first step after its
+  `onStart()`, and none while its entity is inactive.
 - `on<Event>(...)`: named events. Physics contacts, an animation's one-shot ending
   (`onAnimationFinished`) and its clip events (`onAnimationEvent`) arrive as events; any script
   can send one: `scene.Behaviors.Send(entity, "Name", payload)` to one entity's behaviors, and
