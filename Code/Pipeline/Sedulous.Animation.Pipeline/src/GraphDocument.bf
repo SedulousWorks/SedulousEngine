@@ -169,6 +169,7 @@ class GraphDocument
 					transition.HasExitTime = At(s.TransitionHasExitTime, t, false);
 					transition.ExitTime = At(s.TransitionExitTime, t, 1.0f);
 					transition.Priority = At(s.TransitionPriority, t, (int32)0);
+					transition.Interruptible = At(s.TransitionInterruptible, t, false);
 					let cFrom = Math.Min((int)s.TransitionConditionStart[t], conditionPool);
 					let cTo = Math.Min(cFrom + (int)s.TransitionConditionCount[t], conditionPool);
 					for (int c = cFrom; c < cTo; c++)
@@ -231,6 +232,7 @@ class GraphDocument
 		s.TransitionHasExitTime.Clear();
 		s.TransitionExitTime.Clear();
 		s.TransitionPriority.Clear();
+		s.TransitionInterruptible.Clear();
 		s.TransitionConditionStart.Clear();
 		s.TransitionConditionCount.Clear();
 		s.ConditionParamIndex.Clear();
@@ -280,6 +282,7 @@ class GraphDocument
 				s.TransitionHasExitTime.Add(transition.HasExitTime);
 				s.TransitionExitTime.Add(transition.ExitTime);
 				s.TransitionPriority.Add(transition.Priority);
+				s.TransitionInterruptible.Add(transition.Interruptible);
 				s.TransitionConditionStart.Add((uint32)s.ConditionParamIndex.Count);
 				s.TransitionConditionCount.Add((uint32)transition.Conditions.Count);
 				for (let condition in transition.Conditions)

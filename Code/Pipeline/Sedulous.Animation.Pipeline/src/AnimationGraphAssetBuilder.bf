@@ -11,6 +11,8 @@ class AnimationGraphAssetBuilder : IAssetBuilder
 {
 	public Type AssetType => typeof(AnimationGraphAsset);
 	public Type ProductType => typeof(AnimationGraphSource);
+	/// 2: transitions carry whether they may be interrupted.
+	public int32 Version => 2;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{

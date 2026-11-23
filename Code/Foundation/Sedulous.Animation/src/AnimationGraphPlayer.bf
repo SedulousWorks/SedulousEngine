@@ -261,6 +261,8 @@ class AnimationGraphPlayer
 		runtime.CurrentTime = 0.0f;
 		runtime.IsTransitioning = false;
 		runtime.PreviousStateIndex = -1;
+		runtime.Interruptible = false;
+		runtime.FadeFromFrozen = false;
 	}
 
 	// ==================== the machinery ====================
@@ -275,10 +277,12 @@ class AnimationGraphPlayer
 
 		var currentState = layer.GetState(runtime.CurrentStateIndex);
 
-		// A transition is only looked for while not already in one: a fade runs to its end
-		// rather than being interrupted by the next condition to come true.
-		if (!runtime.IsTransitioning)
+		// A transition is only looked for while not already in one, unless the running fade's
+		// transition is interruptible: otherwise a fade runs to its end rather than being cut short
+		// by the next condition to come true.
+		if (!runtime.IsTransitioning || runtime.Interruptible)
 			EvaluateTransitions(layer, runtime);
+		currentState = layer.GetState(runtime.CurrentStateIndex);
 
 		let prevNorm = runtime.CurrentTime;
 
@@ -313,6 +317,8 @@ class AnimationGraphPlayer
 			{
 				runtime.IsTransitioning = false;
 				runtime.PreviousStateIndex = -1;
+				runtime.Interruptible = false;
+				runtime.FadeFromFrozen = false;
 			}
 		}
 		else
@@ -408,8 +414,22 @@ class AnimationGraphPlayer
 				mParameters[condition.ParameterIndex].ConsumeTrigger();
 		}
 
-		runtime.PreviousStateIndex = runtime.CurrentStateIndex;
-		runtime.PreviousTime = runtime.CurrentTime;
+		if (runtime.IsTransitioning)
+		{
+			// Interrupting a fade: the new one starts from the pose the layer showed last (Poses,
+			// the blend of the fade so far), held still.
+			for (int i = 0; (i < runtime.PrevPoses.Count) && (i < runtime.Poses.Count); i++)
+				runtime.PrevPoses[i] = runtime.Poses[i];
+			runtime.PreviousStateIndex = -1;
+			runtime.FadeFromFrozen = true;
+		}
+		else
+		{
+			runtime.PreviousStateIndex = runtime.CurrentStateIndex;
+			runtime.PreviousTime = runtime.CurrentTime;
+			runtime.FadeFromFrozen = false;
+		}
+		runtime.Interruptible = best.Interruptible;
 		runtime.CurrentStateIndex = best.DestStateIndex;
 		runtime.CurrentTime = 0.0f;
 		runtime.TransitionElapsed = 0.0f;
@@ -426,6 +446,14 @@ class AnimationGraphPlayer
 		let currentState = layer.GetState(runtime.CurrentStateIndex);
 		if ((currentState == null) || (currentState.Node == null))
 			return;
+
+		if (runtime.IsTransitioning && runtime.FadeFromFrozen)
+		{
+			currentState.Node.Evaluate(mSkeleton, runtime.CurrentTime, runtime.Poses);
+			let blend = Clamp(runtime.TransitionElapsed / runtime.TransitionDuration, 0.0f, 1.0f);
+			AnimationSampler.BlendPoses(runtime.PrevPoses, runtime.Poses, blend, runtime.Poses);
+			return;
+		}
 
 		if (runtime.IsTransitioning && (runtime.PreviousStateIndex >= 0))
 		{

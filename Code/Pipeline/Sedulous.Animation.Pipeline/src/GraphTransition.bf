@@ -12,5 +12,7 @@ class GraphTransition
 	public bool HasExitTime = false;
 	public float ExitTime = 1.0f;
 	public int32 Priority = 0;
+	/// Its fade may be cut short by its destination's transitions.
+	public bool Interruptible = false;
 	public List<GraphCondition> Conditions = new .() ~ DeleteContainerAndItems!(_);
 }

@@ -76,6 +76,12 @@ class AnimationGraphSource
 	public List<uint8> ConditionOp = new .() ~ delete _;
 	public List<float> ConditionThreshold = new .() ~ delete _;
 
+	/// Whether each transition's fade may be cut short by its destination's transitions.
+	/// [Appended]: a graph written without it reads with every fade uninterruptible; cooked graphs
+	/// recook (the graph builder's version).
+	[Appended]
+	public List<bool> TransitionInterruptible = new .() ~ delete _;
+
 	/// Builds a runtime graph, resolving each clip through the manager.
 	///
 	/// The BIND is what records the graph to clip edge, which is what keeps a clip alive
@@ -221,6 +227,7 @@ class AnimationGraphSource
 				? TransitionHasExitTime[t] : false;
 			transition.ExitTime = (t < TransitionExitTime.Count) ? TransitionExitTime[t] : 1.0f;
 			transition.Priority = (t < TransitionPriority.Count) ? TransitionPriority[t] : 0;
+			transition.Interruptible = (t < TransitionInterruptible.Count) ? TransitionInterruptible[t] : false;
 
 			let conditionFrom = Min((int)TransitionConditionStart[t], conditionPool);
 			let conditionTo = Min(conditionFrom + (int)TransitionConditionCount[t], conditionPool);

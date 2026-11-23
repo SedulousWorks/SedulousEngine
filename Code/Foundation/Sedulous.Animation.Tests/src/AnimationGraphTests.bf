@@ -333,6 +333,89 @@ class AnimationGraphTests
 		Test.Assert(!player.GetBool(jump), "and is spent");
 	}
 
+	/// Idle, Walk and Run each hold the bone at x = 0, 10 and 20; Go fades Idle to Walk, Fast fades
+	/// Walk to Run, each over one second.
+	private class ThreeStates
+	{
+		public Skeleton Skeleton = new .(1) ~ delete _;
+		public List<AnimationClip> Clips = new .() ~ DeleteContainerAndItems!(_);
+		public AnimationGraph Graph = new .() ~ delete _;
+		public int32 Go;
+		public int32 Fast;
+
+		public this(bool interruptible)
+		{
+			Skeleton.Bones[0].ParentIndex = -1;
+			Skeleton.FindRootBones();
+			Skeleton.BuildChildIndices();
+			Skeleton.ComputeInverseBindPoses();
+			Go = Graph.AddParameter("Go", .Bool);
+			Fast = Graph.AddParameter("Fast", .Bool);
+			let layer = new AnimationLayer("Base");
+			String[3] names = .("Idle", "Walk", "Run");
+			for (int i < 3)
+			{
+				let x = 10.0f * (float)i;
+				let clip = new AnimationClip(names[i], 1.0f, true);
+				clip.GetOrCreatePositionTrack(0).AddKeyframe(0.0f, .(x, 0, 0));
+				clip.GetOrCreatePositionTrack(0).AddKeyframe(1.0f, .(x, 0, 0));
+				Clips.Add(clip);
+				layer.AddState(new AnimationGraphState(names[i], new ClipStateNode(clip), true));
+			}
+			let toWalk = new AnimationGraphTransition();
+			toWalk.SourceStateIndex = 0;
+			toWalk.DestStateIndex = 1;
+			toWalk.Duration = 1.0f;
+			toWalk.Interruptible = interruptible;
+			toWalk.AddBoolCondition(Go, true);
+			layer.AddTransition(toWalk);
+			let toRun = new AnimationGraphTransition();
+			toRun.SourceStateIndex = 1;
+			toRun.DestStateIndex = 2;
+			toRun.Duration = 1.0f;
+			toRun.AddBoolCondition(Fast, true);
+			layer.AddTransition(toRun);
+			Graph.AddLayer(layer);
+		}
+	}
+
+	/// A state machine looked at no transitions while a crossfade ran. An interruptible fade gives
+	/// way to its destination's transition, which fades on from the pose of that moment.
+	[Test]
+	public static void AnInterruptibleFadeGivesWayFadingOnFromThePoseOfThatMoment()
+	{
+		let bed = scope ThreeStates(true);
+		let player = scope AnimationGraphPlayer(bed.Graph, bed.Skeleton);
+		player.SetBool(bed.Go, true);
+		player.Update(0.25f);
+		Test.Assert(player.IsTransitioning());
+		Test.Assert(Near(player.GetLocalPoses()[0].Position.X, 2.5f), "a quarter of Idle to Walk");
+		player.SetBool(bed.Fast, true);
+		player.Update(0.25f); // Walk to Run starts mid-fade, from x = 2.5
+		Test.Assert(player.GetCurrentStateIndex() == 2);
+		Test.Assert(Near(player.GetLocalPoses()[0].Position.X, 2.5f + 0.25f * 17.5f), scope $"at {player.GetLocalPoses()[0].Position.X}");
+		player.Update(0.75f);
+		Test.Assert(!player.IsTransitioning());
+		Test.Assert(Near(player.GetLocalPoses()[0].Position.X, 20.0f));
+	}
+
+	/// Off by default: the fade finishes before its destination may leave.
+	[Test]
+	public static void AFadeThatIsNotInterruptibleFinishesBeforeItsDestinationMayLeave()
+	{
+		let bed = scope ThreeStates(false);
+		let player = scope AnimationGraphPlayer(bed.Graph, bed.Skeleton);
+		player.SetBool(bed.Go, true);
+		player.Update(0.25f);
+		player.SetBool(bed.Fast, true);
+		player.Update(0.25f);
+		Test.Assert(player.GetCurrentStateIndex() == 1);
+		Test.Assert(Near(player.GetLocalPoses()[0].Position.X, 5.0f));
+		player.Update(0.5f); // the fade ends
+		player.Update(0.0f); // then Walk may leave
+		Test.Assert(player.GetCurrentStateIndex() == 2);
+	}
+
 	/// A blend tree fires its DOMINANT clip's events, once. Two walk clips both carrying a
 	/// footstep would otherwise fire it twice for one step.
 	[Test]

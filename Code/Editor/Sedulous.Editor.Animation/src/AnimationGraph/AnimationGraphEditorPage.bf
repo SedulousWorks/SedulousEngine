@@ -561,6 +561,7 @@ class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 		exitTime.Step = 0.01;
 		exitTime.Hint.Set("slider");
 		Row(mTransitionRows, "priority", .Integer, .((int64)0), "Priority", "Which goes when several could: the lowest first");
+		Row(mTransitionRows, "interruptible", .Bool, .(false), "Interruptible", "Whether, while it blends, the state it goes to may leave already, blending on from the pose of that moment");
 		let conditions = mTransitionRows.AddList(cConditions, .Group, .());
 		conditions.DisplayName.Set("Conditions");
 		conditions.Description.Set("What must all hold for it to go (none: it goes as soon as it may)");
@@ -742,6 +743,7 @@ class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 			mTransitionRows.SetValue("exit", 0, .(transition.HasExitTime));
 			mTransitionRows.SetValue("exitTime", 0, .((double)transition.ExitTime));
 			mTransitionRows.SetValue("priority", 0, .((int64)transition.Priority));
+			mTransitionRows.SetValue("interruptible", 0, .(transition.Interruptible));
 			mTransitionRows.ResizeList(cConditions, 0, transition.Conditions.Count);
 			for (int c < transition.Conditions.Count)
 			{
@@ -895,6 +897,8 @@ class AnimationGraphEditorPage : AssetObjectPage, IPlaybackPage
 						transition.ExitTime = (float)Math.Clamp(real, 0.0, 1.0);
 					else if (path == "priority")
 						transition.Priority = (int32)number;
+					else if (path == "interruptible")
+						transition.Interruptible = on;
 				});
 		}
 	}

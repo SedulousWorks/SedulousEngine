@@ -19,6 +19,10 @@ class AnimationGraphLayerRuntime
 	public float TransitionElapsed = 0.0f;
 	public float TransitionDuration = 0.0f;
 	public bool IsTransitioning = false;
+	/// The running fade's transition may be interrupted by its destination's transitions.
+	public bool Interruptible = false;
+	/// The fade starts from PrevPoses as held: the pose an interrupted fade showed.
+	public bool FadeFromFrozen = false;
 
 	public List<BoneTransform> Poses = new .() ~ delete _;
 	public List<BoneTransform> PrevPoses = new .() ~ delete _;
@@ -38,5 +42,7 @@ class AnimationGraphLayerRuntime
 		TransitionElapsed = 0.0f;
 		TransitionDuration = 0.0f;
 		IsTransitioning = false;
+		Interruptible = false;
+		FadeFromFrozen = false;
 	}
 }

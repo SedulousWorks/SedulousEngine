@@ -23,6 +23,10 @@ class AnimationGraphTransition
 	/// is resolved in the order they read.
 	public int32 Priority = 0;
 
+	/// While this transition's fade runs, its destination's transitions may fire; one that does
+	/// fades on from the pose of that moment. Off, the fade always finishes first.
+	public bool Interruptible = false;
+
 	public List<AnimationGraphCondition> Conditions = new .() ~ delete _;
 
 	public void AddBoolCondition(int32 parameterIndex, bool expected = true)
