@@ -105,4 +105,40 @@ static class BehaviorContactTests
 		Test.Assert(play.Prop(crate, "hit").AsString == "bare");
 		Test.Assert(!play.BehaviorOf(crate).Faulted);
 	}
+
+	/// A domain posts what happened to an entity to its scene ("hit"); the scene's behavior system
+	/// queues on<Name> for the target's behaviors, the entity among the arguments arriving as the
+	/// Entity a behavior is given, at the next tick and not inside the post.
+	[Test]
+	public static void APostedEntityEventCallsOnNameWithTheEntityArgumentAnEntity()
+	{
+		let play = scope ScriptPlayScene();
+		let target = play.AddBehavior(play.Class("Target", """
+			class Target
+			{
+				Scene@ scene;
+				string by;
+				float strength = 0.0f;
+				int hits = 0;
+				void onHit(Entity other, float strength)
+				{
+					hits++;
+					by = scene.GetEntityName(other);
+					this.strength = strength;
+				}
+			}
+			"""), "target");
+		let rock = play.Scene.CreateEntity("rock");
+		play.Start();
+		play.Step();
+		Test.Assert(play.Scene.WantsEntityEvents, "the behavior system listens");
+
+		var args = EntityEventArg[2](.FromEntity(rock), .FromFloat(2.5));
+		play.Scene.PostEntityEvent(.(target, "hit", args));
+		Test.Assert(play.PropInt(target, "hits") == 0, "queued, not delivered inside the post");
+		play.Step();
+		Test.Assert(play.PropInt(target, "hits") == 1);
+		Test.Assert(play.Prop(target, "by").AsString == "rock", "the entity argument an Entity");
+		Test.Assert(Math.Abs(play.PropFloat(target, "strength") - 2.5f) < 0.001f);
+	}
 }

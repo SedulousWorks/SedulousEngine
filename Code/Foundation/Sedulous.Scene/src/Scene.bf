@@ -67,6 +67,11 @@ class Scene : IScriptWeaklyHeld
 	/// BORROWED: the owning run, whose bus is the scene's; null is outside every run.
 	private IRun mRun = null;
 
+	/// The entity event sinks, BORROWED, in the order added. Declared before mSystems: fields go in
+	/// the reverse of their order, so it outlives the systems that take themselves off it as they go.
+	private List<IEntityEventSink> mEntityEventSinks = new .() ~ delete _;
+	/// A post is calling the sinks.
+	private bool mPostingEntityEvent = false;
 	private List<SceneSystem> mSystems = new .() ~ DeleteContainerAndItems!(_);
 	private Dictionary<uint64, SceneSystem> mSystemsByType = new .() ~ delete _;
 	/// Non owning, sorted by UpdateOrder.
@@ -998,11 +1003,6 @@ class Scene : IScriptWeaklyHeld
 	}
 
 	// ---- entity events ----
-
-	/// BORROWED, in the order added.
-	private List<IEntityEventSink> mEntityEventSinks = new .() ~ delete _;
-	/// A post is calling the sinks.
-	private bool mPostingEntityEvent = false;
 
 	/// Adds a listener for this scene's entity events (borrowed; remove it before it goes). Not
 	/// during a post. A sink already added is not added twice.

@@ -31,7 +31,7 @@ namespace Sedulous.Engine.Behavior;
 ///
 /// Every instance a script holds carries its own scene in its entity, so a behaviour of
 /// one scene reaching into another resolves there, never here.
-class BehaviorSystem : SceneSystem
+class BehaviorSystem : SceneSystem, IEntityEventSink
 {
 	public const String cOnStart = "onStart";
 	public const String cOnUpdate = "onUpdate";
@@ -73,6 +73,9 @@ class BehaviorSystem : SceneSystem
 		mScene = scene;
 		if (let components = scene.GetSystem<BehaviorComponentManager>())
 			components.SetScriptSystem(this);
+		// What happens to an entity (a contact, an animation ending), posted by the domain to the
+		// scene, reaches the entity's behaviors as on<Event>.
+		scene.AddEntityEventSink(this);
 	}
 
 	/// Where the scene's scripts run in Update (the Level script, then the entity behaviours):
@@ -102,7 +105,38 @@ class BehaviorSystem : SceneSystem
 	public ~this()
 	{
 		if (mScene != null)
+		{
+			mScene.RemoveEntityEventSink(this);
 			SceneFacades.Release(mScene);
+		}
+	}
+
+	/// An entity event for this scene's behaviors: queued as `on<Name>` (the send rule:
+	/// "contactBegin" calls onContactBegin) with its arguments, each entity among them made the
+	/// Entity a behavior is given. Only queued, onto the same deferred queue as entity.send, drained
+	/// at the tick's top level: the domain posts from its own step, and delivery is gated by
+	/// HasHandler, as messages are.
+	public void OnEntityEvent(Scene scene, EntityEvent entityEvent)
+	{
+		if (!entityEvent.Target.IsAssigned || entityEvent.Name.IsEmpty)
+			return;
+		let pending = new PendingScriptMessage();
+		pending.Target = entityEvent.Target;
+		HandlerNameOf(entityEvent.Name, pending.Handler);
+		for (let arg in entityEvent.Args)
+		{
+			switch (arg.Kind)
+			{
+			case .Bool: pending.AddArg(.FromBool(arg.Bool));
+			case .Int: pending.AddArg(.FromInt(arg.Int));
+			case .Float: pending.AddArg(.FromFloat(arg.Float));
+			case .String: pending.AddArg(.FromString(arg.String));
+			case .Guid: pending.AddArg(.FromGuid(arg.Guid));
+			case .Float3: pending.AddArg(.FromFloat3(arg.Float3));
+			case .Entity: pending.AddArg(.FromEntity(arg.Entity, scene));
+			}
+		}
+		mMessages.Add(pending);
 	}
 
 	public BehaviorRunHost Host => mHost;
