@@ -9,7 +9,8 @@ namespace Sedulous.Sequence;
 /// One running instance of a sequence on a scene: its time, which entity fills each name, and a
 /// runner per track that applies the track at each step and releases what it did when the play
 /// ends. The editor's preview and the game's player both go through a play, so a sequence looks the
-/// same in both. The sequence and the scene are BORROWED and must outlive the play.
+/// same in both. The sequence and the scene are BORROWED and must outlive the play. Stop a play to
+/// release what it changed; destroying one releases nothing (as Abandon).
 class SequencePlay
 {
 	private struct Running
@@ -26,7 +27,8 @@ class SequencePlay
 	private SequencePlay mParent = null;
 	/// Per binding.
 	private List<EntityHandle> mBound = new .() ~ delete _;
-	/// In evaluation order; the runners are OWNED.
+	/// In evaluation order; the runners are OWNED. Destroying the play deletes them without
+	/// releasing them: it may be the scene going away.
 	private List<Running> mRunners = new .() ~ { for (let r in _) delete r.Runner; delete _; };
 	/// Per track: its missing binding was told this play.
 	private List<bool> mWarned = new .() ~ delete _;
@@ -52,12 +54,6 @@ class SequencePlay
 		mSequence = sequence;
 		mBound.Resize(sequence.Bindings.Count);
 		mWarned.Resize(sequence.Tracks.Count);
-	}
-
-	public ~this()
-	{
-		if (mBegun)
-			Release(Finish == .Restore);
 	}
 
 	public void SetListener(ISequenceListener listener) => mListener = listener;
@@ -145,6 +141,18 @@ class SequencePlay
 	{
 		if (mBegun)
 			Release(Finish == .Restore);
+		mRunning = false;
+		mPaused = false;
+		mHeld = false;
+		mFinished = false;
+	}
+
+	/// Ends the play without letting the runners touch the scene: for a scene being torn down,
+	/// whose other systems may already be gone.
+	public void Abandon()
+	{
+		ClearRunners();
+		mBegun = false;
 		mRunning = false;
 		mPaused = false;
 		mHeld = false;

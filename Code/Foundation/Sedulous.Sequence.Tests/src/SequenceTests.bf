@@ -284,6 +284,35 @@ class SequenceTests
 		}
 	}
 
+	/// Destroying a play, or abandoning one, touches nothing in the scene, even when its finish
+	/// would restore: it may be the scene going away. Stop is what releases.
+	[Test]
+	public static void DestroyingOrAbandoningAPlayReleasesNothing()
+	{
+		let stage = scope SequenceStage();
+		let sequence = TwoActors();
+		defer delete sequence;
+		{
+			let play = scope SequencePlay(stage.World, sequence);
+			play.Finish = .Restore;
+			play.Bind("Lamp", stage.Lamp);
+			play.Play();
+			play.Advance(0.5f);
+			Test.Assert(Near(stage.Brightness(stage.Lamp), 2.0f));
+		}
+		Test.Assert(Near(stage.Brightness(stage.Lamp), 2.0f), "destroyed: nothing restored");
+
+		let play = scope SequencePlay(stage.World, sequence);
+		play.Finish = .Restore;
+		play.Bind("Lamp", stage.Lamp);
+		play.Play();
+		play.Advance(0.75f);
+		play.Abandon();
+		Test.Assert(!play.IsPlaying);
+		play.Stop(); // nothing left to release
+		Test.Assert(Near(stage.Brightness(stage.Lamp), 3.0f), "abandoned: nothing restored");
+	}
+
 	[Test]
 	public static void TwoTracksOnOnePropertyRestoreToTheValueBeforeBoth()
 	{
