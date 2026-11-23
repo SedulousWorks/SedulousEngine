@@ -36,6 +36,38 @@ class PrefabEntityRefTests
 			"the attribute's reflection found the field");
 	}
 
+	/// A reference inside a struct member, or inside the rows of a list of structs, is found by
+	/// walking into them: left alone, every instance would point at the template's entity. The row
+	/// naming something outside the prefab is still kept.
+	[Test]
+	public static void AReferenceInsideStructsAndListsOfStructsIsRemapped()
+	{
+		let scene = scope Scene();
+		let manager = scene.AddSystem<CastManager>();
+		let entity = scene.CreateEntity("stage");
+
+		let sourceId = Id(1);
+		let liveId = Id(2);
+		let outsider = Id(99);
+		let cast = manager.Add(entity);
+		cast.Lead.Entity = .(sourceId);
+		cast.Rows = new List<CastRow>();
+		defer delete manager.Get(entity).Rows;
+		cast.Rows.Add(.(0, .(sourceId)));
+		cast.Rows.Add(.(1, .(outsider)));
+
+		let map = scope Dictionary<Guid, Guid>();
+		map[sourceId] = liveId;
+
+		PrefabEntityRefs.Remap(manager, entity, map);
+
+		let remapped = manager.Get(entity);
+		Test.Assert(remapped.Lead.Entity.Id == liveId, "a struct member's reference");
+		Test.Assert(remapped.Rows[0].Entity.Id == liveId, "a row's reference");
+		Test.Assert(remapped.Rows[0].Slot == 0);
+		Test.Assert(remapped.Rows[1].Entity.Id == outsider, "a reference outside the prefab is kept");
+	}
+
 	/// A reference resolving OUTSIDE the prefab is left exactly as it was: it names
 	/// something in the wider scene, and rewriting it would redirect it to whichever
 	/// member happened to share a guid.

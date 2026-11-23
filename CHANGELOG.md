@@ -232,6 +232,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Prefabs: an entity reference inside a component's struct field or a list of structs (a table of
+  rows naming entities) now points at the spawned instance's own entity, as a plain reference
+  field already did, instead of at the prefab's original.
 - Windows: on a scaled display (Wayland or macOS at 125% and up) the editor and games draw at the
   display's own pixels instead of being stretched by the system, and the pointer lands where it
   points.

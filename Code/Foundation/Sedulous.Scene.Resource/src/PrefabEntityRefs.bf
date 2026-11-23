@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Reflection;
+using Sedulous.Core;
 using Sedulous.Scene;
 
 namespace Sedulous.Scene.Resource;
@@ -37,34 +38,66 @@ static class PrefabEntityRefs
 		if (address == null)
 			return;
 
+		RemapIn(type, address, liveBySource, 0);
+	}
+
+	/// How deep the walk follows nested values: a type may contain itself through a list.
+	private const int cMaxDepth = 8;
+
+	/// Every reference reachable in the value of `type` at `address`: its own EntityRef fields and
+	/// lists of them, and the same inside its struct members and lists of structs (a binding table
+	/// of {name, entity} rows), each remapped in place.
+	private static void RemapIn(Type type, void* address, Dictionary<Guid, Guid> liveBySource, int depth)
+	{
+		if ((address == null) || (depth > cMaxDepth))
+			return;
 		for (let field in type.GetFields())
 		{
-			if (field.FieldType == typeof(EntityRef))
+			if (field.IsStatic)
+				continue;
+			let fieldType = field.FieldType;
+			let at = (uint8*)address + field.MemberOffset;
+			if (fieldType == typeof(EntityRef))
 			{
-				if (field.GetValueReference<EntityRef>(address, type) case .Ok(let reference))
-					RemapOne(reference, liveBySource);
+				RemapOne((EntityRef*)at, liveBySource);
 				continue;
 			}
 
-			// A LIST of references, which is how a component names several entities. The
-			// elements are remapped in place through the list's own storage.
-			if (field.FieldType == typeof(List<EntityRef>))
+			// A LIST, which is how a component names several entities or holds a table of rows.
+			// The elements are remapped in place through the list's own storage.
+			if (IsList(fieldType))
 			{
-				if (field.GetValueReference<List<EntityRef>>(address, type) case .Ok(let slot))
+				let list = *(Object*)at as IReflectedList;
+				if (list == null)
+					continue;
+				let element = list.ElementType;
+				let refs = element == typeof(EntityRef);
+				if (!refs && !IsPlainStruct(element))
+					continue;
+				for (int i < list.Count)
 				{
-					let list = *slot;
-					if (list == null)
-						continue;
-					for (int i = 0; i < list.Count; i++)
-					{
-						var element = list[i];
-						RemapOne(&element, liveBySource);
-						list[i] = element;
-					}
+					if (refs)
+						RemapOne((EntityRef*)list.ElementAddress(i), liveBySource);
+					else
+						RemapIn(element, list.ElementAddress(i), liveBySource, depth + 1);
 				}
+				continue;
 			}
+
+			if (IsPlainStruct(fieldType))
+				RemapIn(fieldType, at, liveBySource, depth + 1);
 		}
 	}
+
+	private static bool IsList(Type type)
+	{
+		let generic = type as SpecializedGenericType;
+		return (generic != null) && (generic.UnspecializedType == typeof(List<>));
+	}
+
+	/// A struct whose members may hold a reference: not a primitive, an enum or a pointer.
+	private static bool IsPlainStruct(Type type) =>
+		(type != null) && type.IsStruct && !type.IsPrimitive && !type.IsEnum && !type.IsPointer && (type != typeof(Guid));
 
 	private static void RemapOne(EntityRef* reference, Dictionary<Guid, Guid> liveBySource)
 	{
