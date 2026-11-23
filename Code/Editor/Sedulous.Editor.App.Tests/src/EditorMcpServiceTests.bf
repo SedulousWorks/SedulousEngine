@@ -426,10 +426,11 @@ class EditorMcpServiceTests
 		Test.Assert(bench.Preference.AllowedFolders.IsEmpty, "the folder is this run's alone");
 	}
 
-	/// The open project's folders outside it reach the tools once the user approved them for it,
-	/// and a folder it lists that the user has not answered does not.
+	/// The open project's folders outside it reach the tools once the user approved them for it;
+	/// a folder it lists that the user has not answered does not, and is asked once: a yes reaches
+	/// it at once and is kept, so the next start asks nothing.
 	[Test]
-	public static void TheProjectsApprovedFoldersAreInReachAndAnUnansweredOneIsNot()
+	public static void TheProjectsApprovedFoldersAreInReachAndAnUnansweredOneIsAskedOnce()
 	{
 		let bench = scope Bench("mcp_service_project_folders");
 		bench.Preference.Enabled = true;
@@ -445,13 +446,32 @@ class EditorMcpServiceTests
 			store.Section<McpFolderAnswers>().Record(projectKey, listed[0], true);
 			Test.Assert(McpFolders.Save(scope NativeFileSystem(bench.UserData), store) case .Ok);
 		}
-		let service = scope EditorMcpService(bench.Services());
+		let services = bench.Services();
+		let asked = scope List<String>();
+		defer { ClearAndDeleteItems!(asked); }
+		int asks = 0;
+		services.AskProjectFolders = new [&] (project, folders) =>
+			{
+				asks++;
+				ClearAndDeleteItems!(asked);
+				for (let folder in folders)
+					asked.Add(new .(folder));
+			};
+		let service = scope EditorMcpService(services);
 		Test.Assert(service.Start(bench.Project));
-		let policy = service.Host.Server.Paths;
 		let resolved = scope String();
 		let refusal = scope String();
-		Test.Assert(policy.Check(PathJoin(listed[0], "generated/Hud.xml", .. scope .()), resolved, refusal), refusal);
-		Test.Assert(!policy.Check(PathJoin(listed[1], "Rock.glb", .. scope .()), resolved, refusal));
+		Test.Assert(service.Host.Server.Paths.Check(PathJoin(listed[0], "generated/Hud.xml", .. scope .()), resolved, refusal), refusal);
+		Test.Assert(!service.Host.Server.Paths.Check(PathJoin(listed[1], "Rock.glb", .. scope .()), resolved, refusal));
+
+		// The user is asked about the one not yet answered; yes reaches it at once and is kept.
+		Test.Assert((asks == 1) && (asked.Count == 1) && (asked[0] == listed[1]));
+		Test.Assert(service.RecordProjectFolders(bench.Project, asked, true));
+		Test.Assert(service.Host.Server.Paths.Check(PathJoin(listed[1], "Rock.glb", .. scope .()), resolved, refusal), refusal);
+		service.Stop();
+		Test.Assert(service.Start(bench.Project)); // answered: not asked again, and both reached
+		Test.Assert(asks == 1);
+		Test.Assert(service.Host.Server.Paths.Check(PathJoin(listed[1], "Rock.glb", .. scope .()), resolved, refusal), refusal);
 	}
 
 	[Test]

@@ -9,6 +9,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Projects: `mcpFolders` lists folders outside the project that its MCP tools work in, such as a
+  game's sources beside it. The editor asks once per project and folder whether agents may reach
+  them and remembers the answer on this computer; `Sedulous.Tools.Mcp` reaches only folders
+  approved there.
 - Editor: `--mcp-allow-path <dir>`, repeatable, lets the MCP tools reach a folder outside the
   project for that run, as `Sedulous.Tools.Mcp --allow-path` does, without adding it to Preferences.
 - Scripting: `MinInt`, `MaxInt` and `ClampInt` take and return whole numbers. `Min`, `Max` and

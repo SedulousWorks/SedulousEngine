@@ -329,6 +329,36 @@ class EditorApplication : IApplication
 		return services;
 	}
 
+	/// The open project lists folders outside it for its MCP tools that the user has not answered:
+	/// asked once, per project and folder. Don't Allow is the default and is remembered too.
+	private void AskMcpFolders(EditorProject project, List<String> folders)
+	{
+		let root = mWindow.Root;
+		if ((root == null) || (Project !== project) || (mMcp == null))
+			return;
+		let body = scope String("This project lets the MCP tools, the agents you connect, read and write these folders outside it:\n");
+		for (let folder in folders)
+			body.AppendF("\n    {}", folder);
+		body.Append("\n\nAllow them? The answer is kept for this project on this computer.");
+		let question = new Sedulous.GUI.MessageBox();
+		defer question.ReleaseRef(); // the popup and the tree hold it while it is open
+		question.Configure("Folders outside the project", body, .Ok);
+		question.ClearButtons();
+		question.AddButton("Don't Allow", "deny", .Cancel);
+		question.AddButton("Allow", "allow", .Primary);
+		let listed = new List<String>();
+		for (let folder in folders)
+			listed.Add(new .(folder));
+		question.AddEventListener(.Changed, new [=question, =project, =listed, =this] (e) =>
+			{
+				// Closed or switched while it was asked: it asks again next time.
+				if ((Project !== project) || (mMcp == null))
+					return;
+				mMcp.RecordProjectFolders(project, listed, question.ResultName == "allow");
+			} ~ DeleteContainerAndItems!(listed));
+		question.OpenModal(root);
+	}
+
 	/// `work` at the main window's GUI's next drain; at once with no window. TAKES OWNERSHIP of
 	/// `work`.
 	private void Later(delegate void() work)
@@ -716,6 +746,15 @@ class EditorApplication : IApplication
 		mcpServices.Port = mConfig.McpPort;
 		for (let folder in mConfig.McpAllowedFolders)
 			mcpServices.AllowedFolders.Add(new .(folder));
+		// A project listing folders outside it for its tools: the user says once, per project and
+		// folder, whether an agent may reach them; until then it may not.
+		mcpServices.AskProjectFolders = new (project, folders) =>
+			{
+				let listed = new List<String>();
+				for (let folder in folders)
+					listed.Add(new .(folder));
+				Later(new [=listed, =project, =this] () => { AskMcpFolders(project, listed); } ~ DeleteContainerAndItems!(listed));
+			};
 		mcpServices.TemplatesRoot = new (outPath) => { mExport.TemplatesRoot(outPath); };
 		mcpServices.OnCreated = new (creator, instance) => { mCreation.AfterCreate(creator, instance); };
 		// What follows an import, as the Import dialog's: the editor told (a model's prefab made).

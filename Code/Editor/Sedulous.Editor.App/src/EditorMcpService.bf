@@ -39,6 +39,10 @@ class EditorMcpServiceServices
 	public uint32 Port = 0;
 	/// The command line's --mcp-allow-path: folders the tools reach for this run only.
 	public List<String> AllowedFolders = new .() ~ DeleteContainerAndItems!(_);
+	/// Asks the user about the project's MCP folders they have not answered (the host starting
+	/// over a project); RecordProjectFolders takes the answer. The folders are BORROWED for the
+	/// call. Null: nobody is asked. Owned.
+	public delegate void(EditorProject project, Span<String> folders) AskProjectFolders ~ delete _;
 	/// Where the token file, the settings a minted token is saved with and the profiler's
 	/// captures go. Empty: the user data directory, as the editor runs; a test points it at a
 	/// scratch folder so a run leaves the user's own token alone.
@@ -402,6 +406,38 @@ class EditorMcpService
 		let folders = scope McpFolderStanding();
 		McpFolders.Stand(UserDataDirectory(.. scope .()), project.Directory, project.Settings, folders);
 		allowed.SetProject(project.Directory, folders.Approved);
+		if (!folders.Unanswered.IsEmpty && (mServices.AskProjectFolders != null))
+			mServices.AskProjectFolders(project, folders.Unanswered);
+	}
+
+	/// Records the user's answer on `folders` of `project` (yes lets the tools reach them, no
+	/// keeps them out; either is not asked again) in <user-data>/mcp-folders.xml, and applies it to
+	/// the running host. False when the answers could not be saved.
+	public bool RecordProjectFolders(EditorProject project, Span<String> folders, bool allowed)
+	{
+		let root = scope NativeFileSystem(UserDataDirectory(.. scope .()));
+		let store = scope Settings();
+		if (McpFolders.Load(root, store) case .Err)
+		{
+			GlobalLog(.Warning, "MCP: {} does not read; the answer is not saved", McpFolders.cFileName);
+			return false;
+		}
+		let projectKey = McpFolders.ProjectKey(project.Directory, .. scope .());
+		let answers = store.Section<McpFolderAnswers>();
+		for (let folder in folders)
+			answers.Record(projectKey, folder, allowed);
+		if (McpFolders.Save(root, store) case .Err)
+		{
+			GlobalLog(.Warning, "MCP: could not save {}", McpFolders.cFileName);
+			return false;
+		}
+		if ((mHost != null) && (mSession.Project === project))
+		{
+			let standing = scope McpFolderStanding();
+			McpFolders.Stand(answers, project.Directory, project.Settings, standing);
+			mHost.Server.Paths.SetProject(project.Directory, standing.Approved);
+		}
+		return true;
 	}
 
 	private void UserDataDirectory(String outPath)
