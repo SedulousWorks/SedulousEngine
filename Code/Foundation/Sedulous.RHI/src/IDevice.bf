@@ -32,19 +32,17 @@ interface IDevice
 	uint32 GetQueueCount(QueueType type);
 	FormatSupport GetFormatSupport(TextureFormat format);
 
-	/// The highest MSAA sample count usable for BOTH colour and depth attachments.
-	///
-	/// Defaults to one, so a backend that has not implemented the query reports no MSAA,
-	/// which is the safe answer: views clamp to single sample rather than failing.
-	uint32 MaxColorDepthSampleCount => 1;
+	/// The highest MSAA sample count usable for BOTH colour and depth attachments. One is no
+	/// MSAA: views clamp to single sample rather than failing.
+	uint32 MaxColorDepthSampleCount { get; }
 
 	/// Whether this EXACT count works for both colour and depth.
 	///
 	/// Asked per count rather than derived from the maximum, because the valid set is not
 	/// simply everything up to the ceiling: WebGPU guarantees only one and four, never two.
 	/// A caller must snap an unsupported count rather than assume, since an unsupported one
-	/// fails texture and pipeline creation.
-	bool SupportsSampleCount(uint32 count) => count <= 1;
+	/// fails texture and pipeline creation. A device without MSAA accepts only one.
+	bool SupportsSampleCount(uint32 count);
 
 	/// What this device has recorded since it was made and the memory it holds now, for the
 	/// profiler's counters (DeviceCounters).
@@ -104,11 +102,11 @@ interface IDevice
 	// ---- mesh shaders, folded in rather than a separate object ----
 	//
 	// Folded in because these CREATE things, and creation has always belonged to the
-	// device; only the per encoder recording is reached through a cross query. The default
-	// refuses, so a backend without mesh shaders implements nothing.
+	// device; only the per encoder recording is reached through a cross query. Every backend
+	// answers, a backend without mesh shaders by refusing.
 
-	Result<IMeshPipeline> CreateMeshPipeline(MeshPipelineDesc desc) => .Err;
-	void DestroyMeshPipeline(ref IMeshPipeline pipeline) {}
+	Result<IMeshPipeline> CreateMeshPipeline(MeshPipelineDesc desc);
+	void DestroyMeshPipeline(ref IMeshPipeline pipeline);
 
 	// ---- ray tracing ----
 
@@ -119,16 +117,15 @@ interface IDevice
 	uint32 ShaderGroupHandleAlignment { get; }
 	uint32 ShaderGroupBaseAlignment { get; }
 
-	Result<IAccelStruct> CreateAccelStruct(AccelStructDesc desc) => .Err;
-	void DestroyAccelStruct(ref IAccelStruct accelStruct) {}
+	Result<IAccelStruct> CreateAccelStruct(AccelStructDesc desc);
+	void DestroyAccelStruct(ref IAccelStruct accelStruct);
 
-	Result<IRayTracingPipeline> CreateRayTracingPipeline(
-		RayTracingPipelineDesc desc) => .Err;
-	void DestroyRayTracingPipeline(ref IRayTracingPipeline pipeline) {}
+	Result<IRayTracingPipeline> CreateRayTracingPipeline(RayTracingPipelineDesc desc);
+	void DestroyRayTracingPipeline(ref IRayTracingPipeline pipeline);
 
 	/// Copies out the group handles a shader binding table is built from.
 	Result<void> GetShaderGroupHandles(IRayTracingPipeline pipeline,
-		uint32 firstGroup, uint32 groupCount, Span<uint8> outData) => .Err;
+		uint32 firstGroup, uint32 groupCount, Span<uint8> outData);
 
 	// ---- lifecycle ----
 

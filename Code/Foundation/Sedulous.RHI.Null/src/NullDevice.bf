@@ -124,6 +124,10 @@ class NullDevice : IDevice
 	public Result<IPipelineCache> CreatePipelineCache(PipelineCacheDesc desc)
 		=> .Ok(new NullPipelineCache());
 
+	/// No MSAA: views clamp to single sample.
+	public uint32 MaxColorDepthSampleCount => 1;
+	public bool SupportsSampleCount(uint32 count) => count <= 1;
+
 	public Result<IRenderPipeline> CreateRenderPipeline(RenderPipelineDesc desc)
 	{
 		let pipeline = new NullRenderPipeline();

@@ -370,6 +370,16 @@ sealed class WebGpuDevice : IDevice
 		return .Ok(new WebGpuPipelineCache());
 	}
 
+	/// WebGPU has no mesh shaders and no ray tracing: each refuses, and a destroy has nothing to
+	/// let go.
+	public Result<IMeshPipeline> CreateMeshPipeline(MeshPipelineDesc desc) => .Err;
+	public void DestroyMeshPipeline(ref IMeshPipeline pipeline) { }
+	public Result<IAccelStruct> CreateAccelStruct(AccelStructDesc desc) => .Err;
+	public void DestroyAccelStruct(ref IAccelStruct accelStruct) { }
+	public Result<IRayTracingPipeline> CreateRayTracingPipeline(RayTracingPipelineDesc desc) => .Err;
+	public void DestroyRayTracingPipeline(ref IRayTracingPipeline pipeline) { }
+	public Result<void> GetShaderGroupHandles(IRayTracingPipeline pipeline, uint32 firstGroup, uint32 groupCount, Span<uint8> outData) => .Err;
+
 	public Result<IRenderPipeline> CreateRenderPipeline(RenderPipelineDesc desc)
 	{
 		let pipeline = new WebGpuRenderPipeline();
