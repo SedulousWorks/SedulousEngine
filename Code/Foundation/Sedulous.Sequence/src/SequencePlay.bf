@@ -22,6 +22,8 @@ class SequencePlay
 	private Sequence mSequence;
 	/// BORROWED.
 	private ISequenceListener mListener = null;
+	/// BORROWED: the play this one is nested in, or null.
+	private SequencePlay mParent = null;
 	/// Per binding.
 	private List<EntityHandle> mBound = new .() ~ delete _;
 	/// In evaluation order; the runners are OWNED.
@@ -67,6 +69,28 @@ class SequencePlay
 	public float Time => mTime;
 	public float Duration => mSequence.Duration;
 	public Sequence Played => mSequence;
+
+	/// The play this one is nested in, or null.
+	public SequencePlay Parent => mParent;
+	public void SetParent(SequencePlay parent) => mParent = parent;
+
+	/// Whether this play, or one it is nested in, plays `sequence`.
+	public bool Plays(Sequence sequence)
+	{
+		for (var play = this; play != null; play = play.mParent)
+		{
+			if (play.mSequence == sequence)
+				return true;
+		}
+		return false;
+	}
+
+	/// The entity that fills the binding `name`; unassigned when there is none.
+	public EntityHandle BoundEntity(StringView name)
+	{
+		let index = mSequence.FindBinding(name);
+		return (index >= 0) ? mBound[index] : EntityHandle();
+	}
 
 	/// Fills the binding `name` with `entity`. False when the sequence has no such binding. A play
 	/// running takes it at once: the tracks bound to it begin again on the new entity.
@@ -174,6 +198,17 @@ class SequencePlay
 		}
 	}
 
+	/// Applies `step` as given, holds and the end left to whoever steps it: a nested sequence
+	/// follows its parent's playhead this way. Begins the runners first when needed.
+	public void EvaluateStep(SequenceStep step)
+	{
+		if (!mBegun)
+			Begin();
+		mRunning = true;
+		mTime = step.Time;
+		Evaluate(step);
+	}
+
 	private void Jump(float time, bool preview)
 	{
 		if (!mBegun)
@@ -224,6 +259,7 @@ class SequencePlay
 		context.Scene = mScene;
 		context.Entity = entity;
 		context.Listener = mListener;
+		context.Play = this;
 		let runner = track.Begin(context);
 		if (runner == null)
 			return;

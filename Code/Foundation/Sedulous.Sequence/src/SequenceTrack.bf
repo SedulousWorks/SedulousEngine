@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
+using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.PropertyAnimation;
 
@@ -54,6 +55,8 @@ struct SequenceTrackContext
 	public EntityHandle Entity;
 	/// BORROWED; may be null: nothing is reported.
 	public ISequenceListener Listener;
+	/// BORROWED: the play the track runs in (its cast, the plays it is nested in).
+	public SequencePlay Play;
 }
 
 /// The base of every track kind. A kind adds its keys or sections, serializes them after the
@@ -79,6 +82,9 @@ abstract class SequenceTrack : ISerializable
 	/// The track's runner for one play, OWNED by the caller; null when it has nothing to do there
 	/// (a warning says why when that is a fault).
 	public abstract SequenceTrackRunner Begin(SequenceTrackContext context);
+	/// Binds the assets the track refers to (a clip, a sound, a nested sequence), after a
+	/// sequence is loaded.
+	public virtual void ResolveResources(ResourceManager manager) {}
 
 	public virtual void Serialize(ISerializer ar)
 	{

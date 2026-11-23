@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Sequence.Resource"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Sequence.Resource.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.PropertyAnimation" = "*"
+"Sedulous.Sequence" = "*"

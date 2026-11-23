@@ -8,5 +8,6 @@ StartupObject = "Sedulous.Sequence.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Resource" = "*"
 "Sedulous.Scene" = "*"
 "Sedulous.PropertyAnimation" = "*"
