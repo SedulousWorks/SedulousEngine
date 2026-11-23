@@ -130,6 +130,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Changed
 
+- Projects: a new project starts with every primitive (cube, sphere, plane, cylinder, cone and
+  torus), not only the first three. The editor's `--seed-primitives` is gone: `--seed` now seeds
+  them all.
 - Engine: a domain tells an entity's behaviors what happened to it by posting an entity event to the
   scene (`Scene.PostEntityEvent`); native code listens with `IEntityEventSink`. Physics posts
   contacts and triggers, animation its ended one-shots and clip events. `IContactListener`,

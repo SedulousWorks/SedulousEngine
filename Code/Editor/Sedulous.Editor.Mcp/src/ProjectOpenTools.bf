@@ -28,7 +28,7 @@ static class ProjectOpenTools
 		let answers = new String(answersDirectory);
 		let paths = server.Paths;
 		server.RegisterTool("project_create",
-			"Scaffold a new project (the manifest + the standard directory layout) at a directory, seeded with the editor's starter content (Roboto as the default UI font, the default sky, the cube, sphere and plane). Does not open it - call project_open next.",
+			"Scaffold a new project (the manifest + the standard directory layout) at a directory, seeded with the editor's starter content (Roboto as the default UI font, the default sky, every primitive). Does not open it - call project_open next.",
 			createSchema.Build(), ToolAnnotations.Creates.OpenWorld,
 			new (arguments, outResult, outError) => Create(paths, seedRoot, arguments, outResult, outError),
 			seedRoot);

@@ -52,9 +52,9 @@ static class ProjectSeed
 	}
 
 	/// Seeds `project` from the engine data root's Assets/: Roboto as a distance-field font set
-	/// as the default UI font, a 1K Poly Haven sky (CC0) as the default sky, and the cube, sphere
-	/// and plane (every primitive with `allPrimitives`). The settings are the caller's to save.
-	public static void SeedStarterContent(EditorProject project, StringView dataRoot, bool allPrimitives = false)
+	/// as the default UI font, a 1K Poly Haven sky (CC0) as the default sky, and every primitive
+	/// (the cube, sphere, plane, cylinder, cone and torus). The settings are the caller's to save.
+	public static void SeedStarterContent(EditorProject project, StringView dataRoot)
 	{
 		let root = project.SourceDb.RootGroup;
 		let importContext = scope ImportContext(project.SourcesRoot(.. scope .()));
@@ -106,13 +106,10 @@ static class ProjectSeed
 		GeometryCreators.CreatePrimitive(meshes, "Cube", Primitives.Cube());
 		GeometryCreators.CreatePrimitive(meshes, "Sphere", Primitives.Sphere());
 		GeometryCreators.CreatePrimitive(meshes, "Plane", Primitives.Plane());
-		if (allPrimitives)
-		{
-			GeometryCreators.CreatePrimitive(meshes, "Cylinder", Primitives.Cylinder());
-			GeometryCreators.CreatePrimitive(meshes, "Cone", Primitives.Cone());
-			GeometryCreators.CreatePrimitive(meshes, "Torus", Primitives.Torus());
-		}
-		GlobalLog(.Information, "Editor: starter content seeded (font/sky/primitives{})", allPrimitives ? ", all primitives" : "");
+		GeometryCreators.CreatePrimitive(meshes, "Cylinder", Primitives.Cylinder());
+		GeometryCreators.CreatePrimitive(meshes, "Cone", Primitives.Cone());
+		GeometryCreators.CreatePrimitive(meshes, "Torus", Primitives.Torus());
+		GlobalLog(.Information, "Editor: starter content seeded (font/sky/primitives)");
 	}
 
 	/// The group `name` under `root`, made if absent.

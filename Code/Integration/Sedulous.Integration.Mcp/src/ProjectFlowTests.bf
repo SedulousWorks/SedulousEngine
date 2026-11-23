@@ -117,7 +117,11 @@ static class ProjectFlowTests
 		// Each in its group's folder.
 		Test.Assert(FileExists(PathJoin(dir, "Sources/Environment/kloofendal_48d_partly_cloudy_puresky_1k.hdr", .. scope .())));
 		Test.Assert(!FileExists(PathJoin(dir, "Sources/BlueSky.hdr", .. scope .())), "the large one no more");
-		Test.Assert((root.GetGroup("Meshes") != null) && (root.GetGroup("Meshes").GetInstance("Cube") != null));
+		// Every primitive, not only the first three.
+		let meshes = root.GetGroup("Meshes");
+		Test.Assert(meshes != null);
+		for (let name in StringView[?]("Cube", "Sphere", "Plane", "Cylinder", "Cone", "Torus"))
+			Test.Assert(meshes.GetInstance(name) != null, scope String(name));
 		Test.Assert(FileExists(PathJoin(dir, "Sources/Fonts/Roboto-Regular.ttf", .. scope .())));
 	}
 

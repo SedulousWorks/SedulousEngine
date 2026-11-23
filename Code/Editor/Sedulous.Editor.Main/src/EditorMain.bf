@@ -33,7 +33,7 @@ namespace Sedulous.Editor.Main;
 ///   this run, beside the folders Preferences allows)
 ///   [--release-files <url or folder>] (where the project manager's Samples tab reads this version's
 ///   release files instead of GitHub: a base URL, or a folder Code/Tools/pack-samples.py wrote)
-///   [--seed] [--seed-primitives] [--version]
+///   [--seed] [--version]
 ///   GPU: [--vulkan|--dx12|--webgpu|--null-gpu] [--gpu-validation|--no-gpu-validation]
 ///   (validation defaults on for a dev build, off for an optimized one).
 ///   With a project (positional or --project): opens it directly, scaffolding the manifest
@@ -183,11 +183,6 @@ static class EditorMain
 				config.ScreenshotExit = true;
 			else if (arg == "--mcp")
 				config.McpEnabled = true; // the MCP host for this run, whatever the preference says
-			else if (arg == "--seed-primitives")
-			{
-				config.SeedOnScaffold = true;
-				EditorSeed.SeedAllPrimitives = true; // plus every primitive, not just the three
-			}
 		}
 	}
 }
