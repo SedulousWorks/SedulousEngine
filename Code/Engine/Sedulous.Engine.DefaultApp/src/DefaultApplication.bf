@@ -131,6 +131,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// The window's safe area is less than the window (a phone's bars, its camera's cutout): the
 	/// game's frame is fitted into it, and the pointer through that fit.
 	private bool mInset = false;
+	/// The window's units are not its pixels (a scaled display): the pointer, which arrives in
+	/// units, goes through the fit, which scales it to pixels.
+	private bool mScaledPointer = false;
 
 	// ---- screenshots ----
 	private ScreenshotCapture mScreenshot = new .() ~ delete _;
@@ -860,7 +863,7 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// A render resolution, an orientation or a safe area may move the game's frame off the
 	/// window's: the game then reads its pointer through the fitted source.
-	private bool FitsInput => HasRenderResolution || (mOrientation != .Any) || mInset;
+	private bool FitsInput => HasRenderResolution || (mOrientation != .Any) || mInset || mScaledPointer;
 
 	/// The fitted input while FitsInput, the shell's devices directly otherwise, for the input
 	/// subsystem and every instance.
@@ -972,6 +975,17 @@ class DefaultApplication : IApplication, ISceneObserver
 			mInset = inset;
 			UpdateFittedInput(); // the pointer goes through the fit from now on, or no longer
 		}
+		let os = frame.Window.Window;
+		let pixelsPerUnit = Float2((os.Width > 0) ? ((float)os.PixelWidth / (float)os.Width) : 1.0f,
+			(os.Height > 0) ? ((float)os.PixelHeight / (float)os.Height) : 1.0f);
+		let scaledPointer = (pixelsPerUnit.X != 1.0f) || (pixelsPerUnit.Y != 1.0f);
+		if (scaledPointer != mScaledPointer)
+		{
+			mScaledPointer = scaledPointer;
+			UpdateFittedInput();
+		}
+		if (mFittedInput != null)
+			mFittedInput.PixelsPerUnit = pixelsPerUnit;
 
 		render.BeginRendering(frame.Encoder, frame.FrameIndex);
 

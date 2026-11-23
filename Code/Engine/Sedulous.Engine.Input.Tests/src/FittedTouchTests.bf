@@ -146,4 +146,28 @@ class FittedTouchTests
 		inner.FakeMouse.Y = 960.0f;
 		Test.Assert(Near(mouse.X, 150.0f) && Near(mouse.Y, 90.0f), "the window's centre is the game's");
 	}
+
+	/// On a scaled display the pointer arrives in window units and the game draws at the window's
+	/// pixels: a window of 800x450 units holding 1200x675 pixels (150%), the game at its pixels.
+	/// The pointer at the units' centre is the pixels' centre, and motion scales the same way.
+	[Test]
+	public static void OnAScaledDisplayThePointersWindowUnitsBecomeTheWindowsPixels()
+	{
+		let inner = scope PointSource();
+		let fitted = scope FittedInputSource(inner);
+		fitted.Fit = .(.(0, 0, 1200, 675), .(1200, 675), .Stretch);
+		fitted.PixelsPerUnit = .(1.5f, 1.5f);
+		let mouse = fitted.Mouse;
+		Test.Assert(mouse != null);
+		inner.FakeMouse.X = 400.0f;
+		inner.FakeMouse.Y = 225.0f;
+		Test.Assert(Near(mouse.X, 600.0f) && Near(mouse.Y, 337.5f), scope $"at {mouse.X}, {mouse.Y}");
+		inner.FakeMouse.DeltaX = 10.0f;
+		Test.Assert(Near(mouse.DeltaX, 15.0f), "motion scales too");
+		let touch = fitted.Touch;
+		inner.FakeTouch.Points.Add(.(3, 0.25f, 0.5f, 1.0f, 200.0f, 225.0f));
+		Test.Assert(touch.GetTouchPoint(0, var point));
+		Test.Assert(Near(point.PointerX, 300.0f), "a finger as the pointer");
+		Test.Assert(Near(point.X, 0.25f), "normalized over the image as before");
+	}
 }

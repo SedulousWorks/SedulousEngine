@@ -215,7 +215,10 @@ class SDL3WindowManager : IWindowManager
 
 	private static SDL_WindowFlags WindowFlags(WindowSettings settings)
 	{
-		SDL_WindowFlags flags = 0;
+		// The display's own pixels: on a scaled display (Wayland or macOS at 150%) a window without
+		// it draws at one pixel per unit and the system stretches it, blurred. Window sizes and the
+		// pointer stay in units; PixelWidth and PixelHeight give the pixels.
+		SDL_WindowFlags flags = .SDL_WINDOW_HIGH_PIXEL_DENSITY;
 		if (settings.Resizable)
 			flags |= .SDL_WINDOW_RESIZABLE;
 		if (settings.Borderless)

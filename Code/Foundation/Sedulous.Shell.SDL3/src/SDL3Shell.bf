@@ -273,6 +273,20 @@ class SDL3Shell : IShell
 					mWindows.PushEvent(e);
 				}
 
+			case .SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+				// The pixels changed without the units (the window moved to a display of another
+				// scale, or the scale changed): a resize to whoever sizes by pixels.
+				let changedId = (uint32)event.window.windowID;
+				if (let window = mWindows.Find(changedId))
+				{
+					var e = WindowEvent();
+					e.Type = .Resized;
+					e.WindowId = changedId;
+					e.Width = window.Width;
+					e.Height = window.Height;
+					mWindows.PushEvent(e);
+				}
+
 			case .SDL_EVENT_WINDOW_MOVED:
 				var moved = SimpleEvent(.Moved, (uint32)event.window.windowID);
 				moved.X = event.window.data1;

@@ -228,6 +228,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Windows: on a scaled display (Wayland or macOS at 125% and up) the editor and games draw at the
+  display's own pixels instead of being stretched by the system, and the pointer lands where it
+  points.
 - Scripting: an EntityBehavior's `onFixedUpdate(dt)` runs each fixed physics step, as a
   SceneBehavior's does.
 - GUI: removing or resizing a world panel or render-texture canvas no longer waits for the GPU

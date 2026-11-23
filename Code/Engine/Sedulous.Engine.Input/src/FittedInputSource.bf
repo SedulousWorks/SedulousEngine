@@ -24,6 +24,10 @@ class FittedInputSource : IInputSourceProvider
 	/// The window region (the region) and the render resolution (the content) with the fit.
 	/// The owner keeps the region current as the window resizes.
 	public ContentFit Fit = .();
+	/// The window's pixels per window unit, across and down. The pointer arrives in window units
+	/// and the fit's region is in pixels, so the pointer is scaled first: one except on a scaled
+	/// display (a desktop at 150%, a Retina screen).
+	public Float2 PixelsPerUnit = .(1.0f, 1.0f);
 
 	public this(IInputSourceProvider inner)
 	{
@@ -41,7 +45,10 @@ class FittedInputSource : IInputSourceProvider
 
 	/// A window point in render pixels, through the fit (its turn included) and without the
 	/// bars' clamp.
-	public Float2 ToContent(Float2 point) => Fit.ToContentUnclamped(point);
+	public Float2 ToContent(Float2 point) => Fit.ToContentUnclamped(.(point.X * PixelsPerUnit.X, point.Y * PixelsPerUnit.Y));
+
+	/// A pointer movement in window units, in render pixels.
+	public Float2 ToContentDelta(Float2 delta) => Fit.ToContentDelta(.(delta.X * PixelsPerUnit.X, delta.Y * PixelsPerUnit.Y));
 }
 
 /// The inner mouse, its position and motion in the fitted content space.
@@ -64,8 +71,8 @@ class FittedMouse : IMouse
 	/// Motion in render pixels too, so a look speed does not change with the window's size.
 	/// Turned with the content as well as scaled: on a turned present, moving the mouse up the
 	/// window moves right across the game.
-	public float DeltaX => mSource.Fit.ToContentDelta(.(Raw.DeltaX, Raw.DeltaY)).X;
-	public float DeltaY => mSource.Fit.ToContentDelta(.(Raw.DeltaX, Raw.DeltaY)).Y;
+	public float DeltaX => mSource.ToContentDelta(.(Raw.DeltaX, Raw.DeltaY)).X;
+	public float DeltaY => mSource.ToContentDelta(.(Raw.DeltaX, Raw.DeltaY)).Y;
 	public float ScrollX => Raw.ScrollX;
 	public float ScrollY => Raw.ScrollY;
 	public bool IsButtonDown(MouseButton button) => Raw.IsButtonDown(button);
