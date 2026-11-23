@@ -794,4 +794,55 @@ class BridgeTests
 		InputMapCommand[1] anywhere = .(InputMapCommand("Back", "back"));
 		Test.Assert(BindFromInputMap(root.Context.Keymap, map, Span<InputMapCommand>(&anywhere[0], 1)) == 1);
 	}
+
+	/// A right drag in a viewport locks the pointer (relative mode, hidden), and the platform still
+	/// moves the position it reports. Polled as it was, the GUI hovered the panels under the hidden
+	/// pointer and the release brought up the context menu of whichever lay there (the hierarchy
+	/// beside the viewport).
+	[Test]
+	public static void WhileThePointerIsLockedTheGuiKeepsItWhereTheLockBegan()
+	{
+		let root = BridgeFixtures.NewScene(400.0f, 200.0f);
+		defer root.ReleaseRef();
+		let beside = BridgeFixtures.NewPanel(.(0.0f, 0.0f), .(200.0f, 200.0f)); // the hierarchy
+		defer beside.ReleaseRef();
+		let view = BridgeFixtures.NewPanel(.(200.0f, 0.0f), .(200.0f, 200.0f)); // the viewport
+		defer view.ReleaseRef();
+		root.AddChild(beside);
+		root.AddChild(view);
+		let bridge = scope GuiInputBridge(root.EventDispatcher);
+		int besideEntered = 0;
+		int besideMenus = 0;
+		int viewReleases = 0;
+		beside.AddEventListener(.MouseEnter, new [&] (e) => { besideEntered++; });
+		beside.AddEventListener(.ContextMenu, new [&] (e) => { besideMenus++; });
+		view.AddEventListener(.MouseUp, new [&] (e) => { viewReleases++; });
+
+		let mouse = scope MockMouse();
+		mouse.At = .(300.0f, 100.0f); // the right button goes down over the viewport
+		mouse.RightPressed = true;
+		mouse.RightDown = true;
+		bridge.PumpDevices(mouse, null, null);
+		mouse.RightPressed = false;
+
+		mouse.Relative = true; // locked; the hidden pointer is dragged left over the hierarchy
+		for (let x in float[3](250.0f, 150.0f, 50.0f))
+		{
+			mouse.At = .(x, 100.0f);
+			bridge.PumpDevices(mouse, null, null);
+		}
+		Test.Assert(besideEntered == 0, "nothing under the hidden pointer is hovered");
+
+		mouse.RightDown = false; // released there, still locked
+		mouse.RightReleased = true;
+		bridge.PumpDevices(mouse, null, null);
+		Test.Assert(besideMenus == 0, "no context menu where the hidden pointer lies");
+		Test.Assert(viewReleases == 1, "the release is the viewport's");
+
+		// Unlocked, the pointer is the platform's again.
+		mouse.RightReleased = false;
+		mouse.Relative = false;
+		bridge.PumpDevices(mouse, null, null);
+		Test.Assert(besideEntered == 1);
+	}
 }

@@ -60,6 +60,9 @@ class GuiInputBridge
 	private bool mHasFit = false;
 	private Float2 mWindowSize = .(0.0f, 0.0f); // for placing touch events (SetWindowSize)
 	private bool mTouchSeen = false; // a finger was used: the mouse may be SDL's copy of it
+	private Float2 mLastPointer = .(0.0f, 0.0f); // the polled pointer while it was free
+	private Float2 mLockedAt = .(0.0f, 0.0f); // where it was when the lock began
+	private bool mPointerLocked = false; // the polled mouse is in relative mode
 	private Float2 mLastTouchAt = .(0.0f, 0.0f); // where the driving finger last was (content space)
 	private List<PumpedFinger> mPumpedFingers = new .() ~ delete _; // the polled fingers as last seen
 	private int32 mStickX = 0;
@@ -335,12 +338,30 @@ class GuiInputBridge
 			return;
 		}
 
-		let position = Float2(mouse.X, mouse.Y);
+		var position = Float2(mouse.X, mouse.Y);
 		if (IsTouchCopy(position))
 		{
 			SyncTextInput();
 			SyncCursor();
 			return; // the mouse is SDL's copy of a finger this frame
+		}
+		// While the pointer is locked (a viewport's mouselook: relative mode, the cursor hidden), the
+		// platform still moves the position it reports, though nothing is shown there. The GUI keeps
+		// the position where the lock began: what lies under the hidden pointer is neither hovered
+		// nor given the release's context menu.
+		if (mouse.RelativeMode)
+		{
+			if (!mPointerLocked)
+			{
+				mPointerLocked = true;
+				mLockedAt = mLastPointer;
+			}
+			position = mLockedAt;
+		}
+		else
+		{
+			mPointerLocked = false;
+			mLastPointer = position;
 		}
 		// Current keyboard modifiers, so a modified click or drag (Shift+click to extend a text
 		// selection, a Shift drag scrubbing finer) carries them even on the poll-based path.

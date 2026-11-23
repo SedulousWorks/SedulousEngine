@@ -16,17 +16,23 @@ class MockKeyboard : Sedulous.Shell.IKeyboard
 	public Sedulous.Shell.KeyModifiers Modifiers => Mods;
 }
 
-/// A mouse at (0, 0) whose left press a test sets, recording the cursor and visibility it is told.
+/// A mouse at `At` (the origin by default) whose left press, right button and relative mode a
+/// test sets, recording the cursor and visibility it is told.
 class MockMouse : Sedulous.Shell.IMouse
 {
 	public bool LeftPressed = false;
+	public Float2 At = .(0.0f, 0.0f);
+	public bool Relative = false;
+	public bool RightPressed = false;
+	public bool RightDown = false;
+	public bool RightReleased = false;
 	public Sedulous.Shell.CursorType Cursor = .Default;
 	public int CursorSets = 0;
 	public bool Visible = true;
 	public int VisibilitySets = 0;
 
-	public float X => 0.0f;
-	public float Y => 0.0f;
+	public float X => At.X;
+	public float Y => At.Y;
 	public float GlobalX => 0.0f;
 	public float GlobalY => 0.0f;
 	public float DeltaX => 0.0f;
@@ -34,11 +40,11 @@ class MockMouse : Sedulous.Shell.IMouse
 	public float ScrollX => 0.0f;
 	public float ScrollY => 0.0f;
 
-	public bool IsButtonDown(Sedulous.Shell.MouseButton button) => false;
-	public bool IsButtonPressed(Sedulous.Shell.MouseButton button) => (button == .Left) && LeftPressed;
-	public bool IsButtonReleased(Sedulous.Shell.MouseButton button) => false;
+	public bool IsButtonDown(Sedulous.Shell.MouseButton button) => (button == .Right) && RightDown;
+	public bool IsButtonPressed(Sedulous.Shell.MouseButton button) => ((button == .Left) && LeftPressed) || ((button == .Right) && RightPressed);
+	public bool IsButtonReleased(Sedulous.Shell.MouseButton button) => (button == .Right) && RightReleased;
 
-	public bool RelativeMode => false;
+	public bool RelativeMode => Relative;
 	public void SetRelativeMode(bool enabled) { }
 	public bool CursorVisible => Visible;
 

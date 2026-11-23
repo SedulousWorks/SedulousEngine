@@ -218,6 +218,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Editor: dragging the viewport camera with the right button no longer hovers the panels the hidden
+  pointer passes over, nor opens their context menu when the button is released over them.
 - Bodies hung on a joint stay where they hang. A body's scale read back as 1.0 one frame and
   0.9999999 the next, which rebuilt it and remade its joint lower each time: Snowline's gate flags
   slid down their poles and through the ground.
