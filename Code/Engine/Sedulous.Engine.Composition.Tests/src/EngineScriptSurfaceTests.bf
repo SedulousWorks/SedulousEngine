@@ -48,8 +48,10 @@ static class EngineScriptSurfaceTests
 		// four enums their fields name (GuiScalerMode, GuiCanvasRenderMode,
 		// GuiBillboardOrientation, GuiBillboardScale). 162 = + `Http` (HttpFacade), the run's HTTP.
 		// 163: less `AaMode`, which the post settings no longer name (the quality level's). 164 =
-		// + `RenderQuality` (RenderQualityFacade), the levels a run offers.
-		Test.Assert(EngineScriptSurface.TypeCount == 164, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		// + `RenderQuality` (RenderQualityFacade), the levels a run offers. 167 = + the sequences:
+		// `Sequences` (SequencesFacade), the SequencePlay it returns, and the SequenceNotice the
+		// run's bus carries ([ScriptPayload]).
+		Test.Assert(EngineScriptSurface.TypeCount == 167, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -61,6 +63,23 @@ static class EngineScriptSurfaceTests
 		defer { ClearAndDeleteItems(domains); }
 		s.CollectDomains(domains);
 		Test.Assert((domains.Count == 1) && (domains[0] == ScriptDomains.Runtime));
+	}
+
+	/// A sequence's play is reached as the facade's return; its notice, which nothing on the
+	/// surface names, only because it is a bus payload ([ScriptPayload]), so a handler can take it.
+	[Test]
+	public static void TheSequenceTypesAreReachedThePayloadByItsSeed()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let sequences = s.Find("Sedulous.Engine.Script.Facades.SequencesFacade");
+		Test.Assert((sequences != null) && (sequences.Role == .SceneFacade) && (sequences.DisplayName == "Sequences"));
+		let play = Method(sequences, "Play");
+		Test.Assert((play != null) && (play.ReturnTypeName == "Sedulous.Engine.Sequence.SequencePlay"));
+		let handle = s.Find("Sedulous.Engine.Sequence.SequencePlay");
+		Test.Assert((handle != null) && (Method(handle, "Bind") != null) && (Method(handle, "Resume") != null));
+		let notice = s.Find("Sedulous.Engine.Sequence.SequenceNotice");
+		Test.Assert((notice != null) && (notice.Kind == .Struct), "the payload is on the surface");
 	}
 
 	[Test]
@@ -76,7 +95,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert((rayCast != null) && (rayCast.ReturnTypeName == "Sedulous.Engine.Physics.PhysicsHit"));
 		let applyImpulse = Method(physics, "ApplyImpulse");
 		Test.Assert((applyImpulse != null) && applyImpulse.OnEntity, "on the entity by request");
-		for (let name in scope String[]("Animation", "Audio", "Particles", "Render", "Debug", "Splines", "Behaviors", "Prefabs"))
+		for (let name in scope String[]("Animation", "Audio", "Particles", "Render", "Debug", "Splines", "Behaviors", "Prefabs", "Sequences"))
 		{
 			bool found = false;
 			for (let t in s.Types)

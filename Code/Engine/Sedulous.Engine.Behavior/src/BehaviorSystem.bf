@@ -714,7 +714,8 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 		// publish arriving meanwhile is dropped rather than dispatched into a held run.
 		if ((mHost == null) || mHost.IsDebugPaused)
 			return;
-		var value = ScriptPayloads.ValueOf(payload, mScene);
+		var payload;
+		var value = ScriptPayloads.ValueOf(ref payload, mScene);
 		var args = ScriptValue[1](value);
 		Span<ScriptValue> span = value.IsNil ? default : .(&args[0], 1);
 

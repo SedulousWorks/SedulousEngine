@@ -304,7 +304,8 @@ static class ScriptSurfaceWalker
 			let isStaticBlock = decl.GetName(.. scope .()) == cStaticBlockName;
 			var seed = isStaticBlock || (fullName == ScriptSceneNames.cScene)
 				|| ((type != null) && (type.HasCustomAttribute<SceneFacadeAttribute>()
-					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()))
+					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()
+					|| type.HasCustomAttribute<ScriptPayloadAttribute>()))
 				|| (managers.IndexOf(fullName) >= 0) || ((type != null) && ScriptValueMap.IsWeak(type) && !IsSceneBound(type))
 				|| ((type != null) && ScriptValueMap.IsCounted(type) && HasMarkedConstructor(type));
 			if (!seed && withTooling && (type != null))

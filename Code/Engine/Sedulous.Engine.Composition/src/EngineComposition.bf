@@ -11,6 +11,7 @@ using Sedulous.Engine.Particles;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Behavior;
+using Sedulous.Engine.Sequence;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.Vegetation;
@@ -71,6 +72,7 @@ static class EngineComposition
 						AudioDomain.Module,
 						NetDomain.Module,
 						SplineDomain.Module,
+						SequenceDomain.Module,
 						InputDomain.Module,
 						// The engine's GUI on Sedulous.GUI.
 						GuiDomain.Module

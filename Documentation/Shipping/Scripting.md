@@ -76,8 +76,9 @@ each has the ones its scope needs:
   event bus IS its run's bus (a game's, or a scene page's Simulate): one bus per run, heard by
   every behaviour, each Level and the Game. Emit an event once; emitting it through both calls
   delivers it twice. A payload is a float, an int, a bool, a string, an entity, a `Float3` (a
-  lock's place) or a `Float4` (a place and a measure together: a noise's origin and its
-  loudness), and the handler takes it by value: `void onPicking(Float3 at)`,
+  lock's place), a `Float4` (a place and a measure together: a noise's origin and its
+  loudness) or a struct the engine declares for scripts (a sequence's `SequenceNotice`), and the
+  handler takes it by value: `void onPicking(Float3 at)`,
   `void onNoise(Float4 n)`.
 - Networked entities: gate on `NetworkComponent::of(self).Authority` (`NetworkAuthority::Server` or
   `Client`): the owning side drives, the rest interpolate. It reads; replication owns the
@@ -87,9 +88,37 @@ each has the ones its scope needs:
 
 Engine verbs live on facades, in script shape: `scene.Physics.RayCast(...)`,
 `scene.Audio.Play(...)`, `scene.Render`, `scene.Animation`, `scene.Particles`,
-`scene.Splines`, `scene.Prefabs.Spawn(...)`, `scene.Debug`; the services `Audio`, `Input`,
+`scene.Splines`, `scene.Prefabs.Spawn(...)`, `scene.Sequences.Play(...)`, `scene.Debug`; the services `Audio`, `Input`,
 `Save`, `Gui`, `Run`, `Random`, `Http`, `RenderQuality`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
 free functions. `script_api` lists exactly what each one binds.
+
+## Sequences: cutscenes on a timeline
+
+A sequence asset is a timeline that drives several entities at once: tracks of keys on any
+reflected property or the transform, events, and markers, some of which hold the playhead. It names
+its cast ("Mentor", "Actor"), and whoever plays it fills each name with an entity. `scene.Sequences`
+plays them:
+
+- `scene.Sequences.Play(sequence)` starts the sequence asset `sequence` (its id) and returns a
+  `SequencePlay`, already at time 0. `Play(sequence, finish)` ends it as `"release"` (the default:
+  what it moved stays where it is), `"hold"` (everything stays as its last frame left it until
+  `Stop()`) or `"restore"` (every value it changed goes back).
+- On the play: `Bind(name, entity)` fills a name, during the play too (an actor spawned for the
+  scene); `Pause()`, `Resume()` (also what lets a hold go), `Seek(time)`, `SetSpeed(speed)`,
+  `Stop()`, `Time()`, `Duration()`, `IsPlaying()`, `IsHeld()`, and `Id()`. A play that has ended,
+  or whose scene is gone, is harmless: its calls do nothing and `IsPlaying()` is false.
+- `scene.Sequences.StopAll()` ends every play in the scene (a skip).
+- What a play reports reaches behaviours at the next scene tick as `onSequenceEvent(notice)` (an
+  event key passed: its `Name` and `Value`), `onSequenceHeld(notice)` (the playhead stopped at the
+  hold marker `Name`; call `Resume()` when the game is ready, the way a line of dialogue waits for a
+  press) and `onSequenceFinished(notice)`. Every scene in the run hears these, so `notice.Play` says
+  which play it is: compare it with your play's `Id()`. The handler takes a `SequenceNotice` by
+  value, and a notice kept past the handler still reads.
+- An event track bound to an actor posts to that actor instead, as an entity event:
+  `onSequenceEvent(string name, string value)`.
+
+The sequence advances right after the behaviours each frame, on the scene's clock, so a play started
+or resumed in `onUpdate` moves in the same frame.
 
 `Gui` is the run's screen tier on the engine GUI: `Gui.Root()` is its root node, the gamekit's
 screens and prompts sit on it, and the GUI's data values (`GetNumber`, `SetText`, `TweenData`

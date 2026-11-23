@@ -9,8 +9,13 @@ namespace Sedulous.Engine.Behavior;
 static class ScriptPayloads
 {
 	/// A bus payload in the frame's kinds: the scalar kinds, a Float3 or a Float4, a string,
-	/// an entity tagged with `scene`. Anything else is Nil, and the handler is called without it.
-	public static ScriptValue ValueOf(Variant payload, Scene scene)
+	/// an entity tagged with `scene`, or a [ScriptPayload] struct by its bytes (a sequence's
+	/// notice), which the handler's runtime copies. Anything else is Nil, and the
+	/// handler is called without it.
+	///
+	/// By reference: a struct crosses as the address of the payload's own bytes, which for a small
+	/// one are inside the Variant itself, so the caller's Variant must outlive the call it feeds.
+	public static ScriptValue ValueOf(ref Variant payload, Scene scene)
 	{
 		if (!payload.HasValue)
 			return .Nil;
@@ -25,7 +30,15 @@ static class ScriptPayloads
 		if (type == typeof(Float3)) return .FromFloat3(payload.Get<Float3>());
 		if (type == typeof(Float4)) return .FromFloat4(payload.Get<Float4>());
 		if (type == typeof(String)) return .FromString(payload.Get<String>());
+		if (IsScriptStruct(type)) return .FromStruct(payload.DataPtr, type);
 		return .Nil;
+	}
+
+	/// A struct the script surface declares as a bus payload ([ScriptPayload]), so a handler's
+	/// runtime knows its layout.
+	private static bool IsScriptStruct(Type type)
+	{
+		return type.IsStruct && !type.IsPrimitive && !type.IsEnum && type.HasCustomAttribute<ScriptPayloadAttribute>();
 	}
 
 	/// The bus payload an Emit overload carries: what BehaviorSystem and the run share.

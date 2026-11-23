@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Sequence"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Engine.Sequence.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Messaging" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Sequence" = "*"
+"Sedulous.Sequence.Resource" = "*"
+"Sedulous.Engine.Domain" = "*"

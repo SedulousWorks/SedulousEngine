@@ -1,0 +1,18 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Sequence.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.Sequence.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Messaging" = "*"
+"Sedulous.PropertyAnimation" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Run" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Sequence" = "*"
+"Sedulous.Sequence.Resource" = "*"
+"Sedulous.Engine.Sequence" = "*"

@@ -6,6 +6,7 @@ using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Behavior;
+using Sedulous.Engine.Sequence;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.GUI;
@@ -24,7 +25,7 @@ static class EngineSceneCompositionTests
 	{
 		let composition = EngineSceneComposition.Build();
 		defer delete composition;
-		Test.Assert(composition.ModuleCount == 13, scope $"{composition.ModuleCount} modules");
+		Test.Assert(composition.ModuleCount == 14, scope $"{composition.ModuleCount} modules");
 
 		let scratch = scope Scene("surface");
 		EngineSceneComposition.AddAllSceneManagers(scratch);
@@ -38,6 +39,7 @@ static class EngineSceneCompositionTests
 		Test.Assert(scratch.HasSystem<NetworkComponentManager>());
 		Test.Assert(scratch.HasSystem<TerrainComponentManager>());
 		Test.Assert(scratch.HasSystem<SplineComponentManager>());
+		Test.Assert(scratch.HasSystem<SequenceSystem>());
 		// The runtime spawn rides the composition, so every composed scene can spawn by id.
 		Test.Assert(scratch.HasSystem<PrefabSpawnSystem>());
 

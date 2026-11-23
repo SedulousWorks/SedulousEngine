@@ -799,7 +799,8 @@ class ApplicationRun : RunBase, IRunInput
 	{
 		if ((mGame == null) || mRunHost.IsDebugPaused)
 			return;
-		var value = ScriptPayloads.ValueOf(payload, mScene);
+		var payload;
+		var value = ScriptPayloads.ValueOf(ref payload, mScene);
 		var args = ScriptValue[1](value);
 		InvokeGame(handler, value.IsNil ? default : .(&args[0], 1));
 	}
