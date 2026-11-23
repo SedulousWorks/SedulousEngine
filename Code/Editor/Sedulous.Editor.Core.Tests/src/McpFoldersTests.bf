@@ -33,8 +33,9 @@ class McpFoldersTests
 		defer { ClearAndDeleteItems!(listed); }
 		McpFolders.Resolve(project, settings, listed);
 		Test.Assert(listed.Count == 2);
-		Test.Assert(listed[0] == PathJoin(cwd, "Game", .. scope .()), listed[0]);
-		Test.Assert(listed[1] == PathJoin(cwd, "Art", .. scope .()), listed[1]);
+		// Normalised as the path checks compare them (on Windows that is not the joined spelling).
+		Test.Assert(listed[0] == PathNormalizeLexically(PathJoin(cwd, "Game", .. scope .()), .. scope .()), listed[0]);
+		Test.Assert(listed[1] == PathNormalizeLexically(PathJoin(cwd, "Art", .. scope .()), .. scope .()), listed[1]);
 
 		// No answers yet: both unanswered, none approved.
 		{
