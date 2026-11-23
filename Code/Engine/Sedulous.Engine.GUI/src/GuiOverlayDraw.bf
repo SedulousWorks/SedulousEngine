@@ -25,14 +25,17 @@ extension GuiSubsystem : ISceneOverlay, IScreenOverlay
 
 	/// The GPU side, by whoever owns graphics (the application's startup): the VG shaders from the
 	/// data mount, the renderer. IDEMPOTENT; without it the overlays draw nothing. The device is
-	/// BORROWED and outlives the subsystem's shutdown, which waits for it.
-	public void EnsureRenderReady(IDevice device, int32 frameCount)
+	/// BORROWED and outlives the subsystem's shutdown, which waits for it. A texture that is
+	/// removed or remade goes to `retire` (BORROWED), which destroys it once the frames in flight
+	/// are done with it; with none, the GUI waits for the GPU instead.
+	public void EnsureRenderReady(IDevice device, int32 frameCount, GpuRetireQueue retire = null)
 	{
 		if ((mRenderState != null) && (mRenderState.Device != null))
 			return;
 		delete mRenderState;
 		mRenderState = new GuiRenderState();
 		mRenderState.Device = device;
+		mRenderState.RetireQueue = retire;
 		if ((mDataFileSystem == null) || !mRenderState.Shaders.Load(device, mDataFileSystem))
 		{
 			GlobalLog(.Error, "GUI: no shader compiler and no shader pack: the GUI will not draw");

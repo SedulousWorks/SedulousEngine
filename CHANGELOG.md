@@ -223,6 +223,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- GUI: removing or resizing a world panel or render-texture canvas no longer waits for the GPU
+  inside the frame, once per panel; on the web that wait could drop the frame.
 - GUI: a scroll bar can be dragged, and shows the arrow cursor, in a view that takes presses on its
   content, such as the code editor.
 - Editor: dragging the viewport camera with the right button no longer hovers the panels the hidden

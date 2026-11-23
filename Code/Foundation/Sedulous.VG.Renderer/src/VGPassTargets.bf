@@ -133,6 +133,27 @@ class VGPassTargets
 		mStencilFormat = .Undefined;
 	}
 
+	/// Hands each texture and view to `retireTexture` and `retireView` instead of destroying it,
+	/// for a host whose frames in flight may still draw into them (it destroys them once those
+	/// frames are done). Each texture goes before its view. Afterwards the targets are as after
+	/// Destroy.
+	public void Retire(delegate void(ITexture texture) retireTexture, delegate void(ITextureView view) retireView)
+	{
+		if (mColor != null)
+			retireTexture(mColor);
+		if (mColorView != null)
+			retireView(mColorView);
+		if (mStencil != null)
+			retireTexture(mStencil);
+		if (mStencilView != null)
+			retireView(mStencilView);
+		mColor = null;
+		mColorView = null;
+		mStencil = null;
+		mStencilView = null;
+		Destroy();
+	}
+
 	/// Whether the targets exist at this size, so this frame can take the quality pass. A
 	/// resize recreates them outside any open frame, so a frame arriving mid-resize falls back
 	/// rather than drawing into a stale target.

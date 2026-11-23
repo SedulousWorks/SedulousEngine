@@ -235,6 +235,68 @@ class GuiComponentSyncTests
 		engine.Scenes.DestroyScene(level);
 	}
 
+	/// Removing a render-texture canvas, or resizing one, waited for the GPU inside the frame (on
+	/// the web that drops the frame's submit). With a retire queue the old textures are retired
+	/// for the frames in flight and freed once those are done.
+	[Test]
+	public static void RemovedAndResizedTexturesAreRetiredForTheFramesInFlight()
+	{
+		let device = scope NullDevice();
+		let retire = scope GpuRetireQueue();
+		retire.Initialize(device, 2);
+		defer retire.Flush();
+		let engine = scope GuiTestEngine();
+		engine.Gui.EnsureRenderReady(device, 2, retire);
+		Test.Assert(engine.Gui.IsRenderReady);
+		let level = engine.Scenes.CreateScene("level");
+		level.AddSystem<SpriteComponentManager>();
+		let sprites = level.GetSystem<SpriteComponentManager>();
+		let canvases = level.GetSystem<GuiCanvasComponentManager>();
+		let monitor = GuiTestEngine.MakeDocument("<Panel/>");
+		defer delete monitor;
+		Sedulous.Scene.EntityHandle[3] screens = default;
+		for (int i < 3)
+		{
+			screens[i] = level.CreateEntity("screen");
+			sprites.Add(screens[i]);
+			let added = canvases.Add(screens[i]);
+			added.Document.SetDirect(monitor);
+			added.RenderMode = .RenderTexture;
+			added.RenderTextureWidth = 64;
+			added.RenderTextureHeight = 32;
+		}
+		engine.Frame();
+		Test.Assert(device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		defer device.DestroyCommandPool(ref pool);
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		defer pool.DestroyEncoder(ref encoder);
+		engine.Gui.RenderTextures(encoder, 0);
+		Test.Assert(engine.Gui.TextureCount == 3);
+		Test.Assert(retire.PendingCount == 0);
+
+		// A resize remakes the texture and retires the old one.
+		canvases.Get(screens[0]).RenderTextureWidth = 128;
+		engine.Frame();
+		engine.Gui.RenderTextures(encoder, 1);
+		Test.Assert(engine.Gui.TextureCount == 3);
+		let afterResize = retire.PendingCount;
+		Test.Assert(afterResize >= 2, "the texture and its view, and the pass's own targets if any");
+
+		// Two removed in one frame: both retired.
+		level.DestroyEntity(screens[1]);
+		level.DestroyEntity(screens[2]);
+		engine.Frame();
+		engine.Gui.RenderTextures(encoder, 0);
+		Test.Assert(engine.Gui.TextureCount == 1);
+		Test.Assert(retire.PendingCount == 3 * afterResize, scope $"{retire.PendingCount} pending");
+
+		// Freed once the frames in flight have passed.
+		for (int frame < 3)
+			retire.Tick();
+		Test.Assert(retire.PendingCount == 0);
+		engine.Scenes.DestroyScene(level);
+	}
+
 	[Test]
 	public static void ARenderTextureCanvasDrawsIntoATextureOfItsOwnItsEntitysSpriteShowsItAndItGoesWithTheCanvas()
 	{

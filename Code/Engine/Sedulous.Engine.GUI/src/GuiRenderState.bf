@@ -46,6 +46,31 @@ class GuiRenderState
 		delete Shaders;
 	}
 
+	/// Where a removed or remade texture goes, to be destroyed once the frames in flight are done
+	/// with it; null waits for the GPU instead (on the web a wait inside a frame drops that frame).
+	/// BORROWED.
+	public GpuRetireQueue RetireQueue = null;
+
+	/// Lets go of `target`'s textures. With a retire queue they live on until the frames in
+	/// flight, which may still sample or draw into them, are done; without one the caller has
+	/// waited for the GPU.
+	public void Retire(GuiTextureTarget target)
+	{
+		if (RetireQueue == null)
+		{
+			Release(target);
+			return;
+		}
+		let queue = RetireQueue;
+		target.Pass.Retire(scope (texture) => queue.Retire(texture), scope (view) => queue.Retire(view));
+		if (target.Texture != null)
+			queue.Retire(target.Texture);
+		if (target.View != null)
+			queue.Retire(target.View);
+		target.Texture = null;
+		target.View = null;
+	}
+
 	/// `target`'s GPU objects let go; it stays, to be made again or deleted.
 	public void Release(GuiTextureTarget target)
 	{
@@ -58,8 +83,8 @@ class GuiRenderState
 		target.Texture = null;
 	}
 
-	/// `root`'s texture at `width` x `height`, made or made again at that size (the GPU waited
-	/// for: the scene may still sample the old one); null when the device makes none.
+	/// `root`'s texture at `width` x `height`, made or made again at that size (the old one
+	/// retired: the scene may still sample it); null when the device makes none.
 	public GuiTextureTarget EnsureTarget(SceneRoot root, Scene scene, EntityHandle entity, uint32 width, uint32 height)
 	{
 		GuiTextureTarget found = null;
@@ -81,8 +106,9 @@ class GuiRenderState
 			return found;
 		if (found.Texture != null)
 		{
-			Device.WaitIdle();
-			Release(found);
+			if (RetireQueue == null)
+				Device.WaitIdle();
+			Retire(found);
 		}
 		if (!(Device.CreateTexture(TextureDesc.RenderTarget(cTextureFormat, width, height, 1, "GUI texture")) case .Ok(let texture)))
 		{

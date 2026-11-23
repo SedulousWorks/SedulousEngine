@@ -601,7 +601,7 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null) && (mGui != null))
-			mGui.EnsureRenderReady(graphics.Raw, (int32)graphics.FramesInFlight);
+			mGui.EnsureRenderReady(graphics.Raw, (int32)graphics.FramesInFlight, (mRender != null) ? mRender.RetireQueue : null);
 
 		if ((mBorrowedResources == null) && (mContentDatabase != null))
 		{

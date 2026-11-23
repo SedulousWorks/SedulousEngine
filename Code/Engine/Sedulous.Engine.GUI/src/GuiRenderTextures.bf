@@ -90,7 +90,9 @@ extension GuiSubsystem
 			}
 		}
 		// The textures whose canvas or panel went: a sprite or decal of a scene still here that
-		// shows one lets it go, then it goes (the GPU waited for).
+		// shows one lets it go, then it is retired (without a retire queue, destroyed after one
+		// wait for the GPU).
+		bool waited = false;
 		for (int i = mRenderState.Targets.Count - 1; i >= 0; i--)
 		{
 			let target = mRenderState.Targets[i];
@@ -114,8 +116,12 @@ extension GuiSubsystem
 						decal.Texture = null;
 				}
 			}
-			mRenderState.Device.WaitIdle();
-			mRenderState.Release(target);
+			if ((mRenderState.RetireQueue == null) && !waited)
+			{
+				mRenderState.Device.WaitIdle();
+				waited = true;
+			}
+			mRenderState.Retire(target);
 			mRenderState.Targets.RemoveAt(i);
 			delete target;
 		}
