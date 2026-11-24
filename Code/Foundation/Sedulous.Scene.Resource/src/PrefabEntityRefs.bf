@@ -45,8 +45,8 @@ static class PrefabEntityRefs
 	private const int cMaxDepth = 8;
 
 	/// Every reference reachable in the value of `type` at `address`: its own EntityRef fields and
-	/// lists of them, and the same inside its struct members and lists of structs (a binding table
-	/// of {name, entity} rows), each remapped in place.
+	/// lists of them, and the same inside its struct members, lists of structs (a binding table of
+	/// {name, entity} rows) and the objects of a list (a sequence's cast), each remapped in place.
 	private static void RemapIn(Type type, void* address, Dictionary<Guid, Guid> liveBySource, int depth)
 	{
 		if ((address == null) || (depth > cMaxDepth))
@@ -72,14 +72,26 @@ static class PrefabEntityRefs
 					continue;
 				let element = list.ElementType;
 				let refs = element == typeof(EntityRef);
-				if (!refs && !IsPlainStruct(element))
+				let objects = element.IsObject && (element != typeof(String));
+				if (!refs && !objects && !IsPlainStruct(element))
 					continue;
 				for (int i < list.Count)
 				{
 					if (refs)
+					{
 						RemapOne((EntityRef*)list.ElementAddress(i), liveBySource);
+					}
+					else if (objects)
+					{
+						// An element object (a cast row): its own fields, by its own type.
+						let obj = *(Object*)list.ElementAddress(i);
+						if (obj != null)
+							RemapIn(obj.GetType(), Internal.UnsafeCastToPtr(obj), liveBySource, depth + 1);
+					}
 					else
+					{
 						RemapIn(element, list.ElementAddress(i), liveBySource, depth + 1);
+					}
 				}
 				continue;
 			}

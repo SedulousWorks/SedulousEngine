@@ -13,7 +13,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   several entities at once: property and transform tracks, events, holds that wait for the game,
   and sequences nested in others. Scripts play one with `scene.Sequences.Play(sequence)`, fill its
   cast with `Bind(name, entity)`, and hear `onSequenceEvent`, `onSequenceHeld` and
-  `onSequenceFinished`. The editor has no page for editing a sequence yet.
+  `onSequenceFinished`; a Sequence component plays one from an entity with its cast picked in the
+  inspector. The editor has no page for editing a sequence yet.
 - Scripting: players can rebind controls. `Input.Rebind(action)` takes the player's next press,
   `Input.SetBinding(action, "Key.Space")` sets one by name, and `Input.ResetBinding` /
   `Input.ResetAllBindings` undo them; the bindings are kept in the game's save and apply when it

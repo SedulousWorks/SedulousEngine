@@ -28,6 +28,17 @@ class SequencesFacade : SceneFacade
 		return .(Scene, system.Play(sequence, SequenceSystem.ParseFinish(finish)));
 	}
 
+	/// The play `entity`'s Sequence component is running, or an ended one when it runs none.
+	[Scriptable]
+	public SequencePlay Of(EntityHandle entity)
+	{
+		let components = Scene.GetSystem<SequenceComponentManager>();
+		let component = (components != null) ? components.Get(entity) : null;
+		if ((component == null) || (component.PlayId == 0))
+			return .();
+		return .(Scene, component.PlayId);
+	}
+
 	/// Ends every play in the scene (a skip).
 	[Scriptable]
 	public void StopAll() => System?.StopAll();

@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.Core.Serialization;
 using Sedulous.Messaging;
 using Sedulous.PropertyAnimation;
 using Sedulous.Run;
@@ -249,5 +251,117 @@ class SequenceSystemTests
 		Test.Assert(!handle.Bind("Actor", stage.Actor));
 		Test.Assert(handle.Time() == 0.0f);
 		Test.Assert(!SequencePlay().IsPlaying(), "no play at all");
+	}
+
+	[Test]
+	public static void AComponentAutoplaysWithItsCastAndReportsToItsEntity()
+	{
+		let walk = Walk();
+		defer delete walk;
+		let stage = scope SequenceStage();
+		let log = scope EntityEventLog();
+		stage.World.AddEntityEventSink(log);
+		defer stage.World.RemoveEntityEventSink(log);
+		let components = stage.World.GetSystem<SequenceComponentManager>();
+		Test.Assert(components != null);
+		let stageEntity = stage.World.CreateEntity("Stage");
+		let c = components.Add(stageEntity);
+		c.Sequence.SetDirect(walk);
+		c.Cast.Add(new .("Actor", .(stage.World.GetEntityId(stage.Actor)), false));
+
+		stage.Frame(0.5f); // started and stepped in the same frame
+		Test.Assert(c.PlayId != 0);
+		Test.Assert(Near(stage.X, 5.0f));
+		stage.Frame(1.0f);
+		Test.Assert(Near(stage.X, 10.0f));
+		Test.Assert(c.PlayId != 0, "forgotten at the next update, once the play has left");
+		stage.Frame(0.1f);
+		Test.Assert(c.PlayId == 0);
+
+		Test.Assert(log.Entries.Count == 2, "the unbound cue and the end, to the component's entity");
+		Test.Assert(log.Entries[0].Target == stageEntity);
+		Test.Assert(log.Entries[1].Name == SequenceEvents.Finished);
+		Test.Assert(stage.Heard.IsEmpty);
+	}
+
+	[Test]
+	public static void AComponentPlaysOnItsOwnEntityRestartsAndStopsOnRequestAndStopsWithItsEntity()
+	{
+		let walk = Walk();
+		defer delete walk;
+		let stage = scope SequenceStage();
+		let components = stage.World.GetSystem<SequenceComponentManager>();
+		var c = components.Add(stage.Actor);
+		c.Sequence.SetDirect(walk);
+		c.Autoplay = false;
+		c.Finish = .Restore;
+		c.Cast.Add(new .("Actor", .(), true)); // this entity
+
+		stage.Frame(0.5f);
+		Test.Assert(c.PlayId == 0, "no autoplay");
+		c.Play();
+		stage.Frame(0.25f);
+		Test.Assert(Near(stage.X, 2.5f));
+		c.Play(); // again: from the start
+		stage.Frame(0.25f);
+		Test.Assert(Near(stage.X, 2.5f));
+		c.Stop();
+		stage.Frame(0.1f);
+		Test.Assert(c.PlayId == 0);
+		Test.Assert(Near(stage.X, 0.0f), "restored");
+
+		c.Play();
+		stage.Frame(0.25f);
+		let running = c.PlayId;
+		Test.Assert(stage.Sequences.Find(running) != null);
+		stage.World.SetActive(stage.Actor, false);
+		Test.Assert(stage.Sequences.Find(running) == null, "disabling the entity stops it");
+
+		stage.World.SetActive(stage.Actor, true);
+		c = components.Get(stage.Actor);
+		c.Play();
+		stage.Frame(0.25f);
+		let again = c.PlayId;
+		Test.Assert(stage.Sequences.Find(again) != null);
+		stage.World.DestroyEntity(stage.Actor);
+		Test.Assert(stage.Sequences.Find(again) == null, "destroying the entity stops it");
+	}
+
+	[Test]
+	public static void AComponentsSettingsAndCastReadBackAsWritten()
+	{
+		var written = SequenceComponent();
+		written.Cast = scope .();
+		defer { ClearAndDeleteItems!(written.Cast); }
+		written.Sequence.SetId(Id(9));
+		written.Cast.Add(new .("Mentor", .(Id(11)), false));
+		written.Cast.Add(new .("Stage", .(), true));
+		written.Autoplay = false;
+		written.Speed = 0.5f;
+		written.Loop = true;
+		written.Finish = .Hold;
+
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(stream, .Write);
+			written.Serialize(writer);
+		}
+		stream.Seek(0, .Begin);
+		var read = SequenceComponent();
+		read.Cast = scope .();
+		defer { ClearAndDeleteItems!(read.Cast); }
+		{
+			let reader = scope BinarySerializer(stream, .Read);
+			read.Serialize(reader);
+			Test.Assert(reader.IsOk);
+		}
+		Test.Assert(read.Sequence.Id == Id(9));
+		Test.Assert(read.Cast.Count == 2);
+		Test.Assert((read.Cast[0].Name == "Mentor") && (read.Cast[0].Entity.Id == Id(11)));
+		Test.Assert(read.Cast[1].Self);
+		Test.Assert(!read.Autoplay);
+		Test.Assert(Near(read.Speed, 0.5f));
+		Test.Assert(read.Loop);
+		Test.Assert(read.Finish == .Hold);
 	}
 }

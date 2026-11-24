@@ -31,6 +31,20 @@ struct CastLead
 	public this() {}
 }
 
+/// A row as an object the list owns: a reference inside it, one level down.
+[Reflect(.NonStaticFields)]
+class CastMember
+{
+	public EntityRef Entity = .();
+
+	public this() {}
+
+	public this(EntityRef entity)
+	{
+		Entity = entity;
+	}
+}
+
 /// References that sit inside a struct member and a list of structs, not on the component
 /// itself: what a sequence player's bindings look like. The rows are the caller's to delete.
 [SerializableComponent("test.Cast")]
@@ -38,6 +52,8 @@ struct Cast : ISerializable
 {
 	public CastLead Lead = .();
 	public List<CastRow> Rows = null;
+	/// Rows as objects; the caller's to delete, with their entries.
+	public List<CastMember> Members = null;
 
 	public this() {}
 

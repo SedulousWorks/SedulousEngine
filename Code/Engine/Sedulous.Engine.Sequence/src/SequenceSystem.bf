@@ -15,9 +15,10 @@ namespace Sedulous.Engine.Sequence;
 /// to that actor.
 class SequenceSystem : SceneSystem
 {
-	/// Right after the behaviours (BehaviorSystem's -110), so a play a script starts or resumes
-	/// this frame steps this frame, and before what reads what plays write.
-	public const int32 cUpdateOrder = -100;
+	/// After the behaviours (BehaviorSystem's -110) and the sequence components (-100), so a play
+	/// a script or a component starts or resumes this frame steps this frame, and before what reads
+	/// what plays write.
+	public const int32 cUpdateOrder = -99;
 
 	/// One play: its sequence held loaded while it runs, what it reports to, and the play.
 	private class Running
@@ -85,15 +86,17 @@ class SequenceSystem : SceneSystem
 			GlobalLog(.Warning, "Sequence: no sequence asset with id {}", sequence);
 			return 0;
 		}
-		return Start(resource, sequence, proxy.Handle, finish, owner);
+		return Start(resource, sequence, proxy.Handle, finish, owner, null);
 	}
 
 	/// Starts a play of `resource` (BORROWED: it must outlive the play), named `id` in notices.
 	/// `owner`, when assigned, is told what the play reports as entity events; otherwise it goes on
-	/// the run's bus. The play is at time 0 when this returns. Its id, or 0 when there is no
-	/// sequence.
+	/// the run's bus. `hold`, when given, keeps the sequence loaded while it plays. `prepare`, when
+	/// given, sets the play up (its cast, its speed) before it starts, so time 0 is applied on what
+	/// it fills. The play is at time 0 when this returns. Its id, or 0 when there is no sequence.
 	public uint32 Play(SequenceResource resource, Guid id, Sedulous.Sequence.SequenceFinish finish = .Release,
-		EntityHandle owner = .Invalid) => Start(resource, id, null, finish, owner);
+		EntityHandle owner = .Invalid, ResourceHandle hold = null, delegate void(Sedulous.Sequence.SequencePlay) prepare = null)
+		=> Start(resource, id, hold, finish, owner, prepare);
 
 	/// The play numbered `id`, or null once it has ended.
 	public Sedulous.Sequence.SequencePlay Find(uint32 id)
@@ -162,7 +165,7 @@ class SequenceSystem : SceneSystem
 	}
 
 	private uint32 Start(SequenceResource resource, Guid id, ResourceHandle handle, Sedulous.Sequence.SequenceFinish finish,
-		EntityHandle owner)
+		EntityHandle owner, delegate void(Sedulous.Sequence.SequencePlay) prepare)
 	{
 		if ((Scene == null) || (resource == null))
 			return 0;
@@ -175,6 +178,8 @@ class SequenceSystem : SceneSystem
 		running.Play = new .(Scene, resource.Sequence);
 		running.Play.Finish = finish;
 		running.Play.SetListener(running.Reporter);
+		if (prepare != null)
+			prepare(running.Play);
 		mPlays.Add(running);
 		running.Play.Play();
 		return running.Id;

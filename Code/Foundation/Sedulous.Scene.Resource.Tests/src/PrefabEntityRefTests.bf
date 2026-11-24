@@ -68,6 +68,34 @@ class PrefabEntityRefTests
 		Test.Assert(remapped.Rows[1].Entity.Id == outsider, "a reference outside the prefab is kept");
 	}
 
+	/// A list of objects (a sequence's cast rows) is walked into each object, by its own type.
+	[Test]
+	public static void AReferenceInsideAListsObjectsIsRemapped()
+	{
+		let scene = scope Scene();
+		let manager = scene.AddSystem<CastManager>();
+		let entity = scene.CreateEntity("stage");
+
+		let sourceId = Id(1);
+		let liveId = Id(2);
+		let outsider = Id(99);
+		let cast = manager.Add(entity);
+		cast.Members = new List<CastMember>();
+		defer { DeleteContainerAndItems!(manager.Get(entity).Members); }
+		cast.Members.Add(new .(.(sourceId)));
+		cast.Members.Add(new .(.(outsider)));
+		cast.Members.Add(null);
+
+		let map = scope Dictionary<Guid, Guid>();
+		map[sourceId] = liveId;
+
+		PrefabEntityRefs.Remap(manager, entity, map);
+
+		let remapped = manager.Get(entity);
+		Test.Assert(remapped.Members[0].Entity.Id == liveId, "an element object's reference");
+		Test.Assert(remapped.Members[1].Entity.Id == outsider, "a reference outside the prefab is kept");
+	}
+
 	/// A reference resolving OUTSIDE the prefab is left exactly as it was: it names
 	/// something in the wider scene, and rewriting it would redirect it to whichever
 	/// member happened to share a guid.

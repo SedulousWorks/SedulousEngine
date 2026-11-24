@@ -50,8 +50,9 @@ static class EngineScriptSurfaceTests
 		// 163: less `AaMode`, which the post settings no longer name (the quality level's). 164 =
 		// + `RenderQuality` (RenderQualityFacade), the levels a run offers. 167 = + the sequences:
 		// `Sequences` (SequencesFacade), the SequencePlay it returns, and the SequenceNotice the
-		// run's bus carries ([ScriptPayload]).
-		Test.Assert(EngineScriptSurface.TypeCount == 167, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		// run's bus carries ([ScriptPayload]). 168 = + SequenceComponent, which plays one from an
+		// entity.
+		Test.Assert(EngineScriptSurface.TypeCount == 168, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]

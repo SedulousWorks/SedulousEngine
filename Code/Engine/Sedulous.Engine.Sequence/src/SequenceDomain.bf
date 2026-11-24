@@ -11,9 +11,11 @@ static class SequenceDomain
 		new .(SequenceResources.Module)));
 	private static DomainModule sModule ~ delete _;
 
-	/// The scene install: the player of sequences.
+	/// The scene install: the player of sequences and the components that start plays from
+	/// entities.
 	public static void AddSequenceSceneSystems(Scene scene)
 	{
 		scene.AddSystem<SequenceSystem>();
+		scene.AddSystem<SequenceComponentManager>();
 	}
 }

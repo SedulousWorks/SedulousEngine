@@ -116,6 +116,12 @@ plays them:
   value, and a notice kept past the handler still reads.
 - An event track bound to an actor posts to that actor instead, as an entity event:
   `onSequenceEvent(string name, string value)`.
+- A Sequence component plays a sequence from an entity: its cast is picked in the inspector (an
+  entity per name, or "This Entity"), it starts by itself unless Autoplay is off, and it stops when
+  its entity is destroyed or disabled. `SequenceComponent::of(entity).Play()` starts it again from
+  the beginning, `Stop()` stops it, and `scene.Sequences.Of(entity)` is its running play. What its
+  play reports reaches that entity's behaviours as entity events: `onSequenceEvent(string name,
+  string value)`, `onSequenceHeld(string marker)` and `onSequenceFinished()`.
 
 The sequence advances right after the behaviours each frame, on the scene's clock, so a play started
 or resumed in `onUpdate` moves in the same frame.
