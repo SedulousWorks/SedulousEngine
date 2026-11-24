@@ -155,4 +155,35 @@ class PoseOverlayTests
 		Test.Assert(player.ConsumeOneShotEnded());
 		Test.Assert(Near(player.GetLocalPoses()[0].Position.Y, 0.0f));
 	}
+
+	[Test]
+	public static void ADrivenOneShotShowsTheTimeAndWeightItsDriverSetsAndUpdateLeavesIt()
+	{
+		let skeleton = scope Skeleton(1);
+		OneBone(skeleton);
+		let stand = scope AnimationClip("Stand", 1.0f, true);
+		Holding(stand, 0.0f);
+		// The bone climbs from 0 to 2 over the second.
+		let rise = scope AnimationClip("Rise", 1.0f, false);
+		rise.GetOrCreatePositionTrack(0).AddKeyframe(0.0f, .(0, 0, 0));
+		rise.GetOrCreatePositionTrack(0).AddKeyframe(1.0f, .(0, 2, 0));
+		let player = scope AnimationPlayer(skeleton);
+		player.Play(stand);
+
+		player.Overlay.DriveOneShot(rise, 0.5f, 1.0f);
+		Test.Assert(player.Overlay.IsDriven);
+		Test.Assert(Run(player, 0.3f) == 0);
+		Test.Assert(Near(Height(player), 1.0f), "still at 0.5 s: Update did not move it");
+		player.Overlay.DriveOneShot(rise, 0.25f, 0.5f); // a seek back, half shown
+		Run(player, 0.01f);
+		Test.Assert(Near(Height(player), 0.25f));
+
+		// A stop blends it out from there on its own, and it ends.
+		player.Overlay.DriveOneShot(rise, 0.5f, 1.0f);
+		player.Overlay.StopOneShot(0.2f);
+		Test.Assert(!player.Overlay.IsDriven);
+		Test.Assert(Run(player, 0.3f) == 1);
+		Test.Assert(!player.Overlay.IsPlayingOneShot);
+		Test.Assert(Near(Height(player), 0.0f));
+	}
 }

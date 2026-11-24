@@ -13,6 +13,7 @@ static class AnimationDomain
 	public static DomainModule Module => sModule ?? (sModule = new .("animation", => AnimationScene.AddAnimationSceneManagers,
 		new .(
 			AnimationResources.Module,
-			PropertyAnimationResources.Module)));
+			PropertyAnimationResources.Module,
+			AnimationSequenceTracks.Module)));
 	private static DomainModule sModule ~ delete _;
 }

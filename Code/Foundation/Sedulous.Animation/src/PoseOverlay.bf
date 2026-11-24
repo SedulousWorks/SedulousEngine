@@ -50,6 +50,8 @@ class PoseOverlay
 	private float mStopSeconds = 0.0f;
 	/// Stopped at once: Update reports it.
 	private bool mEndedNow = false;
+	/// DriveOneShot's: its time and weight are set from outside.
+	private bool mDriven = false;
 	/// The pose a fade starts from.
 	private List<BoneTransform> mHeld = new .() ~ delete _;
 	private float mHoldLeft = 0.0f;
@@ -79,7 +81,28 @@ class PoseOverlay
 		mSettings.Speed = (settings.Speed > 0.0f) ? settings.Speed : 1.0f;
 		mTime = 0.0f;
 		mStopping = false;
+		mDriven = false;
 	}
+
+	/// Shows `clip` (BORROWED) at `clipTime` by `weight` (0 to 1), driven from outside: a
+	/// sequence's clip section sets both every step, so a seek or a scrub lands exactly, and Update
+	/// does not move it. `clipTime` is within the clip (the driver wraps a loop). It takes over from
+	/// a one-shot at once (the driver blends by its weight), and ends with StopOneShot, which plays
+	/// on from where it was while it blends out.
+	public void DriveOneShot(AnimationClip clip, float clipTime, float weight)
+	{
+		if (clip == null)
+			return;
+		mClip = clip;
+		mSettings = .();
+		mTime = Max(0.0f, clipTime);
+		mWeight = Clamp(weight, 0.0f, 1.0f);
+		mStopping = false;
+		mDriven = true;
+	}
+
+	/// Whether the one-shot showing is driven from outside (DriveOneShot).
+	public bool IsDriven => (mClip != null) && mDriven;
 
 	/// Blends the one-shot out over `blendOut` seconds from where it is now (0: at once). It
 	/// ends, and Update says so, once it is out.
@@ -94,6 +117,8 @@ class PoseOverlay
 			mClip = null;
 			return;
 		}
+		// It blends out on its own.
+		mDriven = false;
 		mStopping = true;
 		mStopFrom = mWeight;
 		mStopLeft = blendOut;
@@ -132,7 +157,8 @@ class PoseOverlay
 		mEndedNow = false;
 		if (mHoldLeft > 0.0f)
 			mHoldLeft = Max(0.0f, mHoldLeft - deltaTime);
-		if (mClip == null)
+		// A driven one-shot moves only when its driver says.
+		if ((mClip == null) || mDriven)
 			return ended;
 
 		mTime += deltaTime * mSettings.Speed;
