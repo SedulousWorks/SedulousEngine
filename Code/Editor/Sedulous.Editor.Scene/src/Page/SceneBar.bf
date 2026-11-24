@@ -87,6 +87,7 @@ class SceneBar
 		mBar.Bind(find("scene-stop"), SceneActionIds.SimulateStop);
 		mBar.Bind(find("scene-frame"), SceneActionIds.FrameSelection);
 		mBar.Bind(find("scene-animation-panel"), SceneActionIds.AnimationPanel);
+		mBar.Bind(find("scene-sequence-panel"), SceneActionIds.SequencePanel);
 		if (let menuButton = snap as ToolMenuButton)
 			BuildSnapMenu(menuButton.Menu);
 		SyncState(); // hidden until it runs

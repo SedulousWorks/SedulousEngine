@@ -1,0 +1,62 @@
+<!--
+  The sequence panel: under the scene page's viewport, it edits a sequence of its own, not the
+  scene. Its bar holds the sequence (New, Open, Save, and its own Undo and Redo); its cast (Cast
+  fills a part with the entity selected in the scene, or adds a part for it); its tracks (Track
+  offers the registered kinds, and a property track for each of the chosen part's animatable
+  properties; Section adds a section at the playhead to the chosen section track; Marker adds a
+  marker there, Hold a marker the playhead waits at; Remove takes the chosen tracks away); the
+  kit's transport over the preview (Restart, Play showing Pause while it plays, Stop, Loop); Frame
+  and the sequence's length; and at its end the sequence's name and its unsaved mark, and Close.
+  Under it are the ruler (its markers), the dopesheet (key rows and section rows, by part) and the
+  curve view on one time axis, and beside them the inspector of the chosen track. With no sequence,
+  a state says so in their place. While the panel holds the focus its keys are its own (Ctrl+Z,
+  Ctrl+Y and Ctrl+S act on the sequence). Code fills the names and wires the parts.
+-->
+<Panel class="seq-panel">
+    <ToolBar id="seq-bar" class="panel-toolbar seq-bar">
+        <ToolButton id="seq-new" icon="Editor/Icons/plus.svg" tooltip="A new sequence"/>
+        <ToolButton id="seq-open" icon="Editor/Icons/open.svg" tooltip="Open a sequence"/>
+        <ToolButton id="seq-save" icon="Editor/Icons/save.svg" tooltip="Save the sequence (Ctrl+S while the panel has the focus)"/>
+        <ToolButton id="seq-undo" icon="Editor/Icons/undo.svg" tooltip="Undo the sequence's last edit (Ctrl+Z while the panel has the focus)"/>
+        <ToolButton id="seq-redo" icon="Editor/Icons/redo.svg" tooltip="Redo the sequence's last undone edit (Ctrl+Y while the panel has the focus)"/>
+        <Separator/>
+        <ToolButton id="seq-cast" icon="Editor/Icons/entity.svg" text="Cast" shows-text="true" tooltip="Fill a part with the entity selected in the scene, or add a part for it"/>
+        <ToolButton id="seq-add-track" icon="Editor/Icons/plus.svg" text="Track" shows-text="true" tooltip="Add a track for the chosen part, or for the whole sequence"/>
+        <ToolButton id="seq-add-section" icon="Editor/Icons/plus.svg" text="Section" shows-text="true" tooltip="Add a section at the playhead to the chosen section track"/>
+        <ToolButton id="seq-add-marker" icon="Editor/Icons/star.svg" text="Marker" shows-text="true" tooltip="Add a marker at the playhead"/>
+        <ToolButton id="seq-add-hold" icon="Editor/Icons/pause.svg" text="Hold" shows-text="true" tooltip="Add a hold at the playhead: the playhead waits there until the game resumes the play"/>
+        <ToolButton id="seq-remove" icon="Editor/Icons/trash.svg" tooltip="Remove the chosen tracks"/>
+        <Separator/>
+        <ToolButton id="seq-restart" icon="Editor/Icons/restart.svg" tooltip="Play from the start"/>
+        <ToolButton id="seq-play" toggle="true" icon="Editor/Icons/play.svg" checked-icon="Editor/Icons/pause.svg" tooltip="Play or pause the preview"/>
+        <ToolButton id="seq-stop" icon="Editor/Icons/stop.svg" tooltip="Stop, back at the start"/>
+        <ToolButton id="seq-loop" toggle="true" icon="Editor/Icons/restart.svg" text="Loop" shows-text="true" tooltip="Loop the preview"/>
+        <Separator/>
+        <ToolButton id="seq-frame" icon="Editor/Icons/frame-selection.svg" tooltip="Frame the curves shown"/>
+        <Label class="seq-length-label" text="Length"/>
+        <NumberField id="seq-length" class="seq-length" min="0" step="0.1" value="1" tooltip="The sequence's length in seconds (never shorter than what it holds)"/>
+        <Spacer/>
+        <Image class="seq-icon" src="Editor/Icons/sequence.svg"/>
+        <Label id="seq-name" class="seq-name" text="No sequence"/>
+        <Label id="seq-dirty" class="badge seq-dirty" text="Unsaved"/>
+        <ToolButton id="seq-close" icon="Editor/Icons/close.svg" tooltip="Close the panel (Scene > Sequence Panel opens it again)"/>
+    </ToolBar>
+    <Panel id="seq-empty" class="state-box seq-empty">
+        <Image class="state-icon" src="Editor/Icons/sequence.svg"/>
+        <Label class="state-title" text="No sequence"/>
+        <Label class="state-text" text="A sequence is a cutscene timeline: it moves several entities, plays their clips and sounds, cuts between cameras and fades, and waits at holds for the game. Make a new one or open one, then cast the entities it plays with."/>
+    </Panel>
+    <Splitter id="seq-body" class="seq-body" axis="horizontal" weights="0.72 0.28">
+        <Splitter class="seq-timeline" axis="vertical" weights="0.6 0.4">
+            <Panel class="seq-sheet-pane">
+                <TimeRuler id="seq-ruler" class="seq-ruler"/>
+                <Dopesheet id="seq-sheet" class="seq-sheet" label-width="220"/>
+            </Panel>
+            <CurveView id="seq-curves" class="seq-curves"/>
+        </Splitter>
+        <Panel class="seq-inspector-pane">
+            <Label id="seq-track-name" class="seq-track-name" text="No track chosen"/>
+            <PropertyGrid id="seq-inspector" class="seq-inspector"/>
+        </Panel>
+    </Splitter>
+</Panel>

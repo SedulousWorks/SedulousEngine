@@ -24,6 +24,7 @@ static class SceneActionIds
 	public const String FrameSelection = "scene.view.frameSelection";
 	public const String Orthographic = "scene.view.orthographic";
 	public const String AnimationPanel = "scene.view.animationPanel";
+	public const String SequencePanel = "scene.view.sequencePanel";
 	public const String SetProjectThumbnail = "scene.view.setProjectThumbnail";
 	public const String EntityCreate = "scene.entity.create";
 	public const String EntityCreateChild = "scene.entity.createChild";
@@ -283,6 +284,22 @@ static class SceneActions
 				{
 					let scene = page as ISceneEditorPage;
 					scene.SetAnimationPanelShown(!scene.AnimationPanelShown);
+				};
+			actions.Register(d);
+		}
+		{
+			let d = new EditorActionDeclaration(SceneActionIds.SequencePanel, "Sequence", "Show the sequence panel under the viewport: cutscene timelines", "Scene/Sequence Panel", 302);
+			d.Kind = .Toggle;
+			d.Enabled = new (page) => (page as ISceneEditorPage) != null;
+			d.Checked = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && scene.SequencePanelShown;
+				};
+			d.Execute = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					scene.SetSequencePanelShown(!scene.SequencePanelShown);
 				};
 			actions.Register(d);
 		}

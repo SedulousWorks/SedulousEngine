@@ -83,6 +83,14 @@ interface ISceneEditorPage
 	/// the one it binds), an unsaved clip asked about first (an animator's Edit Clip).
 	void EditAnimationClip(Guid clip, Guid entity);
 
+	/// The sequence panel under the viewport, beside the animation panel. Selecting an entity never
+	/// opens it: its toggle, the Scene menu or a sequence component's Edit Sequence does.
+	bool SequencePanelShown { get; }
+	void SetSequencePanelShown(bool shown);
+	/// The panel shown editing `sequence` (empty: the one it has), its cast filled from the sequence
+	/// component on `owner` (empty: as it is), an unsaved sequence asked about first.
+	void EditSequence(Guid sequence, Guid owner);
+
 	/// The viewport's free-fly camera: the pose the scene is looked at from, which an agent
 	/// moves to look from somewhere specific; null on a page without a viewport.
 	EditorCamera ViewportCamera { get; }

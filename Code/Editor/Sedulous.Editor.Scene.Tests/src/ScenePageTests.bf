@@ -30,6 +30,10 @@ using Sedulous.PropertyAnimation;
 using Sedulous.PropertyAnimation.Pipeline;
 using Sedulous.Editor.PropertyAnimation;
 using Sedulous.Engine.Animation; // PropertyAnimatorComponent (New Clip gives it the clip)
+using Sedulous.Sequence.Resource; // SequenceResources (the track kinds)
+using Sedulous.Sequence.Pipeline; // SequenceCreators
+using Sedulous.Editor.Sequence; // the sequence panel
+using Sedulous.Engine.Sequence; // SequenceComponent (Edit Sequence casts from it)
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -1769,6 +1773,108 @@ class ScenePageTests
 		shown.Click(animation);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(!page.AnimationPanelShown);
+
+		// So does the sequence panel's; selecting an entity never shows it.
+		let sequence = FindId<ButtonBase>(page.Content, "scene-sequence-panel");
+		Test.Assert(sequence != null);
+		Guid[1] crate = .(bed.Crate);
+		page.EditContext.EntitySelection.Set(crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!page.SequencePanelShown);
+		shown.Click(sequence);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(page.SequencePanelShown);
+		Test.Assert(sequence.Checked);
+		shown.Click(sequence);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!page.SequencePanelShown);
+		page.OnClose();
+	}
+
+	/// The sequence panel beside the animation panel, its cast filled from a sequence component's,
+	/// the scene saved as it is and not as the panel posed it.
+	[Test]
+	public static void TheSequencePanelBesideTheAnimationPanelCastFromAComponentTheSceneSavedAsItIs()
+	{
+		let bed = scope Bed();
+		SequenceResources.RegisterAll(); // the track kinds, as the editor's composition registers them
+		SequencePipeline.RegisterAll();
+		let asset = SequenceCreators.CreateSequence(bed.Project.SourceDb.RootGroup, "Arrival");
+		Test.Assert(asset != null);
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let panel = page.SequencePanelView;
+		Test.Assert(panel != null);
+		let center = FindId<Splitter>(page.Content, "scene-center");
+		Test.Assert(center != null);
+		page.SetAnimationPanelShown(true);
+		page.SetSequencePanelShown(true);
+		Test.Assert(center.PaneCount == 3, "the viewport and both panels");
+		page.SetAnimationPanelShown(false);
+		Test.Assert(center.PaneCount == 2);
+
+		// A sequence component's Edit Sequence: its sequence opened, its cast filled from the
+		// component (the crate plays "Hero" as the component's own entity).
+		page.EditContext.AddComponent(bed.Crate, typeof(SequenceComponent));
+		{
+			let components = page.ScenePtr.GetSystem<SequenceComponentManager>();
+			Test.Assert(components != null);
+			let component = components.Get(page.ScenePtr.FindEntity(bed.Crate));
+			Test.Assert((component != null) && (component.Cast != null));
+			component.Cast.Add(new .("Hero", .(), true));
+		}
+		page.EditSequence(asset.Id, bed.Crate);
+		Test.Assert(page.SequencePanelShown);
+		Test.Assert(panel.Document.SequenceId == asset.Id);
+		Test.Assert(panel.CastEntity("Hero") == bed.Crate);
+
+		// A part and a track posing the crate at x 5: the sequence unsaved, never the scene.
+		Guid[1] crateId = .(bed.Crate);
+		page.EditContext.EntitySelection.Set(crateId);
+		Test.Assert(panel.AddPartForSelected() == 0);
+		{
+			let offers = scope List<SequenceTrackOffer>();
+			defer { ClearAndDeleteItems!(offers); }
+			panel.OfferedTracks(offers);
+			SequenceTrackOffer position = null;
+			for (let offer in offers)
+			{
+				if (offer.Property && (offer.Target.PropertyPath == "Position"))
+					position = offer;
+			}
+			Test.Assert(position != null);
+			panel.AddTrack(position);
+		}
+		panel.Document.Edit("test", scope (s) => { s.Tracks[0].KeyCurve(0).Keys[0].Value = 5.0f; });
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let crate = page.ScenePtr.FindEntity(bed.Crate);
+		Test.Assert(Math.Abs(page.ScenePtr.GetLocalTransform(crate).Position.X - 5.0f) < 1e-3f);
+		{
+			let besides = scope List<String>();
+			defer { ClearAndDeleteItems!(besides); }
+			page.ListUnsavedBesides(besides);
+			Test.Assert(besides.Count == 1);
+			Test.Assert(besides[0] == "The sequence 'Arrival'");
+		}
+
+		// Saved: the scene as it is (x 0), the crate posed again after.
+		page.EditContext.CreateEntity("Barrel");
+		Test.Assert(page.Save() case .Ok);
+		Test.Assert(Math.Abs(page.ScenePtr.GetLocalTransform(crate).Position.X - 5.0f) < 1e-3f);
+		{
+			let stored = scope Sedulous.Scene.Scene("stored");
+			Test.Assert(SceneStorage.LoadScene(bed.Level, stored) case .Ok);
+			Test.Assert(Math.Abs(stored.GetLocalTransform(stored.FindEntity(bed.Crate)).Position.X) < 1e-3f);
+		}
+		Test.Assert(page.SaveBesides() case .Ok);
+		Test.Assert(!page.HasUnsavedBesides);
+
+		// Hidden from its own Close: what it posed goes back.
+		Test.Assert(panel.RequestClose != null);
+		panel.RequestClose();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!page.SequencePanelShown);
+		Test.Assert(Math.Abs(page.ScenePtr.GetLocalTransform(crate).Position.X) < 1e-3f);
 		page.OnClose();
 	}
 
@@ -2184,7 +2290,7 @@ class ScenePageTests
 		let shown = scope Shown(page);
 		let bar = page.Bar;
 		Test.Assert(bar != null);
-		Test.Assert(bar.Bound == 16); // save, undo, redo, discard, four transform, space, snap, vertex snap, Simulate's three, frame, the animation panel
+		Test.Assert(bar.Bound == 17); // save, undo, redo, discard, four transform, space, snap, vertex snap, Simulate's three, frame, the animation and sequence panels
 		let gizmos = page.Gizmos;
 		Test.Assert(gizmos != null);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);

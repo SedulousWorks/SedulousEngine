@@ -31,6 +31,7 @@
         <!-- The viewport tools, from the tool registry, go here (code adds them before this). -->
         <Separator id="scene-tools-end"/>
         <ToolButton id="scene-animation-panel" toggle="true" icon="Editor/Icons/animation.svg"/>
+        <ToolButton id="scene-sequence-panel" toggle="true" icon="Editor/Icons/sequence.svg"/>
         <Label id="scene-kind" class="badge page-kind" text="Prefab" tooltip="This page edits a prefab: one root, saved to every instance"/>
     </ToolBar>
     <Splitter id="scene-body" class="page-body" axis="horizontal" weights="0.2 0.56 0.24">
@@ -94,6 +95,9 @@
             <!-- The property animation panel: shown from the View menu or an animator's Edit Clip;
                  code puts the panel's markup in. -->
             <Panel id="scene-animation" class="panel scene-animation"/>
+            <!-- The sequence panel: shown from the Scene menu, its toggle or a sequence component's
+                 Edit Sequence (selecting an entity never opens it); code puts its markup in. -->
+            <Panel id="scene-sequence" class="panel scene-sequence"/>
         </Splitter>
         <Panel id="scene-inspector" class="panel page-pane">
             <Panel class="inspector-head">

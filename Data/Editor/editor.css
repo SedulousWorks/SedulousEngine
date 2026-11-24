@@ -386,6 +386,22 @@ treerowcontent.inactive { opacity: 0.45; }
 .anim-ruler { margin-inline-start: 200px; height: 22px; }
 .anim-sheet { flex-grow: 1; }
 .anim-curves { margin-inline-start: 200px; border-top: 1px solid var(--border); }
+/* The sequence panel: its bar over the ruler, dopesheet (key rows and section rows) and curve view,
+   beside the chosen track's inspector; the ruler and the curves start where the keys do. */
+.seq-panel { flex-direction: column; flex-grow: 1; background-color: var(--surface); }
+.seq-icon { width: 16px; height: 16px; image-color: var(--icon-dim); }
+.seq-name { font-weight: 600; padding: 0 var(--space-s); }
+.seq-length { width: 72px; }
+.seq-length-label { color: var(--text-dim); padding: 0 var(--space-s); }
+.seq-empty { flex-grow: 1; background-color: var(--surface-sunken); }
+.seq-body { flex-grow: 1; }
+.seq-sheet-pane { flex-direction: column; }
+.seq-ruler { margin-inline-start: 220px; height: 22px; }
+.seq-sheet { flex-grow: 1; }
+.seq-curves { margin-inline-start: 220px; border-top: 1px solid var(--border); }
+.seq-inspector-pane { flex-direction: column; border-inline-start: 1px solid var(--border); }
+.seq-track-name { font-weight: 600; padding: var(--space-s); }
+.seq-inspector { flex-grow: 1; min-height: 0; }
 .audio-volume-icon { width: 16px; height: 16px; image-color: var(--icon-dim); }
 waveform::wave { background-color: var(--accent); }
 waveform::playhead { background-color: var(--warning); }

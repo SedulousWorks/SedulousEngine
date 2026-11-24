@@ -6,6 +6,7 @@ using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Behavior;
 using Sedulous.Engine.Animation; // PropertyAnimatorComponent (its Edit Clip)
+using Sedulous.Engine.Sequence; // SequenceComponent (its Edit Sequence)
 
 namespace Sedulous.Editor.Scene;
 
@@ -39,6 +40,7 @@ static class BuiltinInspectorExtras
 		InspectorExtrasRegistry.Register(typeof(PhysicsSceneSettings), new (extras) => { AddCollisionGroups(extras); });
 		InspectorExtrasRegistry.Register(typeof(SceneBehaviorSettings), new (extras) => { AddLevelProperties(extras); });
 		InspectorExtrasRegistry.Register(typeof(PropertyAnimatorComponent), new (extras) => { AddEditClip(extras); });
+		InspectorExtrasRegistry.Register(typeof(SequenceComponent), new (extras) => { AddEditSequence(extras); });
 	}
 
 	// A behavior component's behaviours: a source of their own (reflection does not show them).
@@ -79,6 +81,26 @@ static class BuiltinInspectorExtras
 				let handle = edit.Resolve(entity);
 				let animator = ((animators != null) && handle.IsAssigned) ? animators.Get(handle) : null;
 				page.EditAnimationClip((animator != null) ? animator.Clip.Id : .Empty, entity);
+			});
+	}
+
+	// A sequence component's sequence in the page's sequence panel, its cast filled from the
+	// component's.
+	private static void AddEditSequence(InspectorExtras extras)
+	{
+		extras.AddAction("Sequence", "Edit Sequence", "Open the sequence in the sequence panel under the viewport, cast as this component casts it",
+			new [=extras] () =>
+			{
+				let context = extras.Context;
+				let page = (context != null) ? (context.ActivePage as ISceneEditorPage) : null;
+				if ((page == null) || extras.Entities.IsEmpty)
+					return;
+				let edit = extras.Edit;
+				let entity = extras.Entities[0];
+				let components = edit.Scene.GetSystem<SequenceComponentManager>();
+				let handle = edit.Resolve(entity);
+				let component = ((components != null) && handle.IsAssigned) ? components.Get(handle) : null;
+				page.EditSequence((component != null) ? component.Sequence.Id : .Empty, entity);
 			});
 	}
 

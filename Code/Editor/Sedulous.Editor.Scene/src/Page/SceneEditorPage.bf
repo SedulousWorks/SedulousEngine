@@ -23,6 +23,9 @@ using Sedulous.Editor.ViewportTools;
 using Sedulous.Editor.PropertyAnimation; // the animation panel under the viewport
 using Sedulous.PropertyAnimation.Pipeline; // PropertyAnimationCreators (the panel's New)
 using Sedulous.Engine.Animation; // PropertyAnimatorComponent (a new clip given to it)
+using Sedulous.Editor.Sequence; // the sequence panel beside the animation panel
+using Sedulous.Sequence.Pipeline; // SequenceCreators (the sequence panel's New)
+using Sedulous.Engine.Sequence; // SequenceComponent (Edit Sequence fills the panel's cast from it)
 
 namespace Sedulous.Editor.Scene;
 
@@ -96,6 +99,14 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private bool mAnimationShown = false;
 	/// Takes a clip's open into the panel while the page is on screen; 0: none.
 	private uint64 mOpenClipInterceptor = 0;
+	/// Under the viewport beside the animation panel (null: no markup); a sequence of its own, never
+	/// the scene's history.
+	private SequencePanel mSequence = null;
+	/// Held: out of the splitter while hidden, nothing else holds it.
+	private Node mSequencePane = null;
+	private bool mSequenceShown = false;
+	/// Takes a sequence's open into the panel while the page is on screen; 0: none.
+	private uint64 mOpenSequenceInterceptor = 0;
 	/// After mEditContext (the tools borrow it), so deleted first.
 	/// What the tools and their panels were made with.
 	private ViewportToolHostContext mToolHost = .();
@@ -146,6 +157,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		// The tools borrow the edit context, the flows, the hierarchy and the inspector too: they go
 		// first.
 		DeleteAndNullify!(mAnimation); // what its preview posed goes back while the scene is here
+		DeleteAndNullify!(mSequence);
 		DeleteAndNullify!(mEntityPicker);
 		DeleteAndNullify!(mInspector);
 		DeleteAndNullify!(mHierarchy);
@@ -156,6 +168,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mConfirm.ReleaseRef();
 		if (mAnimationPane != null)
 			mAnimationPane.ReleaseRef();
+		if (mSequencePane != null)
+			mSequencePane.ReleaseRef();
 		if (mContent != null)
 			mContent.ReleaseRef();
 	}
@@ -175,6 +189,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	/// scene's history or its unsaved mark.
 	public bool AnimationPanelShown => mAnimationShown;
 	public PropertyAnimationPanel AnimationPanel => mAnimation;
+	/// The sequence panel under the viewport: a sequence of its own, never the scene's history or its
+	/// unsaved mark. Selecting an entity never opens it: its toggle, the Scene menu or a sequence
+	/// component's Edit Sequence does.
+	public bool SequencePanelShown => mSequenceShown;
+	public SequencePanel SequencePanelView => mSequence;
 	public EditorCamera ViewportCamera => mViewport.Camera;
 	public ViewportCapture LastViewportCapture => mViewport.LastCapture;
 	public Result<void, ErrorCode> RequestViewportCapture(StringView path) => mViewport.RequestCapture(path, false);
@@ -398,6 +417,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		}
 
 		BuildAnimationPanel(context);
+		BuildSequencePanel(context);
 		mOverlays.Settings = SceneViewState.LoadOverlays(context.ProjectEditorSettings, InstanceId, mOverlays.Settings);
 		RestoreViewState();
 	}
@@ -456,6 +476,163 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mAnimationPane = pane;
 		mAnimationPane.AddRef();
 		pane.Parent.RemoveChild(pane); // hidden until shown
+	}
+
+	private void BuildSequencePanel(EditorContext context)
+	{
+		// Under the viewport beside the animation panel, its pane out of the splitter until shown.
+		let pane = Find<Node>("scene-sequence");
+		if ((pane == null) || (mScene == null) || (mEditContext == null) || (mServices.LoadMarkup == null))
+			return;
+		let content = mServices.LoadMarkup(SequencePanel.cMarkupPath);
+		if (content == null)
+			return;
+		pane.AddChild(content);
+		mSequence = new SequencePanel(context, mScene, content, mServices.Refs);
+		content.ReleaseRef(); // the pane's and the panel's keep it
+		mSequence.SelectedEntity = new [=this] () => mEditContext.EntitySelection.IsEmpty ? Guid.Empty : mEditContext.EntitySelection.Primary;
+		mSequence.GuardUnsaved = new [=this] (proceed) => { AskAboutSequence(proceed); };
+		// Hidden: what it posed goes back, its sequence stays open in it for next time.
+		mSequence.RequestClose = new [=this] () => { Later(new [=this] () => { SetSequencePanelShown(false); }); };
+		if ((mServices.Refs != null) && (mServices.Refs.Pick != null))
+		{
+			mSequence.RequestOpenSequence = new [=this] () =>
+				{
+					String[1] types = .("SequenceAsset");
+					mServices.Refs.Pick(types, mSequence.Document.SequenceId, new [=this] (picked) =>
+						{
+							if (picked != .Empty)
+								mSequence.RequestEditSequence(picked, default);
+						});
+				};
+		}
+		mSequence.RequestNewSequence = new [=this] () => { AskAboutSequence(new [=this] () => { NewSequence(); }); };
+		// A sequence opened from the browser or a slot while this page is on screen: into the panel,
+		// shown, not a page of its own.
+		mOpenSequenceInterceptor = mContext.AddOpenAssetInterceptor(new [=this] (instance) =>
+			{
+				if (!AssetTypeNames.Matches(instance.TypeName, "SequenceAsset") || !IsOnScreen)
+					return false;
+				SetSequencePanelShown(true);
+				mSequence.RequestEditSequence(instance.Id, default);
+				return true;
+			});
+		mSequencePane = pane;
+		mSequencePane.AddRef();
+		pane.Parent.RemoveChild(pane); // hidden until shown
+	}
+
+	// New Sequence: named and placed (Create Asset, starting in Sequences), then opened.
+	private void NewSequence()
+	{
+		let top = (mContext.Project != null) ? mContext.Project.SourceDb.RootGroup : null;
+		if (top == null)
+			return;
+		Group sequences = null;
+		for (let child in top.Groups)
+		{
+			if (child.Name == "Sequences")
+				sequences = child;
+		}
+		let suggested = scope String();
+		((sequences != null) ? sequences : top).UniqueInstanceName("Sequence", suggested);
+		delegate void(Group group, StringView name) make = new [=this] (group, name) =>
+			{
+				let made = SequenceCreators.CreateSequence(group, name);
+				if (made == null)
+				{
+					mContext.Notify(.Warning, "The sequence could not be made; the Console says why.");
+					return;
+				}
+				mSequence.LoadSequence(made.Id);
+			};
+		if (mServices.CreateAsset != null)
+		{
+			mServices.CreateAsset("New Sequence", suggested, sequences, make);
+			return;
+		}
+		// No dialog (a test): Sequences, as suggested.
+		defer delete make;
+		if (sequences == null)
+			sequences = top.CreateGroup("Sequences");
+		if (sequences != null)
+			make(sequences, suggested);
+	}
+
+	// The page's prompt for the panel's unsaved sequence: Save, Discard (as saved) or Cancel;
+	// `proceed` (taken) runs after Save or Discard.
+	private void AskAboutSequence(delegate void() proceed)
+	{
+		if ((mSequence == null) || !mSequence.Document.IsDirty)
+		{
+			proceed();
+			delete proceed;
+			return;
+		}
+		let root = (mContent != null) ? mContent.RootNode : null;
+		if (root == null)
+		{
+			delete proceed;
+			return; // nothing to ask over: the sequence stays
+		}
+		if (mConfirm != null)
+			mConfirm.ReleaseRef();
+		let question = new MessageBox();
+		mConfirm = question;
+		question.Configure("Unsaved sequence", scope $"The sequence '{mSequence.Document.Name}' has unsaved changes.", .Ok);
+		question.ClearButtons();
+		question.AddButton("Discard", "discard", .Destructive);
+		question.AddButton("Cancel", "cancel", .Cancel);
+		question.AddButton("Save", "save", .Primary);
+		question.AddEventListener(.Changed, new [=question, =proceed, =this] (e) =>
+			{
+				let answer = question.ResultName;
+				if ((answer == "save") && !(mSequence.Save() case .Ok))
+					return; // it said why
+				if ((answer == "save") || (answer == "discard"))
+					proceed();
+			} ~ delete proceed);
+		question.OpenModal(root);
+	}
+
+	/// The panel shown editing `sequence` (empty: the one it has), its cast filled from the sequence
+	/// component on `owner` (empty: as it is), an unsaved sequence asked about first (a sequence
+	/// component's Edit Sequence).
+	public void EditSequence(Guid sequence, Guid owner)
+	{
+		if (mSequence == null)
+			return;
+		SetSequencePanelShown(true);
+		if (sequence == .Empty)
+			return;
+		// The owner's sequence component gives the cast: each part's entity, or the owner itself.
+		let cast = scope List<SequencePanelCast>();
+		let components = (mScene != null) ? mScene.GetSystem<SequenceComponentManager>() : null;
+		let handle = ((owner == .Empty) || (mScene == null)) ? EntityHandle.Invalid : mScene.FindEntity(owner);
+		let component = ((components != null) && handle.IsAssigned) ? components.Get(handle) : null;
+		if ((component != null) && (component.Cast != null))
+		{
+			for (let entry in component.Cast)
+				cast.Add(.(entry.Name, entry.Self ? owner : entry.Entity.Id));
+		}
+		mSequence.RequestEditSequence(sequence, cast);
+	}
+
+	// What the panels posed is not the scene's: put back (a save, a simulation), posed again after.
+	private void StopPreviews()
+	{
+		if (mAnimation != null)
+			mAnimation.StopPreview();
+		if (mSequence != null)
+			mSequence.StopPreview();
+	}
+
+	private void Repose()
+	{
+		if (mAnimation != null)
+			mAnimation.Repose();
+		if ((mSequence != null) && mSequenceShown)
+			mSequence.Repose();
 	}
 
 	// New Clip: named and placed (Create Asset), opened, given to the entity's animator when it has
@@ -567,9 +744,21 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	{
 		if ((mAnimation != null) && mAnimation.Document.IsDirty)
 			outNames.Add(new String()..AppendF("The clip '{}'", mAnimation.Document.Name));
+		if ((mSequence != null) && mSequence.Document.IsDirty)
+			outNames.Add(new String()..AppendF("The sequence '{}'", mSequence.Document.Name));
 	}
 
-	public override Result<void, ErrorCode> SaveBesides() => ((mAnimation != null) && mAnimation.Document.IsDirty) ? mAnimation.Save() : .Ok;
+	public override Result<void, ErrorCode> SaveBesides()
+	{
+		Result<void, ErrorCode> saved = ((mAnimation != null) && mAnimation.Document.IsDirty) ? mAnimation.Save() : .Ok;
+		if ((mSequence != null) && mSequence.Document.IsDirty)
+		{
+			let sequenceSaved = mSequence.Save();
+			if (saved case .Ok)
+				saved = sequenceSaved;
+		}
+		return saved;
+	}
 
 	private void BuildTools(EditorContext context)
 	{
@@ -621,6 +810,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 		if ((mAnimation != null) && mAnimationShown)
 			mAnimation.Update(dt, mSimulation.IsRunning);
+		if ((mSequence != null) && mSequenceShown)
+			mSequence.Update(dt, mSimulation.IsRunning);
 		mViewport.AdvanceScripted(dt); // a playtest's frame (viewport_run), before the view's input is read
 		// A modal tool (a brush) owns Shift + wheel to size itself, so the camera leaves that wheel
 		// to it; the bare wheel stays the camera's under a brush too.
@@ -828,7 +1019,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mContext.RemoveOpenAssetInterceptor(mOpenClipInterceptor);
 			mOpenClipInterceptor = 0;
 		}
+		if (mOpenSequenceInterceptor != 0)
+		{
+			mContext.RemoveOpenAssetInterceptor(mOpenSequenceInterceptor);
+			mOpenSequenceInterceptor = 0;
+		}
 		DeleteAndNullify!(mAnimation); // what its preview posed goes back while the scene is here
+		DeleteAndNullify!(mSequence);
 		DeleteAndNullify!(mEntityPicker); // it lets the scene's tree go before the scene does
 		DeleteAndNullify!(mCameraPreview); // its picture's targets go with the viewports, before the scene
 		DeleteAndNullify!(mInspector); // the grid lets its sources go before the scene does
@@ -930,13 +1127,14 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				return .Err(.InvalidArgument);
 			}
 		}
-		// What the animation panel posed is not the scene's: saved as it is, posed again after.
-		let posed = (source === mScene) && (mAnimation != null);
+		// What the animation and sequence panels posed is not the scene's: saved as it is, posed
+		// again after.
+		let posed = source === mScene;
 		if (posed)
-			mAnimation.StopPreview();
+			StopPreviews();
 		let saved = isPrefab ? SceneStorage.SavePrefab(source, instance) : SceneStorage.SaveScene(source, instance);
 		if (posed)
-			mAnimation.Repose();
+			Repose();
 		return saved;
 	}
 
@@ -1002,10 +1200,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public void StartSimulation()
 	{
-		// The scene as it is, not as the animation panel posed it, is what the run starts from and
-		// what its end puts back.
-		if (mAnimation != null)
-			mAnimation.StopPreview();
+		// The scene as it is, not as the panels posed it, is what the run starts from and what its
+		// end puts back.
+		StopPreviews();
 		if ((mScene == null) || !mSimulation.Start(mScene, Commands))
 			return;
 		// The page Simulate was pressed in is the run heard, as the tab Play was pressed in is.
@@ -1036,23 +1233,41 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public void SetAnimationPanelShown(bool shown)
 	{
-		if ((mAnimation == null) || (mAnimationPane == null) || (shown == mAnimationShown))
-			return;
-		let center = Find<Splitter>("scene-center");
-		if (center == null)
+		if ((mAnimation == null) || (mAnimationPane == null) || (shown == mAnimationShown) || (Find<Splitter>("scene-center") == null))
 			return;
 		mAnimationShown = shown;
-		if (shown)
-		{
-			center.AddChild(mAnimationPane);
-			float[2] weights = .(0.68f, 0.32f);
-			center.SetWeights(weights);
-		}
-		else
-		{
+		if (!shown)
 			mAnimation.StopPreview(); // what it posed goes back with it
-			center.RemoveChild(mAnimationPane);
-		}
+		ShowPaneUnderViewport(mAnimationPane, shown);
+	}
+
+	public void SetSequencePanelShown(bool shown)
+	{
+		if ((mSequence == null) || (mSequencePane == null) || (shown == mSequenceShown) || (Find<Splitter>("scene-center") == null))
+			return;
+		mSequenceShown = shown;
+		if (!shown)
+			mSequence.StopPreview(); // what it posed goes back with it
+		ShowPaneUnderViewport(mSequencePane, shown);
+	}
+
+	// A pane under the viewport shown or hidden, the viewport keeping two thirds and the panes shown
+	// sharing the rest.
+	private void ShowPaneUnderViewport(Node pane, bool shown)
+	{
+		let center = Find<Splitter>("scene-center");
+		if (shown)
+			center.AddChild(pane);
+		else
+			center.RemoveChild(pane);
+		let panes = (mAnimationShown ? 1 : 0) + (mSequenceShown ? 1 : 0);
+		if (panes == 0)
+			return;
+		let weights = scope List<float>();
+		weights.Add(0.68f);
+		for (int i < panes)
+			weights.Add(0.32f / (float)panes);
+		center.SetWeights(weights);
 	}
 
 	public bool FrameEntities(Span<Guid> entities, bool ease) => (mScene != null) && mViewport.Frame(mScene, entities, ease);

@@ -114,6 +114,9 @@ class SceneMcpToolsTests
 		public void SetMarkersShown(bool shown) {}
 		public bool AnimationPanelShown => false;
 		public void SetAnimationPanelShown(bool shown) {}
+		public bool SequencePanelShown => false;
+		public void SetSequencePanelShown(bool shown) {}
+		public void EditSequence(Guid sequence, Guid owner) {}
 		public void EditAnimationClip(Guid clip, Guid entity) {}
 		public void CreatePrefabFromEntity(Guid entity) {}
 		public void PickAndSpawnPrefab(Guid parent) {}

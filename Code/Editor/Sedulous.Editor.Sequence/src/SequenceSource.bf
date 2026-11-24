@@ -15,7 +15,8 @@ namespace Sedulous.Editor.Sequence;
 /// one row of sections. The curve view shows the curves of the tracks the panel shows (a property's
 /// parts, a fade's amount). Every edit goes through the document: a drag is a gesture that previews
 /// from where it began and becomes one undo step when it ends; a deletion or an insertion is one
-/// step.
+/// step. Its markers are the ruler's (Markers): a hold says so on its label, and a drag moves one as
+/// a gesture.
 class SequenceSource : ICurveSource, ITimelineSource
 {
 	/// A row's channel: its track and, for keys, which of the track's key channels (-1: the track's
@@ -43,12 +44,18 @@ class SequenceSource : ICurveSource, ITimelineSource
 	private List<Channel> mCurves = new .() ~ delete _;
 	private List<int> mShown = new .() ~ delete _;
 	private List<ITimelineSourceClient> mTimelineClients = new .() ~ delete _;
+	private SequenceMarkerSource mMarkers ~ delete _;
 
 	public this(SequenceDocument document)
 	{
 		mDocument = document;
+		mMarkers = new .(document);
 		Rebuild();
 	}
+
+	/// The sequence's markers, as the ruler sees them (a source of its own: a curve source and a
+	/// marker source are each a class).
+	public ITimeMarkerSource Markers => mMarkers;
 
 	public Span<Channel> Channels => mChannels;
 	public Span<int> ShownTracks => mShown;
@@ -69,6 +76,7 @@ class SequenceSource : ICurveSource, ITimelineSource
 		for (int i = 0; i < mTimelineClients.Count; ++i)
 			mTimelineClients[i].OnTimelineChanged();
 		NotifyCurvesChanged();
+		mMarkers.Changed();
 	}
 
 	/// The row a track's name gives it ("Transform.Position", "Clip", "Event"), into `outLabel`.
@@ -380,4 +388,59 @@ class SequenceSource : ICurveSource, ITimelineSource
 		let track = mCurves[curve].Track;
 		return (track < sequence.Tracks.Count) ? sequence.Tracks[track] : null;
 	}
+}
+
+/// A sequence's markers as a ruler sees them: a hold says so on its label; a drag moves one as a
+/// gesture of the document's, the markers kept by time when it ends, as the play reads them.
+class SequenceMarkerSource : ITimeMarkerSource
+{
+	/// BORROWED.
+	private SequenceDocument mDocument;
+
+	public this(SequenceDocument document)
+	{
+		mDocument = document;
+	}
+
+	/// The document changed: the rulers read the markers again.
+	public void Changed() => NotifyTimeMarkersChanged();
+
+	public override int MarkerCount => mDocument.Sequence.Markers.Count;
+
+	public override void GetMarker(int marker, TimeMarker outMarker)
+	{
+		let markers = mDocument.Sequence.Markers;
+		if ((marker < 0) || (marker >= markers.Count))
+			return;
+		outMarker.Time = markers[marker].Time;
+		outMarker.Label.Clear();
+		outMarker.Label.Append(markers[marker].Name);
+		if (markers[marker].Hold)
+			outMarker.Label.Append(" (hold)");
+	}
+
+	public override void BeginMarkerMove(int marker) => mDocument.BeginGesture();
+
+	public override void PreviewMarkerMove(int marker, float time)
+	{
+		let markers = mDocument.GestureSequence.Markers;
+		if ((marker < 0) || (marker >= markers.Count))
+			return;
+		markers[marker].Time = Math.Max(0.0f, time);
+		mDocument.PreviewGesture();
+	}
+
+	public override void CommitMarkerMove()
+	{
+		// Kept by time, as the play reads them.
+		let markers = mDocument.GestureSequence.Markers;
+		for (int i = 1; i < markers.Count; i++)
+		{
+			for (int j = i; (j > 0) && (markers[j - 1].Time > markers[j].Time); j--)
+				Swap!(markers[j - 1], markers[j]);
+		}
+		mDocument.CommitGesture("sequence-move-marker");
+	}
+
+	public override void CancelMarkerMove() => mDocument.CancelGesture();
 }
