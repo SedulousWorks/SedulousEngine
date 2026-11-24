@@ -48,6 +48,12 @@ struct ViewSettings
 	/// position every other frame, so it read the other view's history.
 	public uint64 HistoryKey = 0;
 
+	/// Which camera the view is drawn from: nought when the host gives its own, as the editor's
+	/// viewport does. When it is not the one the view was drawn from last frame, the state the
+	/// view carries between frames starts fresh: a cut, so nothing of the last shot smears into
+	/// the new one. The camera itself knows nothing of cuts.
+	public uint64 CameraKey = 0;
+
 	/// Whether this view may frustum cull its draw list; the frame's global switch still
 	/// gates it. A per view override clears it for an A/B of what the cull saves.
 	public bool FrustumCull = true;

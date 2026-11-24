@@ -71,6 +71,10 @@ class TargetCameraTests
 		var view = ViewCamera();
 		Test.Assert(RenderExtract.ExtractPrimaryCamera(scene, ref view));
 		Test.Assert(Near(view.Position.Y, 2.0f), "the player's camera, though the minimap comes first");
+		// The pick names its camera, so the render can tell a view drawn from another camera (a cut).
+		var picked = EntityHandle.Invalid;
+		Test.Assert(RenderExtract.ExtractPrimaryCamera(scene, ref view, null, 0.0f, &picked));
+		Test.Assert(picked == player);
 
 		// An asset target that has not loaded still marks the camera as a target camera.
 		var unloaded = CameraComponent();

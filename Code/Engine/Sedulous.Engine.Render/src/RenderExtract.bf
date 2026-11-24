@@ -607,8 +607,9 @@ static class RenderExtract
 	///
 	/// The view is the INVERSE of the entity's world matrix, and the projection comes from the
 	/// component's own fields, with `aspect`, when given, for the shape the view draws into.
+	/// `outEntity`, when given, receives the camera's entity (left as is when there is none).
 	public static bool ExtractPrimaryCamera(Scene scene, ref ViewCamera outCamera,
-		Color* outClear = null, float aspect = 0.0f)
+		Color* outClear = null, float aspect = 0.0f, EntityHandle* outEntity = null)
 	{
 		let cameras = scene.GetSystem<CameraComponentManager>();
 		if (cameras == null)
@@ -617,6 +618,7 @@ static class RenderExtract
 		var found = false;
 		var camera = ViewCamera();
 		var clear = Color(0, 0, 0, 1);
+		var picked = EntityHandle.Invalid;
 
 		cameras.ForEach(scope [&] (component, entity) =>
 			{
@@ -635,6 +637,7 @@ static class RenderExtract
 				camera.Position = TransformPoint(Float3(0, 0, 0), world);
 				camera.FarZ = component.ClipPlanes.FarZ;
 				clear = ToLinear(component.ClearColor);
+				picked = entity;
 			});
 
 		if (found)
@@ -642,6 +645,8 @@ static class RenderExtract
 			outCamera = camera;
 			if (outClear != null)
 				*outClear = clear;
+			if (outEntity != null)
+				*outEntity = picked;
 		}
 		return found;
 	}

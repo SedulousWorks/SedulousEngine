@@ -115,6 +115,8 @@ class RenderFrame
 	private struct HistorySlot
 	{
 		public uint64 Key;
+		/// The camera the view was last drawn from.
+		public uint64 CameraKey;
 		/// The noise frame a view last took it in.
 		public uint32 LastFrame;
 		public bool Used;
@@ -239,8 +241,10 @@ class RenderFrame
 	/// nought is the view's place in this frame's list, `viewIndex`. The same key gets the same
 	/// slot every frame, wherever the view falls in the list; a key new to the frame takes a
 	/// free slot, the stale one seen longest ago or a new one, and `fresh` says so (reused state
-	/// is the last owner's, to be reset).
-	public uint32 HistorySlotFor(uint64 historyKey, uint32 viewIndex, out bool fresh)
+	/// is the last owner's, to be reset). `cameraKey` names the camera the view is drawn from
+	/// (nought for none): a known view drawn from another camera than last time is a cut, and is
+	/// fresh too.
+	public uint32 HistorySlotFor(uint64 historyKey, uint32 viewIndex, out bool fresh, uint64 cameraKey = 0)
 	{
 		fresh = false;
 		// An unkeyed view is known by its place in the list, as before keys: a key of its own
@@ -252,6 +256,9 @@ class RenderFrame
 			if (mHistorySlots[slot].Used && (mHistorySlots[slot].Key == key))
 			{
 				mHistorySlots[slot].LastFrame = mNoiseFrame;
+				// Another camera than last frame: what the history holds is another shot.
+				fresh = (mHistorySlots[slot].CameraKey != cameraKey);
+				mHistorySlots[slot].CameraKey = cameraKey;
 				return slot;
 			}
 		}
@@ -278,7 +285,7 @@ class RenderFrame
 		if (pick == count)
 			mHistorySlots.Add(default);
 
-		mHistorySlots[pick] = .() { Key = key, LastFrame = mNoiseFrame, Used = true };
+		mHistorySlots[pick] = .() { Key = key, CameraKey = cameraKey, LastFrame = mNoiseFrame, Used = true };
 		fresh = true;
 		return pick;
 	}
@@ -1663,8 +1670,9 @@ class RenderFrame
 		let viewIndex = (uint32)index;
 		// The view's between frame state lives in its history slot, found by its key rather
 		// than its place in the list, which a render texture drawn only on some frames shifts.
-		// A slot new to this view starts clean.
-		let historySlot = HistorySlotFor(view.Settings.HistoryKey, viewIndex, let historyFresh);
+		// A slot new to this view starts clean, and so does a view drawn from another camera than
+		// last frame (a cut).
+		let historySlot = HistorySlotFor(view.Settings.HistoryKey, viewIndex, let historyFresh, view.Settings.CameraKey);
 		if (historyFresh)
 		{
 			if (mTaa != null)

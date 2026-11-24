@@ -706,6 +706,44 @@ class RenderFrameTests
 		frame.End();
 	}
 
+	/// A cut: the same view drawn from another camera keeps its slot, but what the slot holds is
+	/// the last shot, so the view starts fresh; the next frame from the new camera carries on.
+	[Test]
+	public static void AViewDrawnFromAnotherCameraStartsItsHistoryFresh()
+	{
+		let fixture = scope RenderFrameFixture(64, 64);
+		if (!fixture.Ready)
+			return;
+
+		let registry = scope RendererRegistry();
+		let frame = scope RenderFrame(fixture.Device, registry, 2);
+
+		frame.Begin(fixture.Encoder, 0);
+		let slot = frame.HistorySlotFor(1001, 0, var fresh, 11);
+		Test.Assert(fresh);
+		frame.End();
+
+		frame.Begin(fixture.Encoder, 1);
+		Test.Assert(frame.HistorySlotFor(1001, 0, out fresh, 11) == slot); // the same camera: carries on
+		Test.Assert(!fresh);
+		frame.End();
+
+		frame.Begin(fixture.Encoder, 0);
+		Test.Assert(frame.HistorySlotFor(1001, 0, out fresh, 22) == slot); // another camera: a cut
+		Test.Assert(fresh);
+		frame.End();
+
+		frame.Begin(fixture.Encoder, 1);
+		Test.Assert(frame.HistorySlotFor(1001, 0, out fresh, 22) == slot); // the new camera carries on
+		Test.Assert(!fresh);
+		frame.End();
+
+		frame.Begin(fixture.Encoder, 0);
+		Test.Assert(frame.HistorySlotFor(1001, 0, out fresh, 0) == slot); // the host's own camera: a cut too
+		Test.Assert(fresh);
+		frame.End();
+	}
+
 	/// Instances whose per slot materials differ beyond the first draw in runs of their own: an
 	/// instanced run extended while the mesh and slot 0's material matched, and drew every
 	/// instance with its head's slot materials.

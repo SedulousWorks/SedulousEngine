@@ -961,6 +961,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		// The view's camera, resolved BEFORE extraction: its position rides on the snapshot for
 		// the producers that thin by distance (vegetation's fade).
 		var camera = ViewCamera();
+		// The camera's entity; none when the host gives its own.
+		var cameraEntity = EntityHandle.Invalid;
 		// The default backdrop, for a scene with no primary camera: linear, as the cameras'
 		// authored colours are decoded.
 		var clearColor = CameraOverride().ClearColor;
@@ -987,7 +989,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 				aspectHeight = viewport.Height;
 			}
 			RenderExtract.ExtractPrimaryCamera(scene, ref camera, &clearColor,
-				(aspectHeight > 0.0f) ? (aspectWidth / aspectHeight) : 0.0f);
+				(aspectHeight > 0.0f) ? (aspectWidth / aspectHeight) : 0.0f, &cameraEntity);
 		}
 
 		if (firstSight)
@@ -1064,6 +1066,9 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			Mix(((uint64)(uint32)viewport.X << 32) | (uint32)viewport.Y);
 			settings.HistoryKey = (hash != 0) ? hash : 1;
 		}
+		// The camera entity the view is drawn from: when the scene's pick moves to another (a
+		// switch in a game, a cut in a sequence), the view's history starts fresh.
+		settings.CameraKey = cameraEntity.IsAssigned ? ((((uint64)cameraEntity.Generation << 32) | cameraEntity.Index) + 1) : 0;
 		settings.TargetTexture = targetState.Texture;
 		settings.TargetCurrentState = targetState.CurrentState;
 		settings.TargetFinalState = targetState.FinalState;

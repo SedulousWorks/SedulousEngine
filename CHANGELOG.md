@@ -238,6 +238,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Rendering: when a scene switches to another camera, the view starts its history fresh (temporal
+  anti-aliasing, reflections, global illumination, exposure and motion vectors), so nothing of the
+  last shot smears into the new one.
 - Prefabs: an entity reference inside a component's struct field or a list of structs (a table of
   rows naming entities) now points at the spawned instance's own entity, as a plain reference
   field already did, instead of at the prefab's original.
