@@ -17,7 +17,11 @@ namespace Sedulous.GUI;
 //   - Delete removes them; a double click on a channel's row inserts a key there (its value the
 //     source's);
 //   - a click on a row's name folds or opens it; the wheel over the names scrolls the rows, over the
-//     keys zooms about the pointer; a middle drag pans.
+//     keys zooms about the pointer; a middle drag pans;
+//   - a channel that holds sections (a clip, a sound, a shot) shows them as bars on its row: a click
+//     selects one (letting go of the keys), a drag on its body moves it and a drag on either end
+//     trims it, its start or end on a frame and kept in the clip; previewed through the source and
+//     committed once, Escape giving it up; Delete removes it. A parent row summarizes keys only.
 // Its names are at the inline start (the right, right to left); time runs left to right in either
 // direction, as the ruler's does, so a ruler and a curve view beside it start at its keys.
 
@@ -49,12 +53,16 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		outParts.Add("selected");
 		outParts.Add("playhead");
 		outParts.Add("selection-box");
+		outParts.Add("section");
+		outParts.Add("section-selected");
 	}
 
 	public const float cRowHeight = 20.0f;
 	public const float cIndent = 12.0f;
 	public const float cHitRadius = 5.0f;
 	public const float cDragThreshold = 3.0f;
+	/// How near an end of a bar a press trims it.
+	public const float cSectionEdge = 5.0f;
 
 	private enum Drag : uint8
 	{
@@ -63,6 +71,12 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		Keys,
 		Box,
 		Pan,
+		/// Pressed on a section, not yet moved far enough to drag.
+		SectionPending,
+		SectionMove,
+		/// Trimming its start.
+		SectionStart,
+		SectionEnd,
 	}
 
 	private class RowNode
@@ -104,6 +118,14 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 	private float mMovingLow = 0.0f;
 	private float mMovingHigh = 0.0f;
 	private float mPanScroll = 0.0f;
+	// The section selected, when mHasSection.
+	private bool mHasSection = false;
+	private TimelineSectionRef mSection = .();
+	// The pressed section as it was at the press.
+	private float mSectionFromStart = 0.0f;
+	private float mSectionFromLength = 0.0f;
+	// Which part of it was pressed: -1 its start, 1 its end, 0 its body.
+	private int32 mSectionPart = 0;
 	// Each name in turn.
 	private Sedulous.GUI.Text mText = new .() ~ delete _;
 
@@ -244,6 +266,9 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		let channelTimes = scope List<float>();
 		for (let channel in channels)
 		{
+			// Its sections are drawn as bars on its own row.
+			if (mSource.IsSectionChannel(channel))
+				continue;
 			mSource.GetKeyTimes(channel, channelTimes);
 			for (int i = 0; i < channelTimes.Count; ++i)
 			{
@@ -337,6 +362,46 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		return done;
 	}
 
+	// === The section chosen ===
+
+	/// Whether a section (a bar) is selected; a section and keys are never selected together.
+	public bool HasSelectedSection => mHasSection;
+	public TimelineSectionRef SelectedSection => mSection;
+
+	public void SelectSection(TimelineSectionRef section)
+	{
+		mHasSection = true;
+		mSection = section;
+		mSelection.Clear();
+		Invalidate();
+	}
+
+	public void ClearSelectedSection()
+	{
+		mHasSection = false;
+		Invalidate();
+	}
+
+	/// Deletes the selected section, one change; false when none is selected.
+	public bool DeleteSelectedSection()
+	{
+		if ((mSource == null) || !mHasSection)
+			return false;
+		let done = mSource.DeleteSection(mSection);
+		mHasSection = false;
+		Invalidate();
+		return done;
+	}
+
+	/// Where a section's bar is drawn on a row (its own space).
+	public Rect SectionBar(int row, float start, float length)
+	{
+		let left = KeysLeft + ((mAxis != null) ? mAxis.TimeToOffset(start) : 0.0f);
+		let right = KeysLeft + ((mAxis != null) ? mAxis.TimeToOffset(start + length) : 0.0f);
+		let top = ContentBounds.Y + (float)row * cRowHeight - mRowScroll;
+		return .(left, top + 2.0f, Max(right - left, 2.0f), cRowHeight - 4.0f);
+	}
+
 	public void OnTimeAxisChanged()
 	{
 		Invalidate();
@@ -345,6 +410,16 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 	public void OnTimelineChanged()
 	{
 		mDirty = true;
+		if ((mSource != null) && mHasSection && !IsSectionDrag(mDrag))
+		{
+			// An undo may take the section away.
+			let sections = scope List<TimelineSection>();
+			defer { ClearAndDeleteItems!(sections); }
+			if (mSection.Channel < mSource.ChannelCount)
+				mSource.GetSections(mSection.Channel, sections);
+			if (mSection.Index >= sections.Count)
+				mHasSection = false;
+		}
 		if ((mSource != null) && (mDrag != .Keys))
 		{
 			let times = scope List<float>();
@@ -390,6 +465,18 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		mPressAt = local;
 		mBoxTo = local;
 		mAdditive = (e.Modifiers & (KeyModShift | KeyModCtrl)) != 0;
+		// A section's bar: select it, and a drag moves or trims it.
+		if (SectionAt(local, var pressed, out mSectionFromStart, out mSectionFromLength, out mSectionPart))
+		{
+			mSelection.Clear();
+			mHasSection = true;
+			mSection = pressed;
+			mDrag = .SectionPending;
+			mPressed.Clear();
+			Invalidate();
+			return;
+		}
+		mHasSection = false;
 		float time = 0.0f;
 		let onKey = KeysAt(local, mPressed, out time);
 		if ((e.ClickCount == 2) && !onKey)
@@ -442,6 +529,14 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		let local = ConvertToNodeSpace(e.Position);
 		switch (mDrag)
 		{
+		case .SectionPending:
+			if (Abs(local.X - mPressAt.X) < cDragThreshold)
+				return;
+			mDrag = (mSectionPart < 0) ? .SectionStart : ((mSectionPart > 0) ? .SectionEnd : .SectionMove);
+			mSource.BeginSectionEdit();
+			EditSectionTo(local.X);
+		case .SectionMove, .SectionStart, .SectionEnd:
+			EditSectionTo(local.X);
 		case .Pending:
 			if ((Abs(local.X - mPressAt.X) < cDragThreshold) && (Abs(local.Y - mPressAt.Y) < cDragThreshold))
 				return;
@@ -482,6 +577,12 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		}
 		if (e.Button != .Left)
 			return;
+		if (mDrag == .SectionPending)
+		{
+			// A click: the section stays selected.
+			mDrag = .None;
+			return;
+		}
 		if ((mDrag == .Box) && (mSource != null))
 		{
 			let to = ConvertToNodeSpace(e.Position);
@@ -527,14 +628,14 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 	protected override void OnKeyDown(KeyEvent e)
 	{
 		let key = (KeyCode)e.KeyCode;
-		if ((key == .Escape) && (mDrag == .Keys))
+		if ((key == .Escape) && ((mDrag == .Keys) || IsSectionDrag(mDrag)))
 		{
 			e.Handled = true;
 			EndDrag(false);
 			return;
 		}
 		if ((e.Modifiers == 0) && ((key == .Delete) || (key == .Backspace)) && (mDrag == .None))
-			e.Handled = DeleteSelected();
+			e.Handled = mHasSection ? DeleteSelectedSection() : DeleteSelected();
 	}
 
 	protected override void OnMouseWheel(WheelEvent e)
@@ -585,6 +686,8 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		let keyColor = PartColor("key", .(0.8f, 0.8f, 0.85f, 1.0f));
 		let summary = PartColor("summary", .(0.55f, 0.58f, 0.65f, 1.0f));
 		let selected = PartColor("selected", .(1.0f, 0.8f, 0.3f, 1.0f));
+		let sectionColor = PartColor("section", .(0.36f, 0.45f, 0.62f, 0.9f));
+		let sectionSelected = PartColor("section-selected", .(0.85f, 0.65f, 0.25f, 0.95f));
 		ctx.PushClip(@box);
 		let names = NamesBounds;
 		let rtl = IsRightToLeft;
@@ -639,6 +742,27 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 			if (mAxis == null)
 				continue;
 			ctx.PushClip(.(keysArea.X, top, keysArea.Width, cRowHeight));
+			if ((row.Channel >= 0) && (mSource != null) && mSource.IsSectionChannel(row.Channel))
+			{
+				let sections = scope List<TimelineSection>();
+				defer { ClearAndDeleteItems!(sections); }
+				mSource.GetSections(row.Channel, sections);
+				for (int i < sections.Count)
+				{
+					let bar = SectionBar(r, sections[i].Start, sections[i].Length);
+					let on = mHasSection && (mSection.Channel == row.Channel) && (mSection.Index == i);
+					ctx.VG.FillRect(bar.ToRectangle(), on ? sectionSelected : sectionColor);
+					if (mText.HasFont && !sections[i].Label.IsEmpty && (bar.Width > 12.0f))
+					{
+						ctx.PushClip(.(bar.X + 3.0f, bar.Y, Max(0.0f, bar.Width - 6.0f), bar.Height));
+						mText.SetString(sections[i].Label);
+						mText.Draw(ctx, Float2(bar.X + 4.0f, top + 3.0f));
+						ctx.PopClip();
+					}
+				}
+				ctx.PopClip();
+				continue;
+			}
 			GetRowKeys(r, times, keys);
 			for (int i = 0; i < times.Count; ++i)
 			{
@@ -816,6 +940,66 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		return true;
 	}
 
+	private static bool IsSectionDrag(Drag drag) => (drag == .SectionMove) || (drag == .SectionStart) || (drag == .SectionEnd);
+
+	// The section under a point of the key area, where it is, and which part of it was pressed: -1
+	// its start, 1 its end, 0 its body.
+	private bool SectionAt(Float2 local, out TimelineSectionRef outSection, out float start, out float length, out int32 part)
+	{
+		outSection = .();
+		start = 0.0f;
+		length = 0.0f;
+		part = 0;
+		let row = RowAtY(local.Y);
+		if ((row < 0) || (mSource == null))
+			return false;
+		let channel = Rows[row].Channel;
+		if ((channel < 0) || !mSource.IsSectionChannel(channel))
+			return false;
+		let sections = scope List<TimelineSection>();
+		defer { ClearAndDeleteItems!(sections); }
+		mSource.GetSections(channel, sections);
+		// The last drawn is on top: looked for from the end.
+		for (int i = sections.Count - 1; i >= 0; i--)
+		{
+			let bar = SectionBar(row, sections[i].Start, sections[i].Length);
+			if ((local.X < bar.X - cSectionEdge) || (local.X > bar.Right + cSectionEdge) || (local.Y < bar.Y) || (local.Y > bar.Bottom))
+				continue;
+			outSection = .(channel, i);
+			start = sections[i].Start;
+			length = sections[i].Length;
+			// A short bar keeps a middle to move it by.
+			let edge = Min(cSectionEdge, bar.Width / 3.0f);
+			part = (local.X <= bar.X + edge) ? -1 : ((local.X >= bar.Right - edge) ? 1 : 0);
+			return true;
+		}
+		return false;
+	}
+
+	// The pressed section moved or trimmed by the drag so far: on frames, kept in the clip.
+	private void EditSectionTo(float x)
+	{
+		if (!mHasSection)
+			return;
+		let delta = TimeAtX(x) - TimeAtX(mPressAt.X);
+		let duration = mAxis.Duration;
+		let end = mSectionFromStart + mSectionFromLength;
+		var start = mSectionFromStart;
+		var length = mSectionFromLength;
+		if (mDrag == .SectionMove)
+			start = Clamp(mAxis.Snap(mSectionFromStart + delta), 0.0f, Max(0.0f, duration - length));
+		else if (mDrag == .SectionStart)
+		{
+			// The end stays.
+			start = Clamp(mAxis.Snap(mSectionFromStart + delta), 0.0f, end);
+			length = end - start;
+		}
+		else
+			length = Clamp(mAxis.Snap(end + delta), start, duration) - start;
+		mSource.PreviewSectionEdit(mSection, start, length);
+		Invalidate();
+	}
+
 	private void MoveTo(float x)
 	{
 		var delta = TimeAtX(x) - TimeAtX(mPressAt.X);
@@ -832,6 +1016,15 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 	{
 		let drag = mDrag;
 		mDrag = .None;
+		if (IsSectionDrag(drag) && (mSource != null))
+		{
+			if (commit)
+				mSource.CommitSectionEdit();
+			else
+				mSource.CancelSectionEdit();
+			Invalidate();
+			return;
+		}
 		if ((drag != .Keys) || (mSource == null))
 			return;
 		if (commit)
