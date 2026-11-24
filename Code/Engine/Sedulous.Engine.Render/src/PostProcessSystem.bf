@@ -1,10 +1,26 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Render;
 using Sedulous.Resource;
 using Sedulous.Scene;
 
 namespace Sedulous.Engine.Render;
+
+/// A fade over a view: Color as authored (display values), mixed in by Amount (0 to 1).
+struct ScreenFade
+{
+	public Color Color = .(0.0f, 0.0f, 0.0f, 1.0f);
+	public float Amount = 0.0f;
+
+	public this() {}
+
+	public this(Color color, float amount)
+	{
+		Color = color;
+		Amount = amount;
+	}
+}
 
 /// Holds the scene's post process block and presents it through the settings seam, the same
 /// shape the environment uses.
@@ -13,6 +29,15 @@ class PostProcessSystem : SceneSystem
 	private PostProcessSettings mPost = .();
 
 	public PostProcessSettings* Post => &mPost;
+
+	/// A fade over the scene's whole view (a sequence's fade track): the winning claim's colour
+	/// mixed over the finished image by its amount, under the HUD. Runtime state only, never saved;
+	/// not one of the settings.
+	public SceneClaims<ScreenFade> FadeClaims => mFades;
+	private SceneClaims<ScreenFade> mFades = new .() ~ delete _;
+
+	/// The fade in effect: the winning claim, or none (amount 0).
+	public ScreenFade Fade => mFades.Winning(let fade) ? fade : .();
 
 	public override Type SettingsType => typeof(PostProcessSettings);
 	public override void* SettingsInstance => &mPost;

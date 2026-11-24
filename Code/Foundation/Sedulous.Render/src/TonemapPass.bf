@@ -112,7 +112,7 @@ class TonemapPass
 		Float2 uvScale = .(1, 1), Float2 uvOffset = .(0, 0), float aoStrength = 0.0f,
 		bool debugShowAo = false, bool agx = true, bool sceneYFlipped = false,
 		TonemapAutoExposure autoExposure = .(), TonemapGrading grading = .(), bool copyOnly = false,
-		ContentRotation turn = .None)
+		ContentRotation turn = .None, Float4 fade = .(0, 0, 0, 0))
 	{
 		let pipeline = EnsurePipeline(ldrFormat);
 		if (pipeline == null)
@@ -149,6 +149,8 @@ class TonemapPass
 		push.LutSize = gradeOn ? grading.LutSize : 0.0f;
 		push.EncodeOutput = EncodesOnWrite(ldrFormat) ? 0.0f : 1.0f;
 		push.Rotation = (float)(uint32)turn;
+		// The present copy's image is already faded.
+		push.Fade = copyOnly ? .(0, 0, 0, 0) : fade;
 
 		let load = clearColor ? LoadOp.Clear : LoadOp.Load;
 		let autoView = autoOn ? autoExposure.View : null;

@@ -87,20 +87,20 @@ class CameraCutTests
 
 		let first = scope Object();
 		let second = scope Object();
-		stage.Cameras.ClaimView(first, 1, stage.Wide);
+		stage.Cameras.ViewClaims.Claim(first, 1, stage.Wide);
 		Test.Assert(stage.View() == stage.Wide);
-		stage.Cameras.ClaimView(second, 2, stage.Close);
+		stage.Cameras.ViewClaims.Claim(second, 2, stage.Close);
 		Test.Assert(stage.View() == stage.Close);
-		stage.Cameras.ReleaseView(second);
+		stage.Cameras.ViewClaims.Release(second);
 		Test.Assert(stage.View() == stage.Wide, "back to the claim under it");
-		stage.Cameras.ReleaseView(first);
+		stage.Cameras.ViewClaims.Release(first);
 		Test.Assert(stage.View() == stage.Gameplay);
 
 		// A lower order claimed later does not take the view.
-		stage.Cameras.ClaimView(second, 2, stage.Close);
-		stage.Cameras.ClaimView(first, 1, stage.Wide);
+		stage.Cameras.ViewClaims.Claim(second, 2, stage.Close);
+		stage.Cameras.ViewClaims.Claim(first, 1, stage.Wide);
 		Test.Assert(stage.View() == stage.Close);
-		stage.Cameras.ReleaseView(second);
+		stage.Cameras.ViewClaims.Release(second);
 
 		// An inactive camera cannot be the view: the pick falls back to the primary.
 		stage.World.SetActive(stage.Wide, false);

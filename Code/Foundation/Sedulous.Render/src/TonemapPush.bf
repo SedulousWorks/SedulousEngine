@@ -5,8 +5,9 @@ namespace Sedulous.Render;
 
 /// What the tonemap pass pushes, mirroring tonemap.ps.hlsl's TonemapPush: exposure, bloom, the
 /// coordinate transform, occlusion, the two mode flags, the auto exposure window, the grading,
-/// whether the target stores the display encoding as written, and the screen's turn. The pads are
-/// scalars, as a float3 there breaks WGSL's uniform alignment.
+/// whether the target stores the display encoding as written, the screen's turn, then the fade as
+/// a float4 on its 16 byte boundary. The pads are scalars, as a float3 there breaks WGSL's uniform
+/// alignment.
 [CRepr]
 struct TonemapPush
 {
@@ -32,6 +33,8 @@ struct TonemapPush
 	public float Rotation = 0.0f;
 	public float Pad0 = 0.0f;
 	public float Pad1 = 0.0f;
+	/// rgb the colour (display values), a the amount.
+	public Float4 Fade = .(0, 0, 0, 0);
 
 	public this() {}
 }

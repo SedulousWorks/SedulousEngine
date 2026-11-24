@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using Sedulous.RHI;
 
 namespace Sedulous.Render;
@@ -66,6 +67,10 @@ struct ViewPostConfig
 	/// pass recomputing: it is read while the forward pass executes, through the bound view,
 	/// where the frame global state is no longer in reach.
 	public bool NeedsMotion = false;
+
+	/// A fade over the finished image, after grading and before the HUD: rgb the colour as
+	/// authored (display values), a the amount (0 is none).
+	public Float4 Fade = .(0, 0, 0, 0);
 
 	/// The scene pass's sample count for THIS view: one, two or four, already clamped to
 	/// what the adapter has. One leaves the single sampled path exactly as it was.

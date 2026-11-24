@@ -78,7 +78,7 @@ class MeshGpuLayoutTests
 	{
 		Test.Assert(sizeof(GpuLight) == GpuLight.SizeInBytes);
 		Test.Assert(sizeof(GpuLocalShadow) == GpuLocalShadow.SizeInBytes);
-		Test.Assert(sizeof(TonemapPush) == 80); // twenty floats
+		Test.Assert(sizeof(TonemapPush) == 96); // twenty floats and the fade
 		Test.Assert(sizeof(FxaaPush) == 40);
 		Test.Assert(sizeof(ExposurePush) == 32);
 		Test.Assert(sizeof(DebugGeomPush) == 64);

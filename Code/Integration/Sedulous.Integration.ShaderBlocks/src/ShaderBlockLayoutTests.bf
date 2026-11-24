@@ -386,7 +386,8 @@ class ShaderBlockLayoutTests
 		.("EncodeOutput", offsetof(TonemapPush, EncodeOutput)),
 		.("Rotation", offsetof(TonemapPush, Rotation)),
 		.("_tonemapPad0", offsetof(TonemapPush, Pad0)),
-		.("_tonemapPad1", offsetof(TonemapPush, Pad1)));
+		.("_tonemapPad1", offsetof(TonemapPush, Pad1)),
+		.("Fade", offsetof(TonemapPush, Fade)));
 
 	private static FieldRow[?] sFxaaPush = .(
 		.("TexelSize", offsetof(FxaaPush, TexelSize)),

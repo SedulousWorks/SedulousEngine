@@ -123,13 +123,13 @@ class CameraCutSequenceTrack : SequenceTrack
 			{
 				if (!mClaiming)
 				{
-					mCameras.ClaimView(this, (mPlay != null) ? mPlay.StartOrder : 0, mCamera);
+					mCameras.ViewClaims.Claim(this, (mPlay != null) ? mPlay.StartOrder : 0, mCamera);
 					mClaiming = true;
 				}
 			}
 			else if (mClaiming)
 			{
-				mCameras.ReleaseView(this);
+				mCameras.ViewClaims.Release(this);
 				mClaiming = false;
 			}
 		}
@@ -139,8 +139,119 @@ class CameraCutSequenceTrack : SequenceTrack
 		{
 			if (!mClaiming)
 				return;
-			mCameras.ReleaseView(this);
+			mCameras.ViewClaims.Release(this);
 			mClaiming = false;
+		}
+	}
+}
+
+/// Fades the scene's view to Color by Amount (keys, 0 none to 1 all) for as long as the play runs:
+/// from its first step to its release, the last key's amount holding after it. A claim on the
+/// scene's PostProcessSystem, which the tonemap mixes over the graded image, under the HUD, so a
+/// fade to black keeps the subtitles. Bound to no one.
+[DisplayName("Fade")]
+class FadeSequenceTrack : SequenceTrack
+{
+	/// After the camera cuts, before events.
+	public const int32 cOrder = 600;
+
+	public Curve Amount = new .() ~ delete _;
+	/// As authored (display values).
+	public Color Color = .(0.0f, 0.0f, 0.0f, 1.0f);
+
+	public override float Duration => Amount.Duration;
+	public override int32 Order => cOrder;
+	public override bool NeedsBinding => false;
+
+	public override SequenceTrackRunner Begin(SequenceTrackContext context)
+	{
+		let post = context.Scene.GetSystem<PostProcessSystem>();
+		if (post == null)
+			return null; // a scene nothing renders: no view to fade
+		return new FadeRunner(this, post, context.Play);
+	}
+
+	/// The colour, then the amount's keys as parallel lists.
+	public override void Serialize(ISerializer ar)
+	{
+		base.Serialize(ar);
+		SerializeValue(ar, "color", ref Color);
+		let reading = ar.Mode == .Read;
+		let times = scope List<float>();
+		let values = scope List<float>();
+		let tangentsIn = scope List<float>();
+		let tangentsOut = scope List<float>();
+		let interpolations = scope List<uint8>();
+		let tangentModes = scope List<uint8>();
+		if (!reading)
+		{
+			for (let key in Amount.Keys)
+			{
+				times.Add(key.Time);
+				values.Add(key.Value);
+				tangentsIn.Add(key.TangentIn);
+				tangentsOut.Add(key.TangentOut);
+				interpolations.Add((uint8)key.Interpolation);
+				tangentModes.Add((uint8)key.TangentMode);
+			}
+		}
+		ar.Key("keyTime");
+		SerializeList(ar, times);
+		ar.Key("keyValue");
+		SerializeList(ar, values);
+		ar.Key("keyTangentIn");
+		SerializeList(ar, tangentsIn);
+		ar.Key("keyTangentOut");
+		SerializeList(ar, tangentsOut);
+		ar.Key("keyInterpolation");
+		SerializeList(ar, interpolations);
+		ar.Key("keyTangentMode");
+		SerializeList(ar, tangentModes);
+		if (reading)
+		{
+			Amount.Clear();
+			let count = Math.Min(Math.Min(times.Count, values.Count), Math.Min(tangentsIn.Count, tangentsOut.Count));
+			for (int i < count)
+			{
+				var key = CurveKey();
+				key.Time = times[i];
+				key.Value = values[i];
+				key.TangentIn = tangentsIn[i];
+				key.TangentOut = tangentsOut[i];
+				if (i < interpolations.Count)
+					key.Interpolation = (CurveKeyInterpolation)interpolations[i];
+				if (i < tangentModes.Count)
+					key.TangentMode = (CurveTangentMode)tangentModes[i];
+				Amount.AddKey(key);
+			}
+		}
+	}
+
+	/// Holds the fade from the play's first step until it lets go, at the amount the keys give.
+	private class FadeRunner : SequenceTrackRunner
+	{
+		/// BORROWED, all three.
+		private FadeSequenceTrack mTrack;
+		private PostProcessSystem mPost;
+		private SequencePlay mPlay;
+
+		public this(FadeSequenceTrack track, PostProcessSystem post, SequencePlay play)
+		{
+			mTrack = track;
+			mPost = post;
+			mPlay = play;
+		}
+
+		public override void Evaluate(SequenceStep step)
+		{
+			let fade = ScreenFade(mTrack.Color, Math.Clamp(mTrack.Amount.Evaluate(step.Time), 0.0f, 1.0f));
+			mPost.FadeClaims.Claim(this, (mPlay != null) ? mPlay.StartOrder : 0, fade);
+		}
+
+		/// The fade is a claim: nothing to put back, whatever `restore` asks.
+		public override void Release(bool restore)
+		{
+			mPost.FadeClaims.Release(this);
 		}
 	}
 }
@@ -157,5 +268,6 @@ static class RenderSequenceTracks
 	{
 		SequenceTracks.RegisterTypes();
 		SequenceTracks.Register<CameraCutSequenceTrack>();
+		SequenceTracks.Register<FadeSequenceTrack>();
 	}
 }

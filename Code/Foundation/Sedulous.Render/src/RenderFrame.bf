@@ -2106,7 +2106,7 @@ class RenderFrame
 				fxaa || clearColor, view.Settings.Clear, view.TargetFormat, view.ViewportX,
 				view.ViewportY, view.ViewportWidth, view.ViewportHeight, mFrameIndex, viewIndex,
 				post.Exposure, bloomStrength, uvScale, uvOffset, 0.0f, showAo, post.AgxTonemap,
-				!post.TaaEnabled, autoExposure, grading);
+				!post.TaaEnabled, autoExposure, grading, false, .None, post.Fade);
 
 			// The world space interface draws BETWEEN the tone map and the fallback
 			// antialiasing: its authored colours survive, the antialiasing not grading, and its

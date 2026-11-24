@@ -424,6 +424,12 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		{
 			post = ScenePost.Resolve(*system.Effective); // the scene's, or its profile's
 		}
+		// A fade (a sequence's) is the scene's at run time, over either.
+		if (let system = scene.GetSystem<PostProcessSystem>())
+		{
+			let fade = system.Fade;
+			post.Fade = .(fade.Color.R, fade.Color.G, fade.Color.B, Math.Clamp(fade.Amount, 0.0f, 1.0f));
+		}
 		// The view's quality level over either: its MSAA count, its tiers over the effects and its
 		// antialiasing, unless a debug panel set its own.
 		QualityApply.Apply(ref post, QualityFor(viewportKey), !mGlobalPostActive);

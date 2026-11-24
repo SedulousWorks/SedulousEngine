@@ -15,7 +15,10 @@ struct TonemapPush { float Exposure; float BloomIntensity; float2 UvScale; float
                      float AutoExposure; float AutoKey; float AutoMin; float AutoMax; float GradeIntensity; float LutSize;
                      // Rotation is the ContentRotation; then two SCALAR pads, never a vector: a WGSL
                      // uniform wants a vec3 on a 16-byte boundary.
-                     float EncodeOutput; float Rotation; float _tonemapPad0; float _tonemapPad1; };
+                     float EncodeOutput; float Rotation; float _tonemapPad0; float _tonemapPad1;
+                     // A fade over the finished image: rgb the colour as authored (display
+                     // values), a the amount.
+                     float4 Fade; };
 PUSH_CONSTANT(TonemapPush, pc, space1);
 
 // Linear -> sRGB display encode (the OETF the CM1a "clamp" operator needs before writing the
@@ -38,7 +41,10 @@ float3 srgbToLinear(float3 c) {
 // The operators and the grade work on DISPLAY-encoded values. A plain UNORM target stores
 // them as they are; an sRGB target encodes on write and a float target is linear, so for
 // those the value goes back to linear here and is stored ONCE encoded, not twice.
+// The fade goes last, over the graded display values, so a fade to black is black whatever the
+// grade.
 float4 toTarget(float3 display) {
+    display = lerp(display, pc.Fade.rgb, saturate(pc.Fade.a));
     return float4((pc.EncodeOutput > 0.5) ? display : srgbToLinear(display), 1.0);
 }
 

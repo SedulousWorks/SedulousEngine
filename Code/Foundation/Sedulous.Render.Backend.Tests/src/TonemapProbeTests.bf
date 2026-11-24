@@ -79,7 +79,7 @@ class TonemapProbeTests
 		// Every frame uses the same frame slot, the same transients and the same exposure
 		// generation.
 		uint64 submitted = 0;
-		uint32 Frame(ITexture exposureTexture, ITextureView exposureView, float level)
+		uint32 Frame(ITexture exposureTexture, ITextureView exposureView, float level, Float4 fade = .(0, 0, 0, 0))
 		{
 			if (!(pool.CreateEncoder() case .Ok(var encoder)))
 			{
@@ -112,7 +112,7 @@ class TonemapProbeTests
 			autoExposure.View = exposureView;
 			autoExposure.Generation = 7; // the same for both textures
 			tonemap.DeclareTonemap(graph, hdr, bloom, ao, output, true, .Black, .RGBA8Unorm, 0, 0, cSize, cSize,
-				0, 0, 1.0f, 0.0f, .(1, 1), .(0, 0), 0.0f, false, false, false, autoExposure);
+				0, 0, 1.0f, 0.0f, .(1, 1), .(0, 0), 0.0f, false, false, false, autoExposure, .(), false, .None, fade);
 			Test.Assert(graph.Execute(encoder) case .Ok);
 			graph.EndFrame();
 			let commandBuffer = encoder.Finish();
@@ -135,6 +135,12 @@ class TonemapProbeTests
 		Test.Assert(underDim > underBright + 40, scope $"under the dim level {underDim}, under the bright level {underBright}");
 		// And back: the first texture's level again.
 		Test.Assert(Frame(dim, dimView, 0.05f) == underDim);
+
+		// A fade mixes its colour over the finished image: all the way to red leaves no green, half
+		// way to black leaves half of it.
+		Test.Assert(Frame(dim, dimView, 0.05f, .(1, 0, 0, 1)) == 0);
+		let halfBlack = Frame(dim, dimView, 0.05f, .(0, 0, 0, 0.5f));
+		Test.Assert((halfBlack + 2 >= underDim / 2) && (halfBlack <= underDim / 2 + 2), scope $"half way to black {halfBlack}, unfaded {underDim}");
 
 		device.WaitIdle();
 	}
