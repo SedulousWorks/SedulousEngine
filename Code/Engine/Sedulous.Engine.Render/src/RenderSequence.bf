@@ -11,9 +11,12 @@ namespace Sedulous.Engine.Render;
 
 /// A span of a camera cut track's timeline: its camera is the view from Start for Duration
 /// seconds.
+[Reflect(.All)]
 struct CameraCutSection
 {
+	[DisplayName("Start")]
 	public float Start;
+	[DisplayName("Duration")]
 	public float Duration;
 
 	public this(float start, float duration)
@@ -28,12 +31,14 @@ struct CameraCutSection
 /// which the camera pick reads before the primary camera. The camera knows nothing of it; the
 /// render starts the view's history fresh when the camera it is drawn from changes.
 [DisplayName("Camera Cut")]
+[Reflect(.All)]
 class CameraCutSequenceTrack : SequenceTrack
 {
 	/// After properties (a camera's own transform keys) and animation, before events.
 	public const int32 cOrder = 500;
 
 	/// By start.
+	[DisplayName("Shots")]
 	public List<CameraCutSection> Sections = new .() ~ delete _;
 
 	public override float Duration
@@ -183,13 +188,18 @@ class CameraCutSequenceTrack : SequenceTrack
 /// scene's PostProcessSystem, which the tonemap mixes over the graded image, under the HUD, so a
 /// fade to black keeps the subtitles. Bound to no one.
 [DisplayName("Fade")]
+[Reflect(.All)]
 class FadeSequenceTrack : SequenceTrack
 {
 	/// After the camera cuts, before events.
 	public const int32 cOrder = 600;
 
+	/// Its keys edited in the panel's curve view (KeyCurve): a Curve is an object, not a value the
+	/// inspector's curve editor takes.
+	[Hidden]
 	public Curve Amount = new .() ~ delete _;
 	/// As authored (display values).
+	[DisplayName("Color")]
 	public Color Color = .(0.0f, 0.0f, 0.0f, 1.0f);
 
 	public override float Duration => Amount.Duration;

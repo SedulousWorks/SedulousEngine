@@ -10,21 +10,30 @@ using Sedulous.Sequence;
 namespace Sedulous.Engine.Animation;
 
 /// One clip on a clip track's timeline.
+[Reflect(.All)]
 struct ClipSection
 {
+	[DisplayName("Clip")]
 	public Ref<AnimationClip> Clip = .(Guid());
 	/// On the sequence's timeline.
+	[DisplayName("Start")]
 	public float Start = 0.0f;
 	/// 0: the clip once from its offset, at its speed.
+	[DisplayName("Length"), Description("Seconds on the timeline; 0 plays the clip once from its offset")]
 	public float Length = 0.0f;
 	/// Into the clip, where the section starts it.
+	[DisplayName("Offset")]
 	public float Offset = 0.0f;
+	[DisplayName("Speed")]
 	public float Speed = 1.0f;
 	/// Seconds over the pose underneath.
+	[DisplayName("Blend In")]
 	public float BlendIn = 0.2f;
 	/// Seconds back to it before the section ends (0: holds to the end).
+	[DisplayName("Blend Out")]
 	public float BlendOut = 0.2f;
 	/// Repeat the clip over the section; otherwise it stays on its last frame.
+	[DisplayName("Loop")]
 	public bool Loop = false;
 
 	public this() {}
@@ -50,12 +59,14 @@ struct ClipSection
 /// on the frame; the animation graph or clip underneath keeps running and shows again as a
 /// section blends out.
 [DisplayName("Clip")]
+[Reflect(.All)]
 class ClipSequenceTrack : SequenceTrack
 {
 	/// After properties (an actor's transform keys), before cameras and events.
 	public const int32 cOrder = 100;
 
 	/// By start.
+	[DisplayName("Clips")]
 	public List<ClipSection> Sections = new .() ~ delete _;
 
 	public override float Duration

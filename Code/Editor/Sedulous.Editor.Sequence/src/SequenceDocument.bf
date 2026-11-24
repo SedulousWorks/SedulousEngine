@@ -101,6 +101,9 @@ class SequenceDocument
 	private EditorCommandStack mCommands = new .() ~ delete _;
 	/// A gesture's sequence as it began; null while none is open.
 	private List<uint8> mGestureBefore = null ~ delete _;
+	/// The sequence as it last stood (a load, a step, an undo): what an in-place change is
+	/// recorded from.
+	private List<uint8> mCurrent = new .() ~ delete _;
 	private uint64 mVersion = 0;
 
 	/// Told after any change: an edit, a gesture's preview, an undo, a load.
@@ -149,6 +152,7 @@ class SequenceDocument
 		}
 		mId = sequenceId;
 		mName.Set(instance.Name);
+		SequenceBytes.Write(mSequence, mCurrent);
 		mCommands.Clear();
 		mCommands.MarkSaved();
 		Changed();
@@ -182,6 +186,7 @@ class SequenceDocument
 	{
 		CancelGesture();
 		Replace(new .());
+		mCurrent.Clear();
 		mId = .Empty;
 		mName.Clear();
 		mCommands.Clear();
@@ -198,6 +203,18 @@ class SequenceDocument
 		let before = new List<uint8>();
 		SequenceBytes.Write(mSequence, before);
 		mutate(mSequence);
+		Push(typeId, before);
+	}
+
+	/// A change already made to the sequence in place (the inspector writes a track's fields as
+	/// they are edited), recorded as one step from the sequence as it last stood; none when nothing
+	/// changed.
+	public void RecordEdit(StringView typeId)
+	{
+		if (!HasSequence || InGesture)
+			return;
+		let before = new List<uint8>();
+		before.AddRange(mCurrent);
 		Push(typeId, before);
 	}
 
@@ -266,6 +283,8 @@ class SequenceDocument
 	private void Restore(List<uint8> bytes)
 	{
 		Replace(SequenceBytes.Read(bytes, mContext.Resources));
+		mCurrent.Clear();
+		mCurrent.AddRange(bytes);
 	}
 
 	/// `sequence` (taken) in place of the one held, which is deleted. The version moves on with

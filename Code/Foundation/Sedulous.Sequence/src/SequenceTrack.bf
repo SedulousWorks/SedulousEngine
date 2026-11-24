@@ -143,16 +143,22 @@ static class SequenceKeys
 	}
 }
 
-/// The base of every track kind. A kind adds its keys or sections, serializes them after the
+/// The base of every track kind. What an author sets on a track shows in the editor's inspector:
+/// its name and muted flag here, a kind's own fields after them (reflected); the binding is the
+/// panel's. A kind adds its keys or sections, serializes them after the
 /// base's fields, and makes a runner for each play. A kind is registered (SequenceTracks.Register),
 /// so a sequence holding it reads and whatever lists the kinds (the editor's add-track menu) finds
 /// it, with no list anywhere to edit.
+[Reflect(.All)]
 abstract class SequenceTrack : ISerializable
 {
 	/// Shown in the editor.
+	[DisplayName("Name")]
 	public String Name = new .() ~ delete _;
 	/// Index into the sequence's bindings; -1: bound to no one.
+	[Hidden]
 	public int32 Binding = -1;
+	[DisplayName("Muted")]
 	public bool Muted = false;
 
 	/// The time of the track's last key or the end of its last section.
@@ -224,8 +230,11 @@ static class SequenceTrackOrder
 /// Any reflected property of a component on the bound entity, or its transform, as property
 /// animation's track (its keys, its target, its sampling).
 [DisplayName("Property")]
+[Reflect(.All)]
 class PropertySequenceTrack : SequenceTrack
 {
+	/// Edited in the panel (its keys, its curves), not the inspector.
+	[Hidden]
 	public PropertyTrack Property = new .() ~ delete _;
 
 	public override float Duration => Property.Duration;
@@ -412,10 +421,14 @@ class PropertySequenceTrack : SequenceTrack
 }
 
 /// A named event at a time, with a text value (a cue the game hears).
+[Reflect(.All)]
 class SequenceEventKey
 {
+	[DisplayName("Time")]
 	public float Time = 0.0f;
+	[DisplayName("Name")]
 	public String Name = new .() ~ delete _;
+	[DisplayName("Value")]
 	public String Value = new .() ~ delete _;
 
 	public this() {}
@@ -431,9 +444,11 @@ class SequenceEventKey
 /// Events at times, reported to the play's listener with the track's entity when it is bound.
 /// Fired only when played through: never on a seek, a scrub or in the editor's preview.
 [DisplayName("Event")]
+[Reflect(.All)]
 class EventSequenceTrack : SequenceTrack
 {
 	/// By time.
+	[DisplayName("Events")]
 	public List<SequenceEventKey> Keys = new .() ~ DeleteContainerAndItems!(_);
 
 	public override float Duration

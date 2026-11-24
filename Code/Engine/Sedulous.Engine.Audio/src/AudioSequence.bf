@@ -10,18 +10,26 @@ using Sedulous.Sequence;
 namespace Sedulous.Engine.Audio;
 
 /// One sound on a sound track's timeline.
+[Reflect(.All)]
 struct SoundSection
 {
+	[DisplayName("Sound")]
 	public Ref<AudioClip> Clip = .(Guid());
 	/// On the sequence's timeline.
+	[DisplayName("Start")]
 	public float Start = 0.0f;
 	/// 0: the clip once from its offset.
+	[DisplayName("Length"), Description("Seconds on the timeline; 0 plays the sound once from its offset")]
 	public float Length = 0.0f;
 	/// Into the clip, where the section starts it.
+	[DisplayName("Offset")]
 	public float Offset = 0.0f;
+	[DisplayName("Volume")]
 	public float Volume = 1.0f;
+	[DisplayName("Bus")]
 	public AudioBus Bus = .Effects;
 	/// Repeat the clip over the section.
+	[DisplayName("Loop")]
 	public bool Loop = false;
 
 	public this() {}
@@ -45,6 +53,7 @@ struct SoundSection
 /// playhead is moved back to it, and a jump moves it at once; the voice pauses with the play, and
 /// plays on at a hold (a line of dialogue finishes while the game waits).
 [DisplayName("Sound")]
+[Reflect(.All)]
 class SoundSequenceTrack : SequenceTrack
 {
 	/// With properties and animation, before cameras and events.
@@ -54,6 +63,7 @@ class SoundSequenceTrack : SequenceTrack
 	public const float cDriftSeconds = 0.1f;
 
 	/// By start.
+	[DisplayName("Sounds")]
 	public List<SoundSection> Sections = new .() ~ delete _;
 
 	public override float Duration

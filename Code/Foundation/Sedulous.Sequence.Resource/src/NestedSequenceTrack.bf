@@ -12,9 +12,11 @@ namespace Sedulous.Sequence.Resource;
 /// each of its names is filled by this play's entity of that name. Its events reach this play's
 /// listener; its holds are not kept (the outer timeline holds).
 [DisplayName("Sequence")]
+[Reflect(.All)]
 class NestedSequenceTrack : SequenceTrack
 {
 	/// The sequence played.
+	[DisplayName("Sequence")]
 	public Ref<SequenceResource> Nested = .(Guid());
 	public float Start = 0.0f;
 	/// 0: the nested sequence's own duration.

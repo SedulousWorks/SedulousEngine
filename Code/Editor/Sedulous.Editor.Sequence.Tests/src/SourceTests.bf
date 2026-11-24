@@ -183,4 +183,33 @@ class SourceTests
 		bed.Document.Commands.Undo();
 		Test.Assert(Near(bed.Walk.Property.Channels[0].Evaluate(1.0f), 10.0f));
 	}
+
+	[Test]
+	public static void AChangeMadeInPlaceIsRecordedAsOneStepFromWhereItStood()
+	{
+		let bed = scope Bed();
+		bed.Inner.Loop = true; // as the inspector writes a field
+		bed.Document.RecordEdit("sequence-inspector");
+		Test.Assert(bed.Inner.Loop);
+		bed.Document.Commands.Undo();
+		Test.Assert(!bed.Inner.Loop);
+		bed.Document.Commands.Redo();
+		Test.Assert(bed.Inner.Loop);
+		let steps = bed.Document.Commands.UndoIndex;
+		bed.Document.RecordEdit("sequence-inspector"); // nothing changed since: no step
+		Test.Assert(bed.Document.Commands.UndoIndex == steps);
+		bed.Document.Commands.Undo();
+		Test.Assert(!bed.Inner.Loop);
+
+		// The kinds show their fields to the inspector: reflected, the base's with them, the binding
+		// the panel's.
+		Test.Assert(typeof(NestedSequenceTrack).GetField("Nested") case .Ok);
+		Test.Assert(typeof(SequenceTrack).GetField("Name") case .Ok);
+		Test.Assert(typeof(EventSequenceTrack).GetField("Keys") case .Ok);
+		Test.Assert(typeof(SequenceEventKey).GetField("Value") case .Ok);
+		if (typeof(SequenceTrack).GetField("Binding") case .Ok(let binding))
+			Test.Assert(binding.GetCustomAttribute<HiddenAttribute>() case .Ok);
+		else
+			Test.FatalError("the binding is reflected, hidden");
+	}
 }
