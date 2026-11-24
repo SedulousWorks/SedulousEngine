@@ -215,6 +215,14 @@ class SequenceDocument
 
 	public Sedulous.Sequence.Sequence GestureSequence => mSequence;
 
+	/// Puts the sequence back as the gesture found it, so a preview applies its whole change again
+	/// from there (a drag's delta is from where it began). The sequence is replaced: ask for it again.
+	public void RestoreGestureStart()
+	{
+		if (InGesture)
+			Restore(mGestureBefore);
+	}
+
 	/// The tracks changed in place: the version moves on (Changed), so a play on them begins again.
 	public void PreviewGesture() => Changed();
 
@@ -243,6 +251,14 @@ class SequenceDocument
 		mSequence.Duration = Math.Max(mSequence.Duration, mSequence.ComputeDuration());
 		let after = new List<uint8>();
 		SequenceBytes.Write(mSequence, after);
+		// Nothing changed (a refused deletion, a gesture back where it began): no step to undo.
+		if ((after.Count == before.Count) && ((before.Count == 0) || (Internal.MemCmp(after.Ptr, before.Ptr, before.Count) == 0)))
+		{
+			delete before;
+			delete after;
+			Changed();
+			return;
+		}
 		mCommands.Execute(new Step(this, typeId, before, after));
 	}
 
