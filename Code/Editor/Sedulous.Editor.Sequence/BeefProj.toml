@@ -1,0 +1,17 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Sequence"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Sequence.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Sequence" = "*"
+"Sedulous.Sequence.Resource" = "*"
+"Sedulous.Sequence.Pipeline" = "*"
+"Sedulous.Editor.Core" = "*"
