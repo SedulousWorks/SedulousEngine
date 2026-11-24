@@ -1869,6 +1869,25 @@ class ScenePageTests
 		Test.Assert(page.SaveBesides() case .Ok);
 		Test.Assert(!page.HasUnsavedBesides);
 
+		// An agent's look (sequence_preview): the panel poses the sequence at a time with the cast it
+		// is given; a sequence that is not there is refused.
+		{
+			// x 5 at 0 and 9 at 1: the look lands on the time asked for.
+			panel.Document.Edit("test", scope (s) =>
+				{
+					let key = s.Tracks[0].InsertKey(0, 1.0f);
+					s.Tracks[0].KeyCurve(0).Keys[key].Value = 9.0f;
+				});
+			panel.Document.Save().IgnoreError();
+			String[1] parts = .("Hero");
+			Guid[1] players = .(bed.Crate);
+			Test.Assert(page.PreviewSequence(asset.Id, parts, players, 1.0f, scope .()));
+			Test.Assert(Math.Abs(page.ScenePtr.GetLocalTransform(crate).Position.X - 9.0f) < 1e-3f);
+			let reason = scope String();
+			Test.Assert(!page.PreviewSequence(Guid(7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0), default, default, 0.0f, reason));
+			Test.Assert(!reason.IsEmpty);
+		}
+
 		// Hidden from its own Close: what it posed goes back.
 		Test.Assert(panel.RequestClose != null);
 		panel.RequestClose();

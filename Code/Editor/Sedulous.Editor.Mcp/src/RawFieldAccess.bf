@@ -1,7 +1,7 @@
 using System;
 using System.Reflection;
 
-namespace Sedulous.Editor.App;
+namespace Sedulous.Editor.Mcp;
 
 /// Reaching a reflected field of a RAW instance, an address plus the type that describes it,
 /// which is how a component lives: a struct inside its manager's pool, with no object to

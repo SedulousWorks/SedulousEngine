@@ -38,6 +38,7 @@ corlib = "*"
 "Sedulous.GUI.Viewport" = "*"
 "Sedulous.Editor.Project" = "*"
 "Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Mcp" = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.Editor.Scene" = "*"
 

@@ -163,7 +163,9 @@ class Sequence
 	}
 }
 
-/// How a play ends when it reaches the end.
+/// How a play ends when it reaches the end. Its cases reflected, so an inspector and the scene
+/// format reference name them.
+[Reflect(.StaticFields)]
 enum SequenceFinish
 {
 	/// Let go of side effects (camera, sounds, fades); what moved stays where it is.

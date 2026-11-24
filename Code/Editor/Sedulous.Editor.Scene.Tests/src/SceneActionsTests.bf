@@ -106,6 +106,7 @@ class SceneActionsTests
 		public bool SequencePanelShown => Sequence;
 		public void SetSequencePanelShown(bool shown) { Sequence = shown; }
 		public void EditSequence(Guid sequence, Guid owner) {}
+		public bool PreviewSequence(Guid sequence, Span<String> parts, Span<Guid> entities, float time, String outError) => true;
 		public void EditAnimationClip(Guid clip, Guid entity) {}
 		public void CreatePrefabFromEntity(Guid entity) { PrefabFrom = entity; }
 		public void PickAndSpawnPrefab(Guid parent)

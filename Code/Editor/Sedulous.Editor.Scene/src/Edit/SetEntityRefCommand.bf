@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
+using Sedulous.Editor.Mcp; // RawFieldAccess
 
 namespace Sedulous.Editor.Scene;
 

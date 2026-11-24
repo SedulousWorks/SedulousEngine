@@ -10,6 +10,7 @@ using Sedulous.Script.Resource;
 using Sedulous.Engine.Behavior;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
+using Sedulous.Editor.Mcp; // FieldJson
 
 namespace Sedulous.Editor.Scene;
 

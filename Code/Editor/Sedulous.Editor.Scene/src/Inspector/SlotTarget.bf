@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Editor.App;
+using Sedulous.Editor.Mcp; // RawFieldAccess
 
 namespace Sedulous.Editor.Scene;
 

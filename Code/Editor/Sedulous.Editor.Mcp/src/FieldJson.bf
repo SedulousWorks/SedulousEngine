@@ -5,7 +5,7 @@ using Sedulous.Json;
 using Sedulous.Resource;
 using Sedulous.Scene;
 
-namespace Sedulous.Editor.App;
+namespace Sedulous.Editor.Mcp;
 
 /// A reflected value's fields as JSON, and a JSON value as the Variant a field takes: what the
 /// field property source reads and writes through, and what entity_inspect reads and

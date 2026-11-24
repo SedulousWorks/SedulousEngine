@@ -618,6 +618,33 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mSequence.RequestEditSequence(sequence, cast);
 	}
 
+	public bool PreviewSequence(Guid sequence, Span<String> parts, Span<Guid> entities, float time, String outError)
+	{
+		if (mSequence == null)
+		{
+			outError.Append("this page has no sequence panel");
+			return false;
+		}
+		if (mSequence.Document.IsDirty && (mSequence.Document.SequenceId != sequence))
+		{
+			outError.AppendF("the sequence panel holds unsaved edits to '{}': save or discard them first", mSequence.Document.Name);
+			return false;
+		}
+		SetSequencePanelShown(true);
+		let cast = scope List<SequencePanelCast>();
+		for (int i = 0; (i < parts.Length) && (i < entities.Length); i++)
+			cast.Add(.(parts[i], entities[i]));
+		mSequence.RequestEditSequence(sequence, cast);
+		if (mSequence.Document.SequenceId != sequence)
+		{
+			outError.Append("no sequence with that guid in the project");
+			return false;
+		}
+		mSequence.Pause();
+		mSequence.Scrub(Math.Max(0.0f, time));
+		return true;
+	}
+
 	// What the panels posed is not the scene's: put back (a save, a simulation), posed again after.
 	private void StopPreviews()
 	{

@@ -6,10 +6,11 @@ using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Editor.App;
+using Sedulous.Editor.Mcp; // FieldJson
 
 namespace Sedulous.Editor.Scene;
 
-/// The scene's half of the JSON the MCP tools speak (FieldJson, in Editor.App, is the values'):
+/// The scene's half of the JSON the MCP tools speak (FieldJson, in Editor.Mcp, is the values'):
 /// an entity found by what an agent names it with, and a game script's value.
 static class ComponentJson
 {

@@ -90,6 +90,10 @@ interface ISceneEditorPage
 	/// The panel shown editing `sequence` (empty: the one it has), its cast filled from the sequence
 	/// component on `owner` (empty: as it is), an unsaved sequence asked about first.
 	void EditSequence(Guid sequence, Guid owner);
+	/// Shows the panel posing the scene with `sequence` at `time`, the part `parts[i]` played by
+	/// `entities[i]` (an agent's look before viewport_screenshot). False, and why, when it cannot:
+	/// no such sequence, or the panel holds unsaved edits to another.
+	bool PreviewSequence(Guid sequence, Span<String> parts, Span<Guid> entities, float time, String outError);
 
 	/// The viewport's free-fly camera: the pose the scene is looked at from, which an agent
 	/// moves to look from somewhere specific; null on a page without a viewport.

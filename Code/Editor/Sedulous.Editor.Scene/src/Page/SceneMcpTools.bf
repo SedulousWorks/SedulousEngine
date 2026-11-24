@@ -15,6 +15,7 @@ using Sedulous.Engine.Navigation;
 using Sedulous.Editor.Navigation;
 using Sedulous.Editor.App;
 using Sedulous.Input; // ScriptedInputSource, ScriptedInputJson (viewport_run)
+using Sedulous.Editor.Mcp; // FieldJson
 
 namespace Sedulous.Editor.Scene;
 
@@ -29,7 +30,7 @@ namespace Sedulous.Editor.Scene;
 static class SceneMcpTools
 {
 	/// How many tools Register registers; a tripwire like the page tools'.
-	public const int cSceneLiveToolCount = 12 + SceneMcpEditTools.cEditToolCount;
+	public const int cSceneLiveToolCount = 13 + SceneMcpEditTools.cEditToolCount;
 
 	private const String cPageArgument = "the scene or prefab page's asset guid (default: the active page)";
 
@@ -783,6 +784,60 @@ static class SceneMcpTools
 					camera.Position = focus - camera.Forward * camera.FocusDistance;
 				}
 				WriteCamera(page, camera, outResult);
+				return true;
+			});
+
+		let previewSchema = scope SchemaBuilder();
+		previewSchema.Str("page", cPageArgument);
+		previewSchema.Str("sequence", "the sequence's guid (asset_list: type SequenceAsset)", true);
+		previewSchema.Number("time", "seconds into the sequence (default 0)");
+		previewSchema.Any("cast", "an object: a part's name to the entity that plays it");
+		server.RegisterTool("sequence_preview",
+			"Show a scene page's sequence panel posing the scene with a sequence at a time, through the game's own play (no events, no sounds), then viewport_screenshot to see it. `cast` fills the sequence's parts with the page's entities ({\"Hero\": \"Hero\"}: a part's name to an entity's name, path or guid). The pose is the panel's preview: nothing is saved, and it goes back when the panel hides, the scene saves (posed again after) or simulates. Refused while the panel holds unsaved edits to another sequence. Returns {page, sequence, time}.",
+			previewSchema.Build(), .Adjusts,
+			new (arguments, outResult, outError) =>
+			{
+				let page = ResolveScenePage(context, arguments, outError);
+				if (page == null)
+					return false;
+				let scene = page as ISceneEditorPage;
+				let sequenceText = McpTools.ArgString(arguments, "sequence", .. scope .());
+				if (!(Guid.Parse(sequenceText) case .Ok(let sequence)))
+				{
+					outError.Append("`sequence` is not a valid guid");
+					return false;
+				}
+				let edit = scene.EditContext;
+				let parts = scope List<String>();
+				defer { ClearAndDeleteItems!(parts); }
+				let entities = scope List<Guid>();
+				let cast = arguments.Get("cast");
+				if ((cast != null) && cast.IsObject)
+				{
+					for (let part in cast.Keys)
+					{
+						let text = cast.Get(part).AsString();
+						var id = Guid();
+						if (!(Guid.Parse(text) case .Ok(out id)))
+						{
+							let found = ComponentJson.FindEntity(edit.Scene, text);
+							if (!edit.Scene.IsValid(found))
+							{
+								outError.AppendF("cast '{}': no entity '{}' in page '{}' (a guid, a name or a slash path)", part, text, page.Title);
+								return false;
+							}
+							id = edit.Scene.GetEntityId(found);
+						}
+						parts.Add(new .(part));
+						entities.Add(id);
+					}
+				}
+				let time = (arguments.Get("time") != null) ? (float)arguments.Get("time").AsNumber() : 0.0f;
+				if (!scene.PreviewSequence(sequence, parts, entities, time, outError))
+					return false;
+				outResult.Set("page", PageJson(page));
+				outResult.Set("sequence", JsonValue.MakeString(sequenceText));
+				outResult.Set("time", JsonValue.MakeNumber(time));
 				return true;
 			});
 

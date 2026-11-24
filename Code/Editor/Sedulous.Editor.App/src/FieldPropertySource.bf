@@ -6,6 +6,7 @@ using Sedulous.Json;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.GUI;
+using Sedulous.Editor.Mcp; // FieldJson
 
 namespace Sedulous.Editor.App;
 

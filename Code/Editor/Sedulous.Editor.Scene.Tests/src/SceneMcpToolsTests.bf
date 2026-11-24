@@ -117,6 +117,7 @@ class SceneMcpToolsTests
 		public bool SequencePanelShown => false;
 		public void SetSequencePanelShown(bool shown) {}
 		public void EditSequence(Guid sequence, Guid owner) {}
+		public bool PreviewSequence(Guid sequence, Span<String> parts, Span<Guid> entities, float time, String outError) => true;
 		public void EditAnimationClip(Guid clip, Guid entity) {}
 		public void CreatePrefabFromEntity(Guid entity) {}
 		public void PickAndSpawnPrefab(Guid parent) {}
@@ -190,7 +191,7 @@ class SceneMcpToolsTests
 		SceneMcpTools.Register(server, context);
 		server.Paths.AddFolder(GetCurrentDirectory(.. scope .())); // the test's scratch folder, as a host allows its own
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
-		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 20, "a tripwire: bump deliberately when a live tool comes or goes");
+		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 21, "a tripwire: bump deliberately when a live tool comes or goes");
 		let onA = scope $"{{\"page\":\"{sceneA}\"}}";
 
 		// Default addressing: the active page, a scene page, then a page that is not one.

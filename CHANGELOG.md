@@ -17,7 +17,10 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   inspector. The editor's sequence panel sits under the scene's viewport (its toggle, Scene >
   Sequence Panel, or a Sequence component's Edit Sequence): parts cast from the selection, tracks
   of every registered kind, keys and section bars in one dopesheet, markers and holds on the ruler,
-  the chosen track's inspector, its own undo, and a preview that poses the scene and puts it back.
+  the chosen track's inspector, its own undo, and a preview that poses the scene and puts it back;
+  a double click on a section row adds one. MCP: `sequence_read` and `sequence_edit` (a list of
+  edits, written once), and `sequence_preview` on the editor host to pose a scene page with a
+  sequence for `viewport_screenshot`.
 - Scripting: players can rebind controls. `Input.Rebind(action)` takes the player's next press,
   `Input.SetBinding(action, "Key.Space")` sets one by name, and `Input.ResetBinding` /
   `Input.ResetAllBindings` undo them; the bindings are kept in the game's save and apply when it
