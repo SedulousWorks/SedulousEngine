@@ -125,6 +125,13 @@ interface ITimelineSource
 	void CancelSectionEdit() {}
 	/// Deletes the section, one change; false when it cannot.
 	bool DeleteSection(TimelineSectionRef section) => false;
+	/// Adds a section to `channel` at `time`, one change (a double click on its row); `made` is
+	/// where it went. False when the channel takes none.
+	bool InsertSection(int channel, float time, out TimelineSectionRef made)
+	{
+		made = .();
+		return false;
+	}
 
 	/// A view to tell of each change (not owned: it leaves as it goes).
 	void AddTimelineClient(ITimelineSourceClient client);

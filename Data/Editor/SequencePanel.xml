@@ -22,9 +22,9 @@
         <Separator/>
         <ToolButton id="seq-cast" icon="Editor/Icons/entity.svg" text="Cast" shows-text="true" tooltip="Fill a part with the entity selected in the scene, or add a part for it"/>
         <ToolButton id="seq-add-track" icon="Editor/Icons/plus.svg" text="Track" shows-text="true" tooltip="Add a track for the chosen part, or for the whole sequence"/>
-        <ToolButton id="seq-add-section" icon="Editor/Icons/plus.svg" text="Section" shows-text="true" tooltip="Add a section at the playhead to the chosen section track"/>
-        <ToolButton id="seq-add-marker" icon="Editor/Icons/star.svg" text="Marker" shows-text="true" tooltip="Add a marker at the playhead"/>
-        <ToolButton id="seq-add-hold" icon="Editor/Icons/pause.svg" text="Hold" shows-text="true" tooltip="Add a hold at the playhead: the playhead waits there until the game resumes the play"/>
+        <ToolButton id="seq-add-section" icon="Editor/Icons/plus.svg" text="Section" shows-text="true" tooltip="Add a section at the playhead to the chosen section track (or double-click a section row)"/>
+        <ToolButton id="seq-add-marker" icon="Editor/Icons/star.svg" tooltip="Add a marker at the playhead"/>
+        <ToolButton id="seq-add-hold" icon="Editor/Icons/pause.svg" tooltip="Add a hold at the playhead: the playhead waits there until the game resumes the play"/>
         <ToolButton id="seq-remove" icon="Editor/Icons/trash.svg" tooltip="Remove the chosen tracks"/>
         <Separator/>
         <ToolButton id="seq-restart" icon="Editor/Icons/restart.svg" tooltip="Play from the start"/>
@@ -47,7 +47,7 @@
         <Label class="state-text" text="A sequence is a cutscene timeline: it moves several entities, plays their clips and sounds, cuts between cameras and fades, and waits at holds for the game. Make a new one or open one, then cast the entities it plays with."/>
     </Panel>
     <Splitter id="seq-body" class="seq-body" axis="horizontal" weights="0.72 0.28">
-        <Splitter class="seq-timeline" axis="vertical" weights="0.6 0.4">
+        <Splitter class="seq-timeline" axis="vertical" weights="0.72 0.28">
             <Panel class="seq-sheet-pane">
                 <TimeRuler id="seq-ruler" class="seq-ruler"/>
                 <Dopesheet id="seq-sheet" class="seq-sheet" label-width="220"/>

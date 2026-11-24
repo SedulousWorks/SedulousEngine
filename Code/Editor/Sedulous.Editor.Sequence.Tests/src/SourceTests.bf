@@ -212,4 +212,13 @@ class SourceTests
 		else
 			Test.FatalError("the binding is reflected, hidden");
 	}
+
+	[Test]
+	public static void ASectionRowTakesANewSectionThroughItsKindANestedTrackTakesNone()
+	{
+		let bed = scope Bed();
+		Test.Assert(!bed.Source.InsertSection(3, 0.25f, ?), "a nested track has its one section");
+		Test.Assert(!bed.Source.InsertSection(0, 0.25f, ?), "a row of keys");
+		Test.Assert(!bed.Document.Commands.CanRedo);
+	}
 }

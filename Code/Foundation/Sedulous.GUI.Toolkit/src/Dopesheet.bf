@@ -21,7 +21,8 @@ namespace Sedulous.GUI;
 //   - a channel that holds sections (a clip, a sound, a shot) shows them as bars on its row: a click
 //     selects one (letting go of the keys), a drag on its body moves it and a drag on either end
 //     trims it, its start or end on a frame and kept in the clip; previewed through the source and
-//     committed once, Escape giving it up; Delete removes it. A parent row summarizes keys only.
+//     committed once, Escape giving it up; Delete removes it, and a double click on the row's empty
+//     space adds one there. A parent row summarizes keys only.
 // Its names are at the inline start (the right, right to left); time runs left to right in either
 // direction, as the ruler's does, so a ruler and a curve view beside it start at its keys.
 
@@ -482,11 +483,22 @@ class Dopesheet : UIWidget, ITimeAxisClient, ITimelineSourceClient
 		if ((e.ClickCount == 2) && !onKey)
 		{
 			let row = RowAtY(local.Y);
-			if ((row >= 0) && (Rows[row].Channel >= 0))
+			let channel = (row >= 0) ? Rows[row].Channel : -1;
+			if ((channel >= 0) && mSource.IsSectionChannel(channel))
+			{
+				let at = Clamp(mAxis.Snap(TimeAtX(local.X)), 0.0f, mAxis.Duration);
+				if (mSource.InsertSection(channel, at, let made))
+				{
+					mSelection.Clear();
+					mHasSection = true;
+					mSection = made;
+				}
+			}
+			else if (channel >= 0)
 			{
 				let at = Clamp(mAxis.Snap(TimeAtX(local.X)), 0.0f, mAxis.Duration);
 				TimelineKeyRef made;
-				if (mSource.InsertKey(Rows[row].Channel, at, out made))
+				if (mSource.InsertKey(channel, at, out made))
 				{
 					mSelection.Clear();
 					mSelection.Add(made);

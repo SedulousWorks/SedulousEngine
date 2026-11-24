@@ -266,6 +266,25 @@ class SequenceSource : ICurveSource, ITimelineSource
 		return true;
 	}
 
+	/// A section through its kind's AddSection, one step; false when the kind takes none.
+	public bool InsertSection(int channel, float time, out TimelineSectionRef made)
+	{
+		made = .();
+		if (!IsSectionChannel(channel))
+			return false;
+		let track = mChannels[channel].Track;
+		var index = -1;
+		mDocument.Edit("sequence-insert-section", scope [&] (sequence) =>
+			{
+				if (track < sequence.Tracks.Count)
+					index = sequence.Tracks[track].AddSection(time);
+			});
+		if (index < 0)
+			return false;
+		made = .(channel, index);
+		return true;
+	}
+
 	public void AddTimelineClient(ITimelineSourceClient client) => mTimelineClients.Add(client);
 
 	public void RemoveTimelineClient(ITimelineSourceClient client)

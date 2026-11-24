@@ -83,6 +83,14 @@ class StagedSections : ITimelineSource
 		return true;
 	}
 
+	public bool InsertSection(int channel, float time, out TimelineSectionRef made)
+	{
+		Clips.Add(new .(time, 0.25f, "new"));
+		made = .(channel, Clips.Count - 1);
+		Notify();
+		return true;
+	}
+
 	public void AddTimelineClient(ITimelineSourceClient client) => mClients.Add(client);
 	public void RemoveTimelineClient(ITimelineSourceClient client) => mClients.Remove(client);
 
@@ -231,5 +239,18 @@ class DopesheetSectionTests
 		Test.Assert(bed.Source.Clips.Count == 1);
 		Test.Assert(bed.Source.Clips[0].Label == "wave");
 		Test.Assert(!bed.Sheet.HasSelectedSection);
+	}
+
+	[Test]
+	public static void ADoubleClickOnASectionRowsEmptySpaceAddsOneThereChosen()
+	{
+		let bed = scope SectionBed();
+		bed.Axis.FrameRate = 10.0f;
+		bed.Click(SectionBed.At(2, 1.63f));
+		bed.Click(SectionBed.At(2, 1.63f));
+		Test.Assert(bed.Source.Clips.Count == 3);
+		Test.Assert(Near(bed.Source.Clips[2].Start, 1.6f), "on a frame");
+		Test.Assert(bed.Sheet.HasSelectedSection);
+		Test.Assert(bed.Sheet.SelectedSection.Index == 2);
 	}
 }
