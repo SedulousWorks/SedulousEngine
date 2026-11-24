@@ -110,6 +110,7 @@ static class PipelineRegistration
 		PropertyAnimationResources.RegisterAll();
 		SequenceResources.RegisterAll();
 		RenderProfileResources.RegisterAll();
+		RenderSequenceTracks.Register();
 		SceneResources.RegisterAll();
 		ScriptResources.RegisterAll();
 		ShaderResources.RegisterAll();

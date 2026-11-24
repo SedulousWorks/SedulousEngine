@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
@@ -33,6 +34,10 @@ class SequencePlay
 	/// Per track: its missing binding was told this play.
 	private List<bool> mWarned = new .() ~ delete _;
 	private float mTime = 0.0f;
+	/// See StartOrder.
+	private uint64 mStartOrder = 0;
+	/// Plays begin on any scene's thread.
+	private static int64 sStartOrders = 0;
 	/// The runners exist.
 	private bool mBegun = false;
 	/// Between Play (or Seek, Pose) and Stop.
@@ -69,6 +74,20 @@ class SequencePlay
 	/// The play this one is nested in, or null.
 	public SequencePlay Parent => mParent;
 	public void SetParent(SequencePlay parent) => mParent = parent;
+
+	/// When the play began, against every other play: of two plays claiming what plays share (the
+	/// view's camera, its fade), the one begun later wins. A nested play answers its outermost
+	/// play's.
+	public uint64 StartOrder
+	{
+		get
+		{
+			var outer = this;
+			while (outer.mParent != null)
+				outer = outer.mParent;
+			return outer.mStartOrder;
+		}
+	}
 
 	/// Whether this play, or one it is nested in, plays `sequence`.
 	public bool Plays(Sequence sequence)
@@ -236,6 +255,7 @@ class SequencePlay
 
 	private void Begin()
 	{
+		mStartOrder = (uint64)Interlocked.Increment(ref sStartOrders);
 		ClearRunners();
 		for (int t < mWarned.Count)
 			mWarned[t] = false;

@@ -22,6 +22,7 @@ static class RenderDomain
 			TextureResources.Module,
 			ImageResources.Module,
 			ShaderResources.Module,
-			RenderProfileResources.Module)));
+			RenderProfileResources.Module,
+			RenderSequenceTracks.Module)));
 	private static DomainModule sModule ~ delete _;
 }

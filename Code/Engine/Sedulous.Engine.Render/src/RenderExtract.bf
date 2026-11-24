@@ -603,7 +603,8 @@ static class RenderExtract
 			});
 	}
 
-	/// Reads the scene's primary camera. False when there is none.
+	/// Reads the scene's view camera: the one a claim on the view names (a sequence's camera cut),
+	/// else the primary camera. False when there is none.
 	///
 	/// The view is the INVERSE of the entity's world matrix, and the projection comes from the
 	/// component's own fields, with `aspect`, when given, for the shape the view draws into.
@@ -615,40 +616,51 @@ static class RenderExtract
 		if (cameras == null)
 			return false;
 
-		var found = false;
-		var camera = ViewCamera();
-		var clear = Color(0, 0, 0, 1);
+		CameraComponent* chosen = null;
 		var picked = EntityHandle.Invalid;
 
-		cameras.ForEach(scope [&] (component, entity) =>
-			{
-				// An INACTIVE primary is skipped, so the choice falls through to the next one
-				// rather than the scene losing its camera.
-				// So is one with a target, which draws into its texture.
-				if (found || !component.Primary || component.HasTarget || !scene.IsEffectivelyActive(entity))
-					return;
-
-				found = true;
-				let world = scene.GetWorldMatrix(entity);
-				camera.View = Inverse(world);
-				// The shape of what the view draws into, when the caller knows it; the authored
-				// aspect only stands in when it does not.
-				camera.Projection = component.MakeProjection((aspect > 0.0f) ? aspect : component.Aspect);
-				camera.Position = TransformPoint(Float3(0, 0, 0), world);
-				camera.FarZ = component.ClipPlanes.FarZ;
-				clear = ToLinear(component.ClearColor);
-				picked = entity;
-			});
-
-		if (found)
+		// A claim on the view (a sequence's camera cut) comes before the primary camera, when it
+		// names a camera that can be the view.
+		let claimed = cameras.ClaimedView;
+		if (claimed.IsAssigned && scene.IsValid(claimed) && scene.IsEffectivelyActive(claimed))
 		{
-			outCamera = camera;
-			if (outClear != null)
-				*outClear = clear;
-			if (outEntity != null)
-				*outEntity = picked;
+			let component = cameras.Get(claimed);
+			if ((component != null) && !component.HasTarget)
+			{
+				chosen = component;
+				picked = claimed;
+			}
 		}
-		return found;
+
+		if (chosen == null)
+		{
+			cameras.ForEach(scope [&] (component, entity) =>
+				{
+					// An INACTIVE primary is skipped, so the choice falls through to the next one
+					// rather than the scene losing its camera.
+					// So is one with a target, which draws into its texture.
+					if ((chosen != null) || !component.Primary || component.HasTarget || !scene.IsEffectivelyActive(entity))
+						return;
+					chosen = component;
+					picked = entity;
+				});
+		}
+		if (chosen == null)
+			return false;
+
+		let world = scene.GetWorldMatrix(picked);
+		outCamera = ViewCamera();
+		outCamera.View = Inverse(world);
+		// The shape of what the view draws into, when the caller knows it; the authored aspect
+		// only stands in when it does not.
+		outCamera.Projection = chosen.MakeProjection((aspect > 0.0f) ? aspect : chosen.Aspect);
+		outCamera.Position = TransformPoint(Float3(0, 0, 0), world);
+		outCamera.FarZ = chosen.ClipPlanes.FarZ;
+		if (outClear != null)
+			*outClear = ToLinear(chosen.ClearColor);
+		if (outEntity != null)
+			*outEntity = picked;
+		return true;
 	}
 
 	/// Packs every enabled light into the snapshot as a shading input.
