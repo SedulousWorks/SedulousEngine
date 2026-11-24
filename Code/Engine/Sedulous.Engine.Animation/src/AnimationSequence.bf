@@ -71,6 +71,54 @@ class ClipSequenceTrack : SequenceTrack
 
 	public override int32 Order => cOrder;
 
+	// === Editing: each clip a section ===
+
+	public override int SectionCount => Sections.Count;
+
+	/// Labelled by its clip's name ("Clip" until one is chosen).
+	public override void GetSection(int index, out float start, out float length, String outLabel)
+	{
+		start = 0.0f;
+		length = 0.0f;
+		if (index >= Sections.Count)
+			return;
+		let section = Sections[index];
+		start = section.Start;
+		length = section.SectionLength;
+		let clip = section.Clip.Get;
+		outLabel.Append(((clip != null) && !clip.Name.IsEmpty) ? clip.Name : "Clip");
+	}
+
+	/// A start moved later moves the clip's offset with it (at its speed), so what plays stays put.
+	public override void SetSection(int index, float start, float length)
+	{
+		if (index >= Sections.Count)
+			return;
+		var section = ref Sections[index];
+		let at = Math.Max(0.0f, start);
+		section.Offset = Math.Max(0.0f, section.Offset + (at - section.Start) * section.Speed);
+		section.Start = at;
+		section.Length = Math.Max(0.0f, length);
+	}
+
+	public override void RemoveSection(int index)
+	{
+		if (index < Sections.Count)
+			Sections.RemoveAt(index);
+	}
+
+	public override int AddSection(float time)
+	{
+		int at = 0;
+		while ((at < Sections.Count) && (Sections[at].Start <= time))
+			at++;
+		var section = ClipSection();
+		section.Start = Math.Max(0.0f, time);
+		section.Length = 1.0f;
+		Sections.Insert(at, section);
+		return at;
+	}
+
 	/// The section running at `time` (its end included); -1 between sections.
 	public int SectionAt(float time)
 	{

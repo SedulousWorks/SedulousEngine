@@ -204,4 +204,21 @@ class FadeTests
 		stage.Post.FadeClaims.Release(holder);
 		Test.Assert(subsystem.ViewPost(stage.World).Fade.W == 0.0f);
 	}
+
+	[Test]
+	public static void TheFadesAmountIsOneCurveChannelAShotIsASection()
+	{
+		let fade = scope FadeSequenceTrack();
+		Test.Assert(fade.KeyChannelCount == 1);
+		Test.Assert(fade.KeyCurve(0) === fade.Amount);
+		Test.Assert(fade.InsertKey(0, 0.5f) == 0);
+		Test.Assert(Near(fade.Amount.Keys[0].Value, 0.0f));
+
+		let cuts = scope CameraCutSequenceTrack();
+		Test.Assert(cuts.AddSection(2.0f) == 0);
+		cuts.SetSection(0, 1.0f, 3.0f);
+		Test.Assert(Near(cuts.Duration, 4.0f));
+		cuts.RemoveSection(0);
+		Test.Assert(cuts.SectionCount == 0);
+	}
 }

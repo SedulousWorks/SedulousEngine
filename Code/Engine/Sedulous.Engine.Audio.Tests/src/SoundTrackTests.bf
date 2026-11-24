@@ -179,4 +179,16 @@ class SoundTrackTests
 		Test.Assert(back.Loop);
 		Test.Assert(Near(sounds.Duration, 4.5f, 1e-4f));
 	}
+
+	[Test]
+	public static void AStartTrimmedLaterMovesTheSoundsOffsetWithIt()
+	{
+		let track = scope SoundSequenceTrack();
+		Test.Assert(track.AddSection(1.0f) == 0);
+		track.SetSection(0, 1.25f, 0.75f);
+		Test.Assert(Near(track.Sections[0].Offset, 0.25f, 1e-4f));
+		Test.Assert(Near(track.Sections[0].Length, 0.75f, 1e-4f));
+		track.RemoveSection(0);
+		Test.Assert(track.SectionCount == 0);
+	}
 }

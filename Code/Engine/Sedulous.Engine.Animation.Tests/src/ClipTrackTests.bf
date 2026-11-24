@@ -252,4 +252,22 @@ class ClipTrackTests
 			listed |= kind == typeof(ClipSequenceTrack);
 		Test.Assert(listed);
 	}
+
+	[Test]
+	public static void AStartTrimmedLaterMovesTheClipsOffsetWithItSoWhatPlaysStaysPut()
+	{
+		let track = scope ClipSequenceTrack();
+		Test.Assert(track.AddSection(2.0f) == 0);
+		Test.Assert(track.AddSection(1.0f) == 0, "sorted by start");
+		Test.Assert(track.SectionCount == 2);
+		track.Sections[1].Speed = 2.0f;
+		track.SetSection(1, 2.5f, 0.5f); // trimmed half a second at double speed
+		Test.Assert(Near(track.Sections[1].Offset, 1.0f));
+		let label = scope String();
+		track.GetSection(1, let start, let length, label);
+		Test.Assert(Near(start, 2.5f) && Near(length, 0.5f));
+		Test.Assert(label == "Clip", "no clip yet");
+		track.RemoveSection(0);
+		Test.Assert(track.SectionCount == 1);
+	}
 }

@@ -482,4 +482,72 @@ class SequenceTests
 		play.Resume(); // from a hold, not a pause
 		Test.Assert((log.Paused == 1) && (log.Resumed == 1));
 	}
+
+	[Test]
+	public static void APropertyTracksChannelsAreItsPartsKeysMoveSortDeleteAndInsert()
+	{
+		let track = scope PropertySequenceTrack();
+		track.Property.ComponentType.Set(TrackTargets.cTransform);
+		track.Property.PropertyPath.Set("Position");
+		track.Property.Kind = .Float3;
+		Test.Assert(track.KeyChannelCount == 3);
+		Test.Assert(track.GetKeyChannelName(1, .. scope .()) == "y");
+		Test.Assert(track.KeyCurve(0) === track.Property.Channels[0]);
+
+		// x: 0 at 0, 10 at 1. A key inserted at 0.5 takes the curve's value there.
+		var first = CurveKey(0.0f, 0.0f, .Linear);
+		first.TangentMode = .Broken;
+		var last = CurveKey(1.0f, 10.0f, .Linear);
+		last.TangentMode = .Broken;
+		track.Property.Channels[0].AddKey(first);
+		track.Property.Channels[0].AddKey(last);
+		Test.Assert(track.InsertKey(0, 0.5f) == 1);
+		Test.Assert(Math.Abs(track.Property.Channels[0].Keys[1].Value - 5.0f) < 1e-3f);
+		Test.Assert(track.InsertKey(0, 0.5f) == 1, "already there: no second key");
+		Test.Assert(track.Property.Channels[0].KeyCount == 3);
+
+		// The first key moved past the others lands last; where it went is reported.
+		int[1] firstKey = .(0);
+		let moved = scope List<int>();
+		track.MoveKeys(0, firstKey, 1.5f, moved);
+		Test.Assert((moved.Count == 1) && (moved[0] == 2));
+		let times = scope List<float>();
+		track.GetKeyTimes(0, times);
+		Test.Assert(times.Count == 3);
+		Test.Assert(Math.Abs(times[0] - 0.5f) < 1e-4f);
+		Test.Assert(Math.Abs(times[2] - 1.5f) < 1e-4f);
+		Test.Assert(Math.Abs(track.Property.Channels[0].Keys[2].Value - 0.0f) < 1e-4f, "its value went with it");
+		track.MoveKeys(0, firstKey, -5.0f, moved); // never before 0
+		track.GetKeyTimes(0, times);
+		Test.Assert(times[0] == 0.0f);
+
+		track.DeleteKeys(0, firstKey);
+		Test.Assert(track.Property.Channels[0].KeyCount == 2);
+
+		// A rotation is one channel of its keys, and no curve.
+		let turn = scope PropertySequenceTrack();
+		turn.Property.Kind = .Quat;
+		Test.Assert(turn.KeyChannelCount == 1);
+		Test.Assert(turn.KeyCurve(0) == null);
+		Test.Assert(turn.InsertKey(0, 0.25f) == 0);
+		Test.Assert(turn.Property.QuatKeys.Count == 1);
+	}
+
+	[Test]
+	public static void AnEventTrackIsOneChannelANewEventIsNamedForTheInspectorToRename()
+	{
+		let track = scope EventSequenceTrack();
+		track.Keys.Add(new .(1.0f, "cue", "gate"));
+		Test.Assert(track.InsertKey(0, 0.5f) == 0);
+		Test.Assert(track.Keys[0].Name == "event");
+		int[1] second = .(1);
+		let moved = scope List<int>();
+		track.MoveKeys(0, second, -0.75f, moved);
+		Test.Assert((moved.Count == 1) && (moved[0] == 0));
+		Test.Assert(track.Keys[0].Name == "cue", "the cue now first, at 0.25");
+		Test.Assert(track.KeyCurve(0) == null);
+		Test.Assert(track.SectionCount == 0);
+		track.DeleteKeys(0, second);
+		Test.Assert((track.Keys.Count == 1) && (track.Keys[0].Name == "cue"));
+	}
 }

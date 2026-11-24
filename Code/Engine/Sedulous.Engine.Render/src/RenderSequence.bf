@@ -49,6 +49,39 @@ class CameraCutSequenceTrack : SequenceTrack
 
 	public override int32 Order => cOrder;
 
+	// === Editing: each shot a section ===
+
+	public override int SectionCount => Sections.Count;
+
+	public override void GetSection(int index, out float start, out float length, String outLabel)
+	{
+		start = (index < Sections.Count) ? Sections[index].Start : 0.0f;
+		length = (index < Sections.Count) ? Sections[index].Duration : 0.0f;
+		outLabel.Append(Name.IsEmpty ? "Shot" : Name);
+	}
+
+	public override void SetSection(int index, float start, float length)
+	{
+		if (index < Sections.Count)
+			Sections[index] = .(Math.Max(0.0f, start), Math.Max(0.0f, length));
+	}
+
+	public override void RemoveSection(int index)
+	{
+		if (index < Sections.Count)
+			Sections.RemoveAt(index);
+	}
+
+	/// A second's shot at `time`.
+	public override int AddSection(float time)
+	{
+		int at = 0;
+		while ((at < Sections.Count) && (Sections[at].Start <= time))
+			at++;
+		Sections.Insert(at, CameraCutSection(Math.Max(0.0f, time), 1.0f));
+		return at;
+	}
+
 	/// Whether a section runs at `time`: its end included, so a play that ends on a cut and holds
 	/// keeps it.
 	public bool CutsAt(float time)
@@ -162,6 +195,59 @@ class FadeSequenceTrack : SequenceTrack
 	public override float Duration => Amount.Duration;
 	public override int32 Order => cOrder;
 	public override bool NeedsBinding => false;
+
+	// === Editing: the amount, one curve channel ===
+
+	public override int KeyChannelCount => 1;
+
+	public override void GetKeyChannelName(int channel, String outName) => outName.Append("amount");
+
+	public override void GetKeyTimes(int channel, List<float> outTimes)
+	{
+		outTimes.Clear();
+		for (let key in Amount.Keys)
+			outTimes.Add(key.Time);
+	}
+
+	public override void MoveKeys(int channel, Span<int> keys, float delta, List<int> moved)
+	{
+		let times = scope List<float>();
+		GetKeyTimes(channel, times);
+		let order = scope List<int>();
+		SequenceKeys.MoveInTime(times, keys, delta, order, moved);
+		SequenceKeys.Reorder(Amount.Keys, order);
+		for (int i < times.Count)
+			Amount.Keys[i].Time = times[i];
+		Amount.ApplyTangentModes();
+	}
+
+	public override void DeleteKeys(int channel, Span<int> keys)
+	{
+		for (int i = Amount.Keys.Count - 1; i >= 0; i--)
+		{
+			if (SequenceKeys.Contains(keys, i))
+				Amount.Keys.RemoveAt(i);
+		}
+		Amount.ApplyTangentModes();
+	}
+
+	public override int InsertKey(int channel, float time)
+	{
+		let at = Math.Max(0.0f, time);
+		let times = scope List<float>();
+		GetKeyTimes(channel, times);
+		let existing = SequenceKeys.IndexAt(times, at);
+		if (existing >= 0)
+			return existing;
+		var key = CurveKey(at, Amount.IsEmpty ? 0.0f : Math.Clamp(Amount.Evaluate(at), 0.0f, 1.0f), .Linear);
+		key.TangentMode = .Auto;
+		Amount.AddKey(key);
+		Amount.ApplyTangentModes();
+		GetKeyTimes(channel, times);
+		return SequenceKeys.IndexAt(times, at);
+	}
+
+	public override Curve KeyCurve(int channel) => Amount;
 
 	public override SequenceTrackRunner Begin(SequenceTrackContext context)
 	{

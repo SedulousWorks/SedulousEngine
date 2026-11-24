@@ -26,6 +26,23 @@ class NestedSequenceTrack : SequenceTrack
 	public override int32 Order => SequenceTrackOrder.Property;
 	public override bool NeedsBinding => false;
 
+	// === Editing: the one section it plays over ===
+
+	public override int SectionCount => 1;
+
+	public override void GetSection(int index, out float start, out float length, String outLabel)
+	{
+		start = Start;
+		length = SectionLength;
+		outLabel.Append(Name.IsEmpty ? "Sequence" : Name);
+	}
+
+	public override void SetSection(int index, float start, float length)
+	{
+		Start = Math.Max(0.0f, start);
+		Length = Math.Max(0.0f, length);
+	}
+
 	/// The section's length: Length, or the nested sequence's duration.
 	public float SectionLength
 	{

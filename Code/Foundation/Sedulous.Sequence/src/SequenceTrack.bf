@@ -63,6 +63,86 @@ struct SequenceTrackContext
 	public SequencePlay Play;
 }
 
+/// What the track kinds' key edits share. A kind's keys are its own type, so the move sorts their
+/// times and says the order; the kind puts its keys in it.
+static class SequenceKeys
+{
+	/// The keys at `indices` of keys timed `times` (sorted) moved by `delta`, never before 0, then
+	/// sorted again (a moved key keeps its place among equals): `times` becomes the new times in
+	/// order, `order` the old index of the key now at each place, and `moved` each moved key's new
+	/// index, in the order of `indices`.
+	public static void MoveInTime(List<float> times, Span<int> indices, float delta, List<int> order, List<int> moved)
+	{
+		order.Clear();
+		for (int i < times.Count)
+		{
+			order.Add(i);
+			for (let at in indices)
+			{
+				if (at == i)
+					times[i] = Math.Max(0.0f, times[i] + delta);
+			}
+		}
+		// Insertion sort: stable, and the keys are few.
+		for (int i = 1; i < order.Count; i++)
+		{
+			let index = order[i];
+			var j = i;
+			while ((j > 0) && (times[order[j - 1]] > times[index]))
+			{
+				order[j] = order[j - 1];
+				j--;
+			}
+			order[j] = index;
+		}
+		let sorted = scope List<float>(times.Count);
+		for (let index in order)
+			sorted.Add(times[index]);
+		times.Clear();
+		times.AddRange(sorted);
+		moved.Clear();
+		for (let at in indices)
+		{
+			for (int i < order.Count)
+			{
+				if (order[i] == at)
+					moved.Add(i);
+			}
+		}
+	}
+
+	/// `keys` put in `order` (the old index of the key at each place).
+	public static void Reorder<T>(List<T> keys, List<int> order)
+	{
+		let old = scope List<T>(keys.Count);
+		old.AddRange(keys);
+		for (int i < order.Count)
+			keys[i] = old[order[i]];
+	}
+
+	/// Whether `index` is among `indices`.
+	public static bool Contains(Span<int> indices, int index)
+	{
+		for (let at in indices)
+		{
+			if (at == index)
+				return true;
+		}
+		return false;
+	}
+
+	/// The index of the key at `time` among `times`; -1 when none.
+	public static int IndexAt(List<float> times, float time)
+	{
+		for (int i < times.Count)
+		{
+			if (Math.Abs(times[i] - time) < 1e-5f)
+				return i;
+		}
+		return -1;
+	}
+}
+
 /// The base of every track kind. A kind adds its keys or sections, serializes them after the
 /// base's fields, and makes a runner for each play. A kind is registered (SequenceTracks.Register),
 /// so a sequence holding it reads and whatever lists the kinds (the editor's add-track menu) finds
@@ -90,6 +170,42 @@ abstract class SequenceTrack : ISerializable
 	/// sequence is loaded.
 	public virtual void ResolveResources(ResourceManager manager) {}
 
+	// === Editing, whatever the kind (the editor's panel and its tools) ===
+	// A kind shows what it holds as key channels (a property's x, y and z; an event track's events;
+	// a fade's amount) or as sections (a clip, a sound, a shot). Keys stay sorted by time in each
+	// channel; a move says where each moved key went. A kind holding neither keeps the defaults.
+
+	public virtual int KeyChannelCount => 0;
+	/// The channel's name under the track ("x", "events", "amount"), appended to `outName`.
+	public virtual void GetKeyChannelName(int channel, String outName) {}
+	/// Its key times, sorted, into `outTimes` (emptied first).
+	public virtual void GetKeyTimes(int channel, List<float> outTimes) { outTimes.Clear(); }
+	/// Moves the keys at `keys` (indices in the channel) by `delta` seconds, never before 0, sorts
+	/// the channel again and fills `moved` with each one's new index, in order.
+	public virtual void MoveKeys(int channel, Span<int> keys, float delta, List<int> moved) { moved.Clear(); }
+	public virtual void DeleteKeys(int channel, Span<int> keys) {}
+	/// Adds a key at `time` holding the channel's value there (or a new key's default); its index,
+	/// or -1 when the channel takes none.
+	public virtual int InsertKey(int channel, float time) => -1;
+	/// The channel's keys as a curve, when they are one (a property's part, a fade's amount): the
+	/// editor's curve view edits it. BORROWED; null otherwise.
+	public virtual Curve KeyCurve(int channel) => null;
+
+	public virtual int SectionCount => 0;
+	/// The section's span, and what its bar says appended to `outLabel`.
+	public virtual void GetSection(int index, out float start, out float length, String outLabel)
+	{
+		start = 0.0f;
+		length = 0.0f;
+	}
+	/// Sets the section's span. A start moved later trims what it plays from (a clip's or a sound's
+	/// offset moves with it), so what plays stays where it was.
+	public virtual void SetSection(int index, float start, float length) {}
+	public virtual void RemoveSection(int index) {}
+	/// Adds a section at `time` (what it plays is chosen in the inspector); its index, or -1 when
+	/// the kind takes no more.
+	public virtual int AddSection(float time) => -1;
+
 	public virtual void Serialize(ISerializer ar)
 	{
 		Sedulous.Core.Serialization.Serialize(ar, "name", Name);
@@ -114,6 +230,117 @@ class PropertySequenceTrack : SequenceTrack
 
 	public override float Duration => Property.Duration;
 	public override int32 Order => SequenceTrackOrder.Property;
+
+	// === Editing: a channel per curve (x, y, z; r, g, b, a), or the rotation's keys ===
+
+	private bool IsRotation => Property.Kind == .Quat;
+
+	public override int KeyChannelCount => IsRotation ? 1 : (int)Property.Kind.ChannelCount;
+
+	public override void GetKeyChannelName(int channel, String outName)
+	{
+		switch (Property.Kind)
+		{
+		case .Float3: if (channel < 3) outName.Append("xyz"[channel]);
+		case .Color: if (channel < 4) outName.Append("rgba"[channel]);
+		case .Quat: outName.Append("rotation");
+		default: outName.Append("value");
+		}
+	}
+
+	public override void GetKeyTimes(int channel, List<float> outTimes)
+	{
+		outTimes.Clear();
+		if (IsRotation)
+		{
+			for (let key in Property.QuatKeys)
+				outTimes.Add(key.Time);
+		}
+		else if (channel < KeyChannelCount)
+		{
+			for (let key in Property.Channels[channel].Keys)
+				outTimes.Add(key.Time);
+		}
+	}
+
+	public override void MoveKeys(int channel, Span<int> keys, float delta, List<int> moved)
+	{
+		moved.Clear();
+		if (!IsRotation && (channel >= KeyChannelCount))
+			return;
+		let times = scope List<float>();
+		GetKeyTimes(channel, times);
+		let order = scope List<int>();
+		SequenceKeys.MoveInTime(times, keys, delta, order, moved);
+		if (IsRotation)
+		{
+			SequenceKeys.Reorder(Property.QuatKeys, order);
+			for (int i < times.Count)
+				Property.QuatKeys[i].Time = times[i];
+			return;
+		}
+		let curve = Property.Channels[channel];
+		SequenceKeys.Reorder(curve.Keys, order);
+		for (int i < times.Count)
+			curve.Keys[i].Time = times[i];
+		curve.ApplyTangentModes();
+	}
+
+	public override void DeleteKeys(int channel, Span<int> keys)
+	{
+		if (IsRotation)
+		{
+			for (int i = Property.QuatKeys.Count - 1; i >= 0; i--)
+			{
+				if (SequenceKeys.Contains(keys, i))
+					Property.QuatKeys.RemoveAt(i);
+			}
+			return;
+		}
+		if (channel >= KeyChannelCount)
+			return;
+		let curve = Property.Channels[channel];
+		for (int i = curve.Keys.Count - 1; i >= 0; i--)
+		{
+			if (SequenceKeys.Contains(keys, i))
+				curve.Keys.RemoveAt(i);
+		}
+		curve.ApplyTangentModes();
+	}
+
+	public override int InsertKey(int channel, float time)
+	{
+		let at = Math.Max(0.0f, time);
+		if (IsRotation)
+		{
+			let value = Property.QuatKeys.IsEmpty ? Quaternion.Identity : Property.SampleQuat(at);
+			int index = 0;
+			while ((index < Property.QuatKeys.Count) && (Property.QuatKeys[index].Time < at))
+				index++;
+			var key = QuatKey();
+			key.Time = at;
+			key.Value = value;
+			Property.QuatKeys.Insert(index, key);
+			return index;
+		}
+		if (channel >= KeyChannelCount)
+			return -1;
+		let curve = Property.Channels[channel];
+		let times = scope List<float>();
+		GetKeyTimes(channel, times);
+		let existing = SequenceKeys.IndexAt(times, at);
+		// A key is already there.
+		if (existing >= 0)
+			return existing;
+		var key = CurveKey(at, curve.IsEmpty ? 0.0f : curve.Evaluate(at), .Cubic);
+		key.TangentMode = .Auto;
+		curve.AddKey(key);
+		curve.ApplyTangentModes();
+		GetKeyTimes(channel, times);
+		return SequenceKeys.IndexAt(times, at);
+	}
+
+	public override Curve KeyCurve(int channel) => (!IsRotation && (channel < KeyChannelCount)) ? Property.Channels[channel] : null;
 
 	public override SequenceTrackRunner Begin(SequenceTrackContext context)
 	{
@@ -221,6 +448,52 @@ class EventSequenceTrack : SequenceTrack
 	}
 
 	public override int32 Order => SequenceTrackOrder.Event;
+
+	// === Editing: one channel of events ===
+
+	public override int KeyChannelCount => 1;
+
+	public override void GetKeyChannelName(int channel, String outName) => outName.Append("events");
+
+	public override void GetKeyTimes(int channel, List<float> outTimes)
+	{
+		outTimes.Clear();
+		for (let key in Keys)
+			outTimes.Add(key.Time);
+	}
+
+	public override void MoveKeys(int channel, Span<int> keys, float delta, List<int> moved)
+	{
+		let times = scope List<float>();
+		GetKeyTimes(channel, times);
+		let order = scope List<int>();
+		SequenceKeys.MoveInTime(times, keys, delta, order, moved);
+		SequenceKeys.Reorder(Keys, order);
+		for (int i < times.Count)
+			Keys[i].Time = times[i];
+	}
+
+	public override void DeleteKeys(int channel, Span<int> keys)
+	{
+		for (int i = Keys.Count - 1; i >= 0; i--)
+		{
+			if (!SequenceKeys.Contains(keys, i))
+				continue;
+			delete Keys[i];
+			Keys.RemoveAt(i);
+		}
+	}
+
+	/// A new event is named "event", with no value: the inspector names it.
+	public override int InsertKey(int channel, float time)
+	{
+		let at = Math.Max(0.0f, time);
+		int index = 0;
+		while ((index < Keys.Count) && (Keys[index].Time <= at))
+			index++;
+		Keys.Insert(index, new .(at, "event"));
+		return index;
+	}
 	public override bool NeedsBinding => false;
 
 	public override SequenceTrackRunner Begin(SequenceTrackContext context) => new EventRunner(this, context.Entity, context.Listener);

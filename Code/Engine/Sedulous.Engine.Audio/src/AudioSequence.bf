@@ -70,6 +70,51 @@ class SoundSequenceTrack : SequenceTrack
 	public override int32 Order => cOrder;
 	public override bool NeedsBinding => false;
 
+	// === Editing: each sound a section ===
+
+	public override int SectionCount => Sections.Count;
+
+	public override void GetSection(int index, out float start, out float length, String outLabel)
+	{
+		start = 0.0f;
+		length = 0.0f;
+		if (index >= Sections.Count)
+			return;
+		start = Sections[index].Start;
+		length = Sections[index].SectionLength;
+		outLabel.Append(Name.IsEmpty ? "Sound" : Name);
+	}
+
+	/// A start moved later moves the sound's offset with it, so what plays stays put.
+	public override void SetSection(int index, float start, float length)
+	{
+		if (index >= Sections.Count)
+			return;
+		var section = ref Sections[index];
+		let at = Math.Max(0.0f, start);
+		section.Offset = Math.Max(0.0f, section.Offset + (at - section.Start));
+		section.Start = at;
+		section.Length = Math.Max(0.0f, length);
+	}
+
+	public override void RemoveSection(int index)
+	{
+		if (index < Sections.Count)
+			Sections.RemoveAt(index);
+	}
+
+	public override int AddSection(float time)
+	{
+		int at = 0;
+		while ((at < Sections.Count) && (Sections[at].Start <= time))
+			at++;
+		var section = SoundSection();
+		section.Start = Math.Max(0.0f, time);
+		section.Length = 1.0f;
+		Sections.Insert(at, section);
+		return at;
+	}
+
 	/// The section running at `time` (its end included); -1 between sections.
 	public int SectionAt(float time)
 	{
