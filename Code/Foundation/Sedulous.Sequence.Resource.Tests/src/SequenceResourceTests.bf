@@ -28,6 +28,27 @@ class StepCounter : ISequenceListener
 
 /// A nested sequence over a section of another, on the outer cast; looping over its section; never
 /// inside itself; and the factory loading a cooked sequence and binding what its tracks refer to.
+/// A kind whose runner keeps whether it was last told the play paused.
+class PauseFlagTrack : SequenceTrack
+{
+	public bool Paused;
+
+	public override float Duration => 1.0f;
+	public override bool NeedsBinding => false;
+	public override SequenceTrackRunner Begin(SequenceTrackContext context) => new Runner(this);
+
+	private class Runner : SequenceTrackRunner
+	{
+		private PauseFlagTrack mTrack;
+
+		public this(PauseFlagTrack track) { mTrack = track; }
+
+		public override void Evaluate(SequenceStep step) {}
+		public override void Release(bool restore) {}
+		public override void SetPaused(bool paused) => mTrack.Paused = paused;
+	}
+}
+
 class SequenceResourceTests
 {
 	private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-3f;
@@ -204,5 +225,27 @@ class SequenceResourceTests
 		Test.Assert(nested.Nested.Get != null, "bound by the factory, through the manager");
 		Test.Assert(nested.Nested.Get.Sequence.Tracks.Count == 2);
 		Test.Assert(Near(nested.SectionLength, 1.0f));
+	}
+
+	[Test]
+	public static void ANestedSequencesRunnersPauseWithTheOuterPlay()
+	{
+		SequenceResources.RegisterAll();
+		let world = scope Sedulous.Scene.Scene("paused");
+		let inner = scope SequenceResource();
+		let flag = new PauseFlagTrack();
+		inner.Sequence.Tracks.Add(flag);
+		inner.Sequence.Duration = 1.0f;
+
+		let outer = scope Sedulous.Sequence.Sequence();
+		outer.Tracks.Add(Nested(inner, 0.0f, 0.0f, false));
+		outer.Duration = outer.ComputeDuration();
+		let play = scope SequencePlay(world, outer);
+		play.Play();
+		play.Advance(0.25f);
+		play.Pause();
+		Test.Assert(flag.Paused);
+		play.Resume();
+		Test.Assert(!flag.Paused);
 	}
 }

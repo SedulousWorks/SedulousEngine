@@ -38,12 +38,12 @@ static class EngineCompositionTests
 		}
 		Test.Assert(sawInput);
 
-		// Twenty five resource modules, each id once: the GUI's documents and sheets among them, its
-		// vector images and fonts, the sequences, and the render's and the animation's sequence
-		// track kinds.
+		// Twenty six resource modules, each id once: the GUI's documents and sheets among them, its
+		// vector images and fonts, the sequences, and the sequence track kinds of the render, the
+		// animation and the audio.
 		let resources = scope List<ResourceModule>();
 		EngineComposition.ResourceModules(resources);
-		Test.Assert(resources.Count == 25, scope $"{resources.Count} resource modules");
+		Test.Assert(resources.Count == 26, scope $"{resources.Count} resource modules");
 		for (int i < resources.Count)
 		{
 			for (int j = i + 1; j < resources.Count; j++)

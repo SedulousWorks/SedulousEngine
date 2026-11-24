@@ -634,6 +634,8 @@ class AudioEngine
 		SpliceDistanceLowpass(slot, parameters, group);
 		SpliceReverbSend(slot, parameters, group);
 		ApplyVoiceParams(slot, parameters, clip);
+		if (parameters.StartSeconds > 0.0f)
+			ma_sound_seek_to_second(slot.Sound, parameters.StartSeconds);
 
 		// A paused scene's or run's group is halted, so a voice started under it stays frozen
 		// until it resumes, on a custom bus as on a fixed one.
@@ -833,6 +835,16 @@ class AudioEngine
 		slot.State = .Playing;
 	}
 
+	/// Moves the voice's cursor to `seconds` into its clip (a sequence keeping a sound on its
+	/// playhead). A streamed clip may land at the nearest block its codec can seek to.
+	public void SeekVoice(VoiceHandle handle, float seconds)
+	{
+		let slot = Resolve(handle);
+		if (slot == null)
+			return;
+		ma_sound_seek_to_second(slot.Sound, Math.Max(0.0f, seconds));
+	}
+
 	public bool IsPlaying(VoiceHandle handle)
 	{
 		let slot = Resolve(handle);
@@ -942,6 +954,17 @@ class AudioEngine
 			return;
 		slot.ReverbSend = Clamp(send, 0.0f, 1.0f);
 		mab_node_set_output_bus_volume(slot.SplitterNode, 1, slot.ReverbSend);
+	}
+
+	/// The addressable voices now, appended to `outVoices` (what a debugger lists, or a test that
+	/// did not start the voice itself looks for).
+	public void ActiveVoices(List<VoiceHandle> outVoices)
+	{
+		for (int i < mVoices.Count)
+		{
+			if (mVoices[i].State != .Free)
+				outVoices.Add(.((uint32)i, mVoices[i].Generation));
+		}
 	}
 
 	/// The ADDRESSABLE voices: the slots a live generation owns. A stolen voice leaves this

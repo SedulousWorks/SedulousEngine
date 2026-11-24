@@ -16,6 +16,7 @@ using Sedulous.Navigation.Resource;
 using Sedulous.Particles.Resource;
 using Sedulous.Physics.Resource;
 using Sedulous.Engine.Animation;
+using Sedulous.Engine.Audio;
 using Sedulous.Engine.Render;
 using Sedulous.PropertyAnimation.Resource;
 using Sedulous.Sequence.Resource;
@@ -113,6 +114,7 @@ static class PipelineRegistration
 		RenderProfileResources.RegisterAll();
 		RenderSequenceTracks.Register();
 		AnimationSequenceTracks.Register();
+		AudioSequenceTracks.Register();
 		SceneResources.RegisterAll();
 		ScriptResources.RegisterAll();
 		ShaderResources.RegisterAll();

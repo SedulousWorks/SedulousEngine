@@ -11,6 +11,7 @@ static class AudioDomain
 {
 	public static DomainModule Module => sModule ?? (sModule = new .("audio", => AudioScene.AddAudioSceneManagers,
 		new .(
-			AudioResources.Module)));
+			AudioResources.Module,
+			AudioSequenceTracks.Module)));
 	private static DomainModule sModule ~ delete _;
 }

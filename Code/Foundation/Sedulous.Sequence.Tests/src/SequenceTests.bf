@@ -47,6 +47,41 @@ class SequenceRecorder : ISequenceListener
 }
 
 /// A world with a lamp and a mentor, held by the caller.
+/// What a play tells its runners of pauses.
+class PauseLog
+{
+	public int Paused;
+	public int Resumed;
+}
+
+/// A kind whose runner counts what the play tells it of pauses.
+class PauseProbeTrack : SequenceTrack
+{
+	/// BORROWED.
+	public PauseLog Log;
+
+	public override float Duration => 1.0f;
+	public override bool NeedsBinding => false;
+	public override SequenceTrackRunner Begin(SequenceTrackContext context) => new Runner(Log);
+
+	private class Runner : SequenceTrackRunner
+	{
+		private PauseLog mLog;
+
+		public this(PauseLog log) { mLog = log; }
+
+		public override void Evaluate(SequenceStep step) {}
+		public override void Release(bool restore) {}
+		public override void SetPaused(bool paused)
+		{
+			if (paused)
+				mLog.Paused++;
+			else
+				mLog.Resumed++;
+		}
+	}
+}
+
 class SequenceStage
 {
 	public Sedulous.Scene.Scene World = new .("sequence") ~ delete _;
@@ -421,5 +456,30 @@ class SequenceTests
 			Test.Assert(kind != typeof(SequenceTrack));
 		}
 		Test.Assert(property && events);
+	}
+
+	[Test]
+	public static void PausingAndResumingAPlayTellsItsRunnersAndAHoldDoesNot()
+	{
+		let stage = scope SequenceStage();
+		let log = scope PauseLog();
+		let sequence = scope Sedulous.Sequence.Sequence();
+		let probe = new PauseProbeTrack();
+		probe.Log = log;
+		sequence.Tracks.Add(probe);
+		sequence.Markers.Add(new .(0.5f, "line", true));
+		sequence.Duration = 1.0f;
+		let play = scope SequencePlay(stage.World, sequence);
+
+		play.Play();
+		play.Pause();
+		play.Pause(); // already paused: told once
+		Test.Assert(log.Paused == 1);
+		play.Resume();
+		Test.Assert(log.Resumed == 1);
+		play.Advance(0.75f); // stops at the hold: the runners carry on
+		Test.Assert(play.IsHeld);
+		play.Resume(); // from a hold, not a pause
+		Test.Assert((log.Paused == 1) && (log.Resumed == 1));
 	}
 }

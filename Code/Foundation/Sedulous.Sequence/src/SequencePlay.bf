@@ -178,13 +178,25 @@ class SequencePlay
 		mFinished = false;
 	}
 
-	public void Pause() => mPaused = true;
+	/// Stops the playhead, and tells the runners (a sound's voice pauses with it).
+	public void Pause()
+	{
+		if (mPaused)
+			return;
+		mPaused = true;
+		for (let running in mRunners)
+			running.Runner.SetPaused(true);
+	}
 
 	/// Continues after a pause, or from a hold.
 	public void Resume()
 	{
-		mPaused = false;
 		mHeld = false;
+		if (!mPaused)
+			return;
+		mPaused = false;
+		for (let running in mRunners)
+			running.Runner.SetPaused(false);
 	}
 
 	/// Moves the playhead to `time` without playing what lies between; a hold it was at is let go.

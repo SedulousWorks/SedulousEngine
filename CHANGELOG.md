@@ -10,8 +10,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 ### Added
 
 - Sequences: a sequence asset (File > New, under Animation) is a cutscene timeline that drives
-  several entities at once: property and transform tracks, skeletal clips, camera cuts, fades,
-  events, holds that wait for the game, and sequences nested in others. Scripts play one with `scene.Sequences.Play(sequence)`, fill its
+  several entities at once: property and transform tracks, skeletal clips, sounds, camera cuts,
+  fades, events, holds that wait for the game, and sequences nested in others. Scripts play one with `scene.Sequences.Play(sequence)`, fill its
   cast with `Bind(name, entity)`, and hear `onSequenceEvent`, `onSequenceHeld` and
   `onSequenceFinished`; a Sequence component plays one from an entity with its cast picked in the
   inspector. The editor has no page for editing a sequence yet.

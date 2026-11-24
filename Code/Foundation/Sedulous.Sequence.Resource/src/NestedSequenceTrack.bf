@@ -143,6 +143,15 @@ class NestedSequenceTrack : SequenceTrack
 			mApplied = true;
 		}
 
+		/// The nested play's runners pause with the outer play.
+		public override void SetPaused(bool paused)
+		{
+			if (paused)
+				mPlay.Pause();
+			else
+				mPlay.Resume();
+		}
+
 		public override void Release(bool restore)
 		{
 			mPlay.Finish = restore ? .Restore : .Release;

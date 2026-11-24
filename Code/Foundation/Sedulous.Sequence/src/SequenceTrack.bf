@@ -44,6 +44,10 @@ abstract class SequenceTrackRunner
 	/// The play ended or stopped: let go of what this runner holds (a voice, an override).
 	/// `restore`: also put back every value it changed, as it was before its first change.
 	public abstract void Release(bool restore);
+	/// The play was paused or resumed (not held: at a hold the playhead waits while what plays, a
+	/// line of dialogue, carries on). Most runners have nothing that runs on its own between
+	/// steps; a sound's voice does.
+	public virtual void SetPaused(bool paused) {}
 }
 
 /// What a track is given to begin in a play.

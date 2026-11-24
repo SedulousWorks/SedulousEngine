@@ -34,6 +34,9 @@ struct AudioPlayParams
 	/// SceneGroup is set, since the scene group knows its run. Nought is outside every run.
 	public uint64 RunGroup = 0;
 	public bool StartPaused = false;
+	/// Where in the clip the voice starts, in seconds (a sound a sequence enters part way
+	/// through). A streamed clip may land at the nearest block its codec can seek to.
+	public float StartSeconds = 0.0f;
 
 	/// Whether a play of the same clip within the merge window folds into the one already
 	/// going, which is what keeps a shotgun's pellets from stacking into one loud crack.

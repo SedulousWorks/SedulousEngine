@@ -162,6 +162,9 @@ static
 	[CLink] public static extern int32 mab_sound_at_end(mab_sound* sound);
 	[CLink] public static extern int32 mab_sound_get_cursor_seconds(mab_sound* sound,
 		float* cursor);
+	/// miniaudio's own, which the bundled library exports on every platform: a mab_sound is an
+	/// ma_sound. A streamed clip may land at the nearest block its codec can seek to.
+	[CLink] public static extern int32 ma_sound_seek_to_second(mab_sound* sound, float seconds);
 
 	[CLink] public static extern void mab_sound_set_volume(mab_sound* sound, float volume);
 	[CLink] public static extern void mab_sound_set_pitch(mab_sound* sound, float pitch);

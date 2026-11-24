@@ -383,4 +383,32 @@ class AudioEngineTests
 		engine.Stop(voice);
 		engine.Update(0.1f);
 	}
+
+	/// A voice starts part way into its clip when asked, and a seek moves its cursor; it plays on
+	/// from there. The active voices list it.
+	[Test]
+	public static void AVoiceStartsPartWayIntoItsClipAndASeekMovesItsCursor()
+	{
+		let engine = scope AudioEngine(HeadlessSettings!());
+		let clip = MakeToneClip(2.0f);
+		defer delete clip;
+		var parameters = AudioPlayParams();
+		parameters.AllowDedupe = false;
+		parameters.StartSeconds = 1.0f;
+		let voice = engine.Play(clip, parameters);
+		Test.Assert(voice.IsValid);
+		Test.Assert(engine.GetVoiceStatus(voice, var status));
+		Test.Assert(Math.Abs(status.CursorSeconds - 1.0f) < 0.03f, scope $"started at {status.CursorSeconds}");
+		let active = scope List<VoiceHandle>();
+		engine.ActiveVoices(active);
+		Test.Assert((active.Count == 1) && (active[0] == voice));
+
+		engine.Update(0.1f);
+		engine.SeekVoice(voice, 0.25f);
+		Test.Assert(engine.GetVoiceStatus(voice, out status));
+		Test.Assert(Math.Abs(status.CursorSeconds - 0.25f) < 0.02f, scope $"sought to {status.CursorSeconds}");
+		engine.Update(0.1f);
+		Test.Assert(engine.GetVoiceStatus(voice, out status));
+		Test.Assert((status.CursorSeconds > 0.3f) && (status.CursorSeconds < 0.45f), scope $"played on to {status.CursorSeconds}");
+	}
 }
