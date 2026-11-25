@@ -85,6 +85,17 @@ class RunBase : IRun
 	public T Register<T>(T service) where T : class => Insert(service, false, false);
 
 	public void Remove<T>() where T : class => RemoveType(typeof(T));
+	/// Remove for a type known only at run time (a plugin's service, removed as it unloads).
+	public void RemoveService(Type type) => RemoveType(type);
+
+	/// Steps every service that hears the run's frame (IRunService.OnRunUpdate), in order of
+	/// registration.
+	public void UpdateServices(float deltaTime)
+	{
+		// A service may add or remove another as it steps: walk by index, to the end as it is now.
+		for (int i = 0; i < mServices.Count; i++)
+			mServices[i].Hooks?.OnRunUpdate(this, deltaTime);
+	}
 
 	/// Who hears this run's transitions (its manager); null for none. BORROWED.
 	public void SetLifecycleListener(IRunListener listener) => mListener = listener;

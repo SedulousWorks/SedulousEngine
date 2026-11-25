@@ -6,16 +6,16 @@ using Sedulous.Script;
 using Sedulous.Scene;
 using Sedulous.Engine.Domain;
 using Sedulous.Engine.Scene;
+using Sedulous.Engine.Run;
 
 namespace Sedulous.Engine.Composition;
 
 /// What a plugin's Engine part adds to the engine, through the service its host provides
 /// (PluginContext.Find<EnginePluginServices>): a domain (its resource modules join the
-/// composition), a scene manager (it reaches live scenes and new ones) and its own script types
-/// (on the process's script surfaces while it is enabled). The service records
-/// what each plugin added, so the plugin host's unload takes it all out again, in reverse. A
-/// plugin's per-run state belongs to the runs themselves (Sedulous.Run: a listener on the run
-/// manager adds it to each run as the run is made).
+/// composition), a scene manager (it reaches live scenes and new ones), a run service (its per-run
+/// state, in every live run and every run made after) and its own script types (on the process's
+/// script surfaces while it is enabled). The service records what each plugin added, so the plugin
+/// host's unload takes it all out again, in reverse.
 class EnginePluginServices : IRegistrationRecorder
 {
 	/// This service's token for a domain added, and the composition's for it.
@@ -24,6 +24,9 @@ class EnginePluginServices : IRegistrationRecorder
 	/// This service's token for a plugin's script types, and the plugin's id.
 	private List<uint64> mScriptTokens = new .() ~ delete _;
 	private List<String> mScriptPlugins = new .() ~ DeleteContainerAndItems!(_);
+	/// This service's token for a run service added, and the run contributions' for it.
+	private List<uint64> mRunTokens = new .() ~ delete _;
+	private List<uint64> mRunServices = new .() ~ delete _;
 	/// The armed part's sink. BORROWED, the loader's; null while none loads.
 	private List<uint64> mSink = null;
 	private uint64 mNextToken = 1;
@@ -62,6 +65,22 @@ class EnginePluginServices : IRegistrationRecorder
 		SceneModuleContributions.Global.Add(contribution);
 	}
 
+	/// Adds a service to every live run and every run made after (the plugin's per-run state); taken
+	/// out of each run as the plugin unloads. False, with nothing added, for one with no type or no
+	/// install.
+	public bool AddRunService(RunServiceContribution contribution)
+	{
+		let service = RunServiceContributions.Global.Add(contribution);
+		if (service == 0)
+			return false;
+		let token = mNextToken++;
+		mRunTokens.Add(token);
+		mRunServices.Add(service);
+		if (mSink != null)
+			mSink.Add(token);
+		return true;
+	}
+
 	/// Puts plugin `pluginId`'s own script types (what `populate` adds: the walk of its namespace)
 	/// on every script surface this process binds against (ScriptSurfaces), each tagged with the
 	/// plugin, so a script reaches them while the plugin is enabled and the cooks' surface hash
@@ -97,6 +116,14 @@ class EnginePluginServices : IRegistrationRecorder
 
 	public override void Reverse(uint64 id)
 	{
+		let run = mRunTokens.IndexOf(id);
+		if (run >= 0)
+		{
+			RunServiceContributions.Global.Remove(mRunServices[run]);
+			mRunTokens.RemoveAt(run);
+			mRunServices.RemoveAt(run);
+			return;
+		}
 		let script = mScriptTokens.IndexOf(id);
 		if (script >= 0)
 		{

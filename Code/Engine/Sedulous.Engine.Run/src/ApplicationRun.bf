@@ -178,6 +178,8 @@ class ApplicationRun : RunBase, IRunInput
 		Register<BehaviorRunHost>(mRunHost);
 		Register<HttpFacade>(mHttpFacade);
 		Register<RenderQualityFacade>(mQualityFacade);
+		// Then the services contributed from outside (a plugin's per-run state).
+		RunServiceContributions.Global.Attach(this);
 	}
 
 	/// The platform's TLS backend for this run, made on first use; null in a browser.
@@ -200,6 +202,7 @@ class ApplicationRun : RunBase, IRunInput
 
 	public ~this()
 	{
+		RunServiceContributions.Global.Detach(this);
 		// Disposed first, while the fields registered on it still exist: their stop hooks run,
 		// and the run's manager hears it go.
 		Dispose();
@@ -785,6 +788,8 @@ class ApplicationRun : RunBase, IRunInput
 		// Answers to the run's HTTP requests reach their handlers here, on the game's thread,
 		// whether a game script or behaviours sent them.
 		mHttpFacade.Pump();
+		// The run's services step with its gameplay time, whether or not a game script runs.
+		UpdateServices(gameplay);
 		if (mGame != null)
 		{
 			var args = ScriptValue[1](.FromFloat(orchestrator));

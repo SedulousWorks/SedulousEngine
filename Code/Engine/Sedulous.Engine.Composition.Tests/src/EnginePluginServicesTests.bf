@@ -6,6 +6,8 @@ using Sedulous.Scene;
 using Sedulous.Resource;
 using Sedulous.Engine.Domain;
 using Sedulous.Engine.Composition;
+using Sedulous.Engine.Run;
+using Sedulous.Run;
 
 namespace Sedulous.Engine.Composition.Tests;
 
@@ -14,13 +16,20 @@ class ServicesProbeManager : SceneSystem
 {
 }
 
-/// The probe plugin's Engine part: a domain, a domain with scene content (refused), and a scene
-/// manager, all through EnginePluginServices.
+/// A run service a plugin contributes: its per-run state.
+class ServicesProbeRunService
+{
+	public int Value = 3;
+}
+
+/// The probe plugin's Engine part: a domain, a domain with scene content (refused), a scene manager
+/// and a run service, all through EnginePluginServices.
 class ServicesProbePart : PluginPart
 {
 	public static int DomainTypes = 0;
 	public static bool RefusedSceneDomain = false;
 	public static bool FoundServices = false;
+	public static bool AddedRunService = false;
 
 	private ResourceModule mResources = new .("services_probe", => RegisterProbeTypes, null) ~ delete _;
 	private DomainModule mDomain ~ delete _;
@@ -34,6 +43,7 @@ class ServicesProbePart : PluginPart
 	private static void RegisterProbeTypes() => DomainTypes++;
 	private static void InstallNothing(Sedulous.Scene.Scene scene) {}
 	public static void InstallProbeManager(Sedulous.Scene.Scene scene) => scene.AddSystem<ServicesProbeManager>();
+	public static void InstallProbeRunService(RunBase run) => run.Add(new ServicesProbeRunService());
 
 	public static uint64 ManagerType
 	{
@@ -61,11 +71,12 @@ class ServicesProbePart : PluginPart
 		contribution.Install = => InstallProbeManager;
 		contribution.SystemType = ManagerType;
 		services.AddSceneManager(contribution);
+		AddedRunService = services.AddRunService(.("services_probe", typeof(ServicesProbeRunService), => InstallProbeRunService));
 	}
 }
 
-/// What a plugin's Engine part adds through EnginePluginServices: a domain and a scene manager,
-/// each reaching what it extends, and both gone when the host unloads.
+/// What a plugin's Engine part adds through EnginePluginServices: a domain, a scene manager and a run
+/// service, each reaching what it extends, and all gone when the host unloads.
 static class EnginePluginServicesTests
 {
 	private static bool HasModule(StringView id)
@@ -79,7 +90,7 @@ static class EnginePluginServicesTests
 	}
 
 	[Test]
-	public static void APartsDomainAndSceneManagerArriveAndLeaveWithThePlugin()
+	public static void APartsDomainSceneManagerAndRunServiceArriveAndLeaveWithThePlugin()
 	{
 		let manifest = scope PluginManifest();
 		manifest.Id.Set("services_probe");
@@ -103,9 +114,14 @@ static class EnginePluginServicesTests
 			Test.Assert(services.Attach(host));
 			PluginPart[1] parts = .(probe);
 			Test.Assert(host.AddLinked(xml, parts) case .Ok);
+			let runServices = RunServiceContributions.Global.Count;
+			let run = scope ApplicationRun(); // live as the plugin loads
 			let report = scope PluginLoadReport();
 			host.Load(scope StringView[]("services_probe"), report);
 			Test.Assert(report.Loaded.Count == 1);
+			Test.Assert(ServicesProbePart.AddedRunService);
+			Test.Assert(RunServiceContributions.Global.Count == runServices + 1);
+			Test.Assert((run.Get<ServicesProbeRunService>() != null) && (run.Get<ServicesProbeRunService>().Value == 3));
 
 			Test.Assert(ServicesProbePart.FoundServices);
 			Test.Assert(HasModule("services_probe"));
@@ -122,6 +138,8 @@ static class EnginePluginServicesTests
 			host.Unload();
 			Test.Assert(!HasModule("services_probe"));
 			Test.Assert(!SceneModuleContributions.Global.Contains(ServicesProbePart.ManagerType));
+			Test.Assert(RunServiceContributions.Global.Count == runServices);
+			Test.Assert(run.Get<ServicesProbeRunService>() == null, "out of the live run with the plugin");
 		}
 	}
 

@@ -33,11 +33,14 @@ interface IRunListener
 }
 
 /// A service a run holds may implement this to hear its run pause and stop (in reverse order of
-/// registration).
+/// registration), and to be stepped with the run's frame.
 interface IRunService
 {
 	void OnRunPaused(IRun run, bool paused) {}
 	void OnRunStopping(IRun run) {}
+	/// The run's frame, `deltaTime` seconds of its gameplay time (its scene's time scale applied),
+	/// before its behavior's update. Not while the run is paused.
+	void OnRunUpdate(IRun run, float deltaTime) {}
 }
 
 /// A running game, however it is implemented: a player's game, each editor Game tab's game, an

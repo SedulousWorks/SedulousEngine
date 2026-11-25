@@ -54,6 +54,52 @@ class ApplicationRunTests
 		Test.Assert(instance.RunTime == 0);
 	}
 
+	/// A per-run service a contribution installs: it counts the frames it was stepped with.
+	class StepCounter : IRunService
+	{
+		public int Frames = 0;
+		public float Seconds = 0;
+
+		public void OnRunUpdate(IRun run, float deltaTime)
+		{
+			Frames++;
+			Seconds += deltaTime;
+		}
+	}
+
+	static void InstallStepCounter(RunBase run) => run.Add(new StepCounter());
+
+	/// A contributed service is installed in every run, live ones included, steps with its frame
+	/// (not while paused), and leaves every run with its contribution.
+	[Test]
+	public static void AContributedServiceIsInEveryRunStepsWithItsFrameAndLeavesWithItsContribution()
+	{
+		let contributions = RunServiceContributions.Global;
+		Test.Assert(contributions.Add(.("nothing", null, => InstallStepCounter)) == 0, "no type: nothing added");
+		Test.Assert(contributions.Add(.("nothing", typeof(StepCounter), null)) == 0, "no install: nothing added");
+
+		let before = scope ApplicationRun(); // made before the contribution: installed as it is added
+		let token = contributions.Add(.("step_counter", typeof(StepCounter), => InstallStepCounter));
+		Test.Assert(token != 0);
+		Test.Assert(before.Get<StepCounter>() != null);
+		{
+			let after = scope ApplicationRun(); // made after: installed as it is made
+			Test.Assert(after.Get<StepCounter>() != null);
+			after.Start();
+			after.TickScript(0.25f, 1.0f); // no game script: its services still step
+			after.TickScript(0.25f, 1.0f);
+			Test.Assert(after.Get<StepCounter>().Frames == 2);
+			Test.Assert(Math.Abs(after.Get<StepCounter>().Seconds - 0.5f) < 1e-6f);
+			after.SetPaused(true);
+			after.TickScript(0.25f, 1.0f); // paused: not stepped
+			Test.Assert(after.Get<StepCounter>().Frames == 2);
+		}
+		contributions.Remove(token); // the plugin unloading: out of every live run
+		Test.Assert(before.Get<StepCounter>() == null);
+		let later = scope ApplicationRun();
+		Test.Assert(later.Get<StepCounter>() == null);
+	}
+
 	/// The player's rebinding is kept in the run's save and lies over the game's controls the next
 	/// run, whether the map is installed before the save opens or after.
 	[Test]

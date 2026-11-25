@@ -38,6 +38,7 @@ class RunTests
 		public ~this() { Note(scope $"~{mName}"); }
 		public void OnRunPaused(IRun run, bool paused) => Note(scope $"{mName} paused {paused}");
 		public void OnRunStopping(IRun run) => Note(scope $"{mName} stopping");
+		public void OnRunUpdate(IRun run, float deltaTime) => Note(scope $"{mName} update {deltaTime}");
 	}
 	private class First : Hooked { public this() : base("first") {} }
 	private class Second : Hooked { public this() : base("second") {} }
@@ -91,6 +92,27 @@ class RunTests
 		// Reverse order of registration: the replacement First was registered after Second.
 		Test.Assert(Logged("~first", "~second"));
 		Test.Assert(borrowed.Value == 7);
+	}
+
+	[Test]
+	public static void ServicesStepWithTheRunsFrameInOrderOfRegistrationAndOneIsRemovedByItsType()
+	{
+		ClearAndDeleteItems!(sLog);
+		{
+			let run = scope TestRun("Game 1");
+			run.Add(new First());
+			let plain = scope Plain();
+			run.Register(plain); // no hooks: not stepped
+			run.Add(new Second());
+			run.UpdateServices(0.5f);
+			Test.Assert(Logged("first update 0.5", "second update 0.5"));
+			run.RemoveService(typeof(First));
+			Test.Assert(Logged("~first"));
+			Test.Assert(!run.Has<First>());
+			run.UpdateServices(0.25f);
+			Test.Assert(Logged("second update 0.25"));
+		}
+		Test.Assert(Logged("~second"));
 	}
 
 	[Test]
