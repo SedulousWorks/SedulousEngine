@@ -154,6 +154,55 @@ static class EditorContextTests
 		Test.Assert((context.OpenPages.Count == 0) && (context.ActivePage == null));
 	}
 
+	/// A plugin unloading removes its page factory: the pages that factory made close (a dirty
+	/// one too), the others stay, and its type opens through the next nearest factory.
+	[Test]
+	public static void ARemovedFactoryClosesItsPagesAndItsTypeFallsBackToTheNextNearest()
+	{
+		let db = scope Db("scratch_editor_ctx_remove_factory");
+		let a = db.Database.RootGroup.CreateInstance("a", FullName(typeof(BaseAsset), .. scope .()));
+		let b = db.Database.RootGroup.CreateInstance("b", FullName(typeof(DerivedAsset), .. scope .()));
+		Test.Assert((a != null) && (b != null));
+
+		let context = scope EditorContext();
+		let baseKey = context.Pages.Register(new TestPageFactory(typeof(BaseAsset), "base"));
+		let derivedKey = context.Pages.Register(new TestPageFactory(typeof(DerivedAsset), "derived"));
+		Test.Assert((baseKey != 0) && (derivedKey != 0) && (baseKey != derivedKey));
+		Test.Assert(context.Pages.Register(null) == 0, "nothing added");
+		Test.Assert(context.Pages.Register(new TestPageFactory(null, "typeless")) == 0, "nothing added");
+		Test.Assert(context.Pages.Count == 2);
+
+		let game = context.AdoptPage(new TestPage("Game"));
+		let pageA = context.OpenPage(a);
+		let pageB = context.OpenPage(b);
+		Test.Assert((pageA != null) && (pageB != null));
+		Test.Assert(pageA.FactoryKey == baseKey);
+		Test.Assert(pageB.FactoryKey == derivedKey, "the nearest");
+		Test.Assert(game.FactoryKey == 0, "made without a factory");
+
+		// No factory has key 0: the adopted page stays.
+		context.RemovePageFactory(0);
+		Test.Assert((context.OpenPages.Count == 3) && (context.Pages.Count == 2));
+
+		// The derived factory goes (a plugin unloading): its page closes, unsaved edits and all.
+		pageB.MarkDirty();
+		context.RemovePageFactory(derivedKey);
+		Test.Assert(context.OpenPages.Count == 2);
+		Test.Assert((context.OpenPages[0] == game) && (context.OpenPages[1] == pageA));
+		Test.Assert(context.Pages.Count == 1);
+		Test.Assert(!context.Pages.Unregister(derivedKey), "gone already");
+
+		// The derived instance opens again through the base factory now.
+		let reopened = context.OpenPage(b);
+		Test.Assert((reopened != null) && (reopened.FactoryKey == baseKey));
+		Test.Assert(reopened.Title == "base");
+
+		context.RemovePageFactory(baseKey);
+		Test.Assert((context.OpenPages.Count == 1) && (context.OpenPages[0] == game));
+		Test.Assert(context.Pages.Count == 0);
+		Test.Assert(context.OpenPage(a) == null, "no factory left");
+	}
+
 	/// RevealPage makes a page active and then asks the application to raise its panel; headless
 	/// (no hook) it is SetActivePage; null clears the active page and raises nothing.
 	[Test]

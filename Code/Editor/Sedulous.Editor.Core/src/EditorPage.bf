@@ -126,6 +126,11 @@ abstract class EditorPage
 		ForgetAssetDeleted(); // it edits an asset that is there now
 	}
 
+	/// The registry key of the factory that made this page (EditorPageRegistry.Register); 0 for a
+	/// page made without one.
+	public uint64 FactoryKey => mFactoryKey;
+	private uint64 mFactoryKey;
+
 	/// The source database instance this page edits, Empty for an instance less page.
 	public Guid InstanceId
 	{

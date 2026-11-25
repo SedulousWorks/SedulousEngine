@@ -10,38 +10,78 @@ namespace Sedulous.Editor.Core;
 /// the Asset base serves everything a bespoke page does not claim.
 class EditorPageRegistry
 {
-	private List<IEditorPageFactory> mFactories = new .() ~ DeleteContainerAndItems!(_);
+	private struct Entry
+	{
+		public uint64 Key;
+		public IEditorPageFactory Factory;
+	}
+
+	private List<Entry> mFactories = new .() ~ { for (let entry in _) delete entry.Factory; delete _; };
+	private uint64 mNextKey = 1;
 	/// A content instance names its type by full name; the scan of the type table that
 	/// resolves one is remembered.
 	private Dictionary<String, Type> mTypesByName = new .() ~ DeleteDictionaryAndKeys!(_);
 
-	/// TAKES OWNERSHIP. A factory with no primary type is dropped.
-	public void Register(IEditorPageFactory factory)
+	/// TAKES OWNERSHIP. Answers the factory's key for Unregister; a factory with no primary type
+	/// is dropped and answers 0. A plugin keeps the key and removes its factory as it unloads.
+	public uint64 Register(IEditorPageFactory factory)
 	{
 		if ((factory == null) || (factory.PrimaryType == null))
 		{
 			delete factory;
-			return;
+			return 0;
 		}
-		mFactories.Add(factory);
+		let key = mNextKey++;
+		mFactories.Add(.() { Key = key, Factory = factory });
+		return key;
+	}
+
+	/// Removes and deletes the factory `key`; false when there is none. The pages it made stay
+	/// open: the context closes them first (EditorContext.RemovePageFactory).
+	public bool Unregister(uint64 key)
+	{
+		for (int i < mFactories.Count)
+		{
+			if (mFactories[i].Key == key)
+			{
+				delete mFactories[i].Factory;
+				mFactories.RemoveAt(i);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public int Count => mFactories.Count;
 
 	public IEditorPageFactory FindFactory(Type type)
 	{
-		IEditorPageFactory best = null;
+		let best = FindEntry(type);
+		return (best != null) ? best.Factory : null;
+	}
+
+	/// The key of the factory FindFactory answers for `type`; 0 for none.
+	public uint64 FindFactoryKey(Type type)
+	{
+		let best = FindEntry(type);
+		return (best != null) ? best.Key : 0;
+	}
+
+	private Entry* FindEntry(Type type)
+	{
+		Entry* best = null;
 		int bestDistance = 0;
-		for (let factory in mFactories)
+		for (int i < mFactories.Count)
 		{
+			let entry = &mFactories[i];
 			int distance = 0;
 			for (var t = type; t != null; t = BaseOf(t), distance++)
 			{
-				if (t == factory.PrimaryType)
+				if (t == entry.Factory.PrimaryType)
 				{
 					if ((best == null) || (distance < bestDistance))
 					{
-						best = factory;
+						best = entry;
 						bestDistance = distance;
 					}
 					break;
@@ -56,6 +96,13 @@ class EditorPageRegistry
 	{
 		let type = ResolveType(typeFullName);
 		return (type != null) ? FindFactory(type) : null;
+	}
+
+	/// By the full type name a content instance carries; 0 for none.
+	public uint64 FindFactoryKey(StringView typeFullName)
+	{
+		let type = ResolveType(typeFullName);
+		return (type != null) ? FindFactoryKey(type) : 0;
 	}
 
 	/// The Beef type for a full name, or null; scanned once and remembered.

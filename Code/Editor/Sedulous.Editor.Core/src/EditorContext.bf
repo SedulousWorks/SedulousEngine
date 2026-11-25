@@ -639,6 +639,7 @@ class EditorContext : IAssetEditSink
 		if (page == null)
 			return null;
 		page.InstanceId = instance.Id;
+		page.[Friend]mFactoryKey = mPageRegistry.FindFactoryKey(instance.TypeName);
 		mPages.Add(page);
 		mActivePage = page;
 		NotifyPagesChanged();
@@ -674,6 +675,25 @@ class EditorContext : IAssetEditSink
 				return;
 			}
 		}
+	}
+
+	/// Closes every open page the factory `key` made (logging one with unsaved edits), then removes
+	/// the factory from the page registry: a plugin's Editor part calls it as it unloads, so no
+	/// page is left running its code. Its type then opens through the next nearest factory.
+	public void RemovePageFactory(uint64 key)
+	{
+		if (key == 0)
+			return;
+		for (int i = mPages.Count; i > 0; i--)
+		{
+			let page = mPages[i - 1];
+			if (page.FactoryKey != key)
+				continue;
+			if (page.IsDirty)
+				GlobalLog(.Warning, "Editor: page '{}' closed with unsaved edits: the plugin that edits it was unloaded", page.Title);
+			ClosePage(page);
+		}
+		mPageRegistry.Unregister(key);
 	}
 
 	public List<EditorPage> OpenPages => mPages;
