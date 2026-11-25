@@ -40,6 +40,9 @@ class DialogueSettings : ISerializable
 	/// The input map action that advances a line in the stock box.
 	[Setting("Advance action", "Dialogue")]
 	public String AdvanceAction = new .("Interact") ~ delete _;
+	/// A sheet (a GUI style sheet) that styles the stock box in place of the plugin's own.
+	[Setting("Stock box sheet", "GuiStyleSheetAsset", "(the plugin's)", "Dialogue")]
+	public Guid StockBoxSheet = .();
 	/// The stock box shows the speaker's portrait on the right.
 	[Setting("Portrait on the right", "Dialogue")]
 	public bool PortraitOnRight = false;
@@ -63,6 +66,7 @@ class DialogueSettings : ISerializable
 		SerializeValue(ar, "typingSpeed", ref TypingSpeed);
 		Sedulous.Core.Serialization.Serialize(ar, "advanceAction", AdvanceAction);
 		SerializeValue(ar, "portraitOnRight", ref PortraitOnRight);
+		SerializeValue(ar, "stockBoxSheet", ref StockBoxSheet);
 		SerializeValue(ar, "fadeSeconds", ref FadeSeconds);
 		SerializeValue(ar, "fadeColor", ref FadeColor);
 	}

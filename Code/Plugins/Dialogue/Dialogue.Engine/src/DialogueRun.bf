@@ -15,6 +15,8 @@ using Sedulous.Engine.Audio;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Sequence;
 using Sedulous.Engine.Script.Facades;
+using Sedulous.Engine.GUI;
+using Sedulous.GUI.Resources;
 
 namespace Dialogue;
 
@@ -31,7 +33,12 @@ namespace Dialogue;
 ///   * `fade`: a claim on the scene's fade, over the sequences' own, held at full until a fade in.
 ///   * `sequence`: a play in the scene, each of its bindings named for a speaker filled with that
 ///     speaker's entity; `and wait` holds until it ends.
-/// While a line shows, its speaker plays their talk clip (the cast's `Talk`), looping.
+/// While a line shows, its speaker plays their talk clip (the cast's `Talk`), looping, and their
+/// voice (the cast's `Voice`) once as it starts.
+///
+/// With the settings' `StockBox` on, the host shows what it tells the game in the plugin's own box
+/// as well (DialogueStockBox), on the run's screen stack, and takes the player's advance and answers
+/// from it.
 class DialogueRunHost : IDialogueHost
 {
 	private struct Staged
@@ -63,6 +70,8 @@ class DialogueRunHost : IDialogueHost
 	private float mFadeSeconds = 0.0f;
 	private float mFadeTime = 0.0f;
 	private uint32 mFadeToken = 0;
+	private DialogueStockBox mBox ~ delete _;
+	private DialogueRunner mRunner;
 	// The speaker talking while their line shows.
 	private ScriptWeakRef mTalkScene;
 	private EntityHandle mTalker = .Invalid;
@@ -71,7 +80,12 @@ class DialogueRunHost : IDialogueHost
 	{
 		mSettings = settings;
 		mRun = run;
+		mBox = new .(settings);
 	}
+
+	/// The runner the stock box advances and answers (BORROWED: the one holding this host).
+	public void SetRunner(DialogueRunner runner) => mRunner = runner;
+	public DialogueStockBox Box => mBox;
 
 	public ~this()
 	{
@@ -257,7 +271,7 @@ class DialogueRunHost : IDialogueHost
 			mFadeSeconds = (step.Seconds >= 0.0f) ? step.Seconds : mSettings.FadeSeconds;
 			mFadeTime = 0.0f;
 			mFadeToken = mNextToken++;
-			Update(0.0f);
+			UpdateFade(0.0f);
 			return mFadeToken;
 		case .Sequence:
 			let system = scene.GetSystem<SequenceSystem>();
@@ -324,7 +338,45 @@ class DialogueRunHost : IDialogueHost
 		return false;
 	}
 
+	/// The fade's clock, then the stock box's: its typing, and what the player pressed in it.
 	public void Update(float deltaTime)
+	{
+		UpdateFade(deltaTime);
+		if (!mSettings.StockBox || !mBox.IsShown || (mRunner == null))
+			return;
+		bool pressed = false;
+		if (let input = Find(typeof(ActionRuntime)) as ActionRuntime)
+			pressed = input.WasPressed(input.Resolve(mSettings.AdvanceAction));
+		let request = mBox.Update(deltaTime, pressed);
+		if (request.Choose >= 0)
+			mRunner.Choose(request.Choose);
+		else if (request.Advance)
+			mRunner.Advance();
+	}
+
+	// The box's sheet: the project's (`StockBoxSheet`) when it loads, else the plugin's.
+	private void BoxSheet(String outCss)
+	{
+		if (mSettings.StockBoxSheet != .())
+		{
+			if (let sheet = Load<GuiStyleSheet>(mSettings.StockBoxSheet))
+			{
+				outCss.Append(sheet.Css);
+				return;
+			}
+		}
+		outCss.Append(DialogueStockBox.cSheet);
+	}
+
+	// The GUI and the run's screen stack the box goes on; false when there are none.
+	private bool BoxPlace(out GuiSubsystem gui, out Sedulous.GUI.ScreenStack stack)
+	{
+		gui = mRun.Get<BehaviorRunHost>()?.Subsystems?.GetSubsystem<GuiSubsystem>();
+		stack = gui?.ScreensFor(mRun);
+		return stack != null;
+	}
+
+	private void UpdateFade(float deltaTime)
 	{
 		if (mFadeToken == 0)
 			return;
@@ -364,6 +416,10 @@ class DialogueRunHost : IDialogueHost
 	public void OnLine(DialogueLineNotice notice, DialogueSpeaker speaker)
 	{
 		StopTalking();
+		if ((speaker != null) && (speaker.Voice != .()))
+			(Find(typeof(AudioFacade)) as AudioFacade)?.PlayOneShot(speaker.Voice);
+		if (mSettings.StockBox && BoxPlace(let gui, let stack))
+			mBox.ShowLine(gui, stack, BoxSheet(.. scope .()), notice, speaker);
 		let scene = CurrentScene;
 		if ((scene != null) && (speaker != null) && (speaker.Talk != .()))
 		{
@@ -379,7 +435,12 @@ class DialogueRunHost : IDialogueHost
 	}
 
 	public void OnLineEnded() => StopTalking();
-	public void OnChoice(DialogueChoiceNotice notice) => Publish(DialogueEvents.Choice, notice);
+	public void OnChoice(DialogueChoiceNotice notice)
+	{
+		if (mSettings.StockBox && BoxPlace(let gui, let stack))
+			mBox.ShowChoice(gui, stack, BoxSheet(.. scope .()), notice);
+		Publish(DialogueEvents.Choice, notice);
+	}
 	public void OnCommand(DialogueCommandNotice notice)
 	{
 		// An entity argument is looked for in the run's scene, as it is now.
@@ -387,7 +448,11 @@ class DialogueRunHost : IDialogueHost
 			notice.Scene = scene.TakeScriptWeak();
 		Publish(DialogueEvents.Command, notice);
 	}
-	public void OnEnded(DialogueEndedNotice notice) => Publish(DialogueEvents.Ended, notice);
+	public void OnEnded(DialogueEndedNotice notice)
+	{
+		mBox.Hide();
+		Publish(DialogueEvents.Ended, notice);
+	}
 
 	// The bus owns the notice from here, and deletes it once delivered.
 	private void Publish<T>(StringView name, T notice) where T : class
@@ -404,8 +469,12 @@ class DialogueRunService : DialogueRunner
 	public this(DialogueSettings settings, RunBase run) : base(settings, null)
 	{
 		mRunHost = new .(settings, run);
+		mRunHost.SetRunner(this);
 		mHost = mRunHost;
 	}
+
+	/// The stock box (for tests).
+	public DialogueStockBox Box => mRunHost.Box;
 
 	/// Plays the speaker `speaker` as `entity` (invalid: the cast's entity again).
 	public void Bind(StringView speaker, EntityHandle entity) => mRunHost.Bind(speaker, entity);

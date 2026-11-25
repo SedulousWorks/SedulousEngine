@@ -16,7 +16,9 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   bind speakers to entities, resume it after a load, and hear `onDialogueLine`,
   `onDialogueChoice`, `onDialogueCommand` and `onDialogueEnded`. A conversation stages itself with
   `play` (a clip on a speaker), `sound`, `fade` and `sequence`, and a sequence carries lines on a
-  Dialogue Lines track, its play waiting at each until it is advanced.
+  Dialogue Lines track, its play waiting at each until it is advanced. The plugin's own dialogue
+  box (Stock box in its settings) shows lines typed out and a choice's answers, for the pad, the
+  keys and the mouse, and a project restyles it with a sheet of its own.
 - Sequences: a sequence asset (File > New, under Animation) is a cutscene timeline that drives
   several entities at once: property and transform tracks, skeletal clips, sounds, camera cuts,
   fades, events, holds that wait for the game, and sequences nested in others. Scripts play one with `scene.Sequences.Play(sequence)`, fill its

@@ -19,6 +19,8 @@ using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Composition;
 using Sedulous.Run;
+using Sedulous.Runtime;
+using Sedulous.Engine.GUI;
 using Dialogue;
 
 namespace Sedulous.Integration.Plugins;
@@ -136,7 +138,7 @@ class DialogueRunTests
 	/// runner, over a running scene that fades and plays sequences.
 	class Stage
 	{
-		public DialogueStore Store = new .() ~ delete _;
+		public DialogueStore Store ~ delete _;
 		public DialogueSettings Settings = new .() ~ delete _;
 		public ApplicationRun Run = new .() ~ delete _;
 		ResourceSource mSource ~ delete _;
@@ -147,8 +149,9 @@ class DialogueRunTests
 		public List<String> Lines = new .() ~ DeleteContainerAndItems!(_);
 		delegate void(Variant) mHeard ~ delete _;
 
-		public this()
+		public this(StringView talk = cStaged)
 		{
+			Store = new .(talk);
 			let resources = Store.Resources;
 			mSource = new .(new () => resources);
 			Run.Get<BehaviorRunHost>().SetService(mSource);
@@ -290,6 +293,52 @@ class DialogueRunTests
 		Test.Assert(system.Find(play) == null, "played to its end");
 	}
 
+	/// The stock box on a real GUI: the line typed out, a press finishing it then advancing, an
+	/// answer pressed, the box gone at the end.
+	[Test]
+	public static void TheStockBoxTypesALineTakesAPressToFinishItAndAnotherToAdvanceAndItsAnswers()
+	{
+		let dataRoot = FindDataRoot(.. scope .());
+		let data = scope NativeFileSystem(dataRoot);
+		let gui = new GuiSubsystem(data);
+		defer delete gui;
+		let application = scope SubsystemManager();
+		application.RegisterSubsystem<GuiSubsystem>(gui);
+		application.Startup();
+		// Disposed while the borrowed GUI lives: unregistering it needs it.
+		defer application.Dispose();
+		let r = scope Stage(DialogueScriptTests.cTalk);
+		r.Run.RunHost.Subsystems = application;
+		r.Settings.StockBox = true;
+		r.Settings.TypingSpeed = 10;
+		r.Runner.SetFlag("met", true);
+		let stockBox = r.Runner.Box;
+
+		Test.Assert(r.Runner.Play(r.Store.Gate, "gate"));
+		Test.Assert(stockBox.IsShown);
+		Test.Assert(gui.Screens.Top === stockBox.ScreenNode);
+		Test.Assert(stockBox.ShownName == "The Keeper");
+		Test.Assert(stockBox.ShownText.IsEmpty);
+		r.Frame(0.25f);
+		Test.Assert(stockBox.ShownText == "We", "ten a second: two and a half shown");
+		Test.Assert(stockBox.IsTyping);
+		stockBox.PressBox(); // finishes the typing
+		r.Frame(0.0f);
+		Test.Assert(stockBox.ShownText == "Welcome back.");
+		Test.Assert(r.Runner.Waiting == .Line);
+		stockBox.PressBox(); // advances
+		r.Frame(0.0f);
+		Test.Assert(r.Runner.Waiting == .Choice);
+		Test.Assert(stockBox.AnswerCount == 2);
+		stockBox.Press(1); // Go.
+		r.Frame(0.0f);
+		Test.Assert(r.Runner.Waiting == .Command);
+		Test.Assert(r.Runner.Done());
+		Test.Assert(!r.Runner.IsPlaying);
+		Test.Assert(!stockBox.IsShown, "gone with the conversation");
+		Test.Assert(gui.Screens.Top == null, "popped");
+	}
+
 	/// A fade held when the runner goes (its run ending mid conversation) is let go with it.
 	[Test]
 	public static void AFadeHeldIsLetGoWithTheRunner()
@@ -314,7 +363,7 @@ class DialogueScriptTests
 
 	/// A conversation that reads a flag set from script, shows a line, walks the keeper (whoever
 	/// plays them), offers a choice and, on the second answer, a command that waits.
-	const String cTalk = "conversation gate\n" +
+	public const String cTalk = "conversation gate\n" +
 		"if met\n" +
 		"  @ keeper: Welcome back.\n" +
 		"end\n" +

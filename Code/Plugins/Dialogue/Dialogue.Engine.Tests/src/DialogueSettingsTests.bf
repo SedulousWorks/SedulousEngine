@@ -42,6 +42,7 @@ class DialogueSettingsTests
 		written.AdvanceAction.Set("Confirm");
 		written.PortraitOnRight = true;
 		written.FadeSeconds = 1.25f;
+		written.StockBoxSheet = Guid(3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3);
 		written.FadeColor = .(1.0f, 1.0f, 1.0f, 1.0f);
 		written.Cast = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 		written.Assets = Guid(11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
@@ -61,6 +62,7 @@ class DialogueSettingsTests
 		Test.Assert(read.PortraitOnRight);
 		Test.Assert(Math.Abs(read.FadeSeconds - 1.25f) < 1e-5f);
 		Test.Assert(read.FadeColor.X == 1.0f);
+		Test.Assert(read.StockBoxSheet == written.StockBoxSheet);
 		Test.Assert((read.Cast == written.Cast) && (read.Assets == written.Assets));
 	}
 
@@ -75,6 +77,6 @@ class DialogueSettingsTests
 			count++;
 			Test.Assert(field.GetCustomAttribute<SettingAttribute>() case .Ok, scope $"{field.Name} has no label");
 		}
-		Test.Assert(count == 11);
+		Test.Assert(count == 12);
 	}
 }
