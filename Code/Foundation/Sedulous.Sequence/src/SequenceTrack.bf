@@ -48,6 +48,13 @@ abstract class SequenceTrackRunner
 	/// line of dialogue, carries on). Most runners have nothing that runs on its own between
 	/// steps; a sound's voice does.
 	public virtual void SetPaused(bool paused) {}
+	/// The first time in (after, upTo] at which this runner holds the play (a line of dialogue shown
+	/// until it is read), or a negative time for none. The play stops there, as at a hold marker,
+	/// once the step to it has been applied.
+	public virtual float HoldTime(float after, float upTo) => -1.0f;
+	/// Asked at the runner's hold time and each step after: whether its hold still stands. The play
+	/// goes on once it answers false, or when the play is resumed.
+	public virtual bool IsHolding => false;
 }
 
 /// What a track is given to begin in a play.

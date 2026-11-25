@@ -82,6 +82,37 @@ class PauseProbeTrack : SequenceTrack
 	}
 }
 
+/// A line a runner holds the play at until the test reads it.
+class HoldLine
+{
+	public float HoldAt = 0.5f;
+	public bool Read = false;
+	public int Evaluated = 0;
+}
+
+/// A kind whose runner holds the play at its line's time until the line is read.
+class HoldProbeTrack : SequenceTrack
+{
+	/// BORROWED.
+	public HoldLine Line;
+
+	public override float Duration => 1.0f;
+	public override bool NeedsBinding => false;
+	public override SequenceTrackRunner Begin(SequenceTrackContext context) => new Runner(Line);
+
+	private class Runner : SequenceTrackRunner
+	{
+		private HoldLine mLine;
+
+		public this(HoldLine line) { mLine = line; }
+
+		public override void Evaluate(SequenceStep step) { mLine.Evaluated++; }
+		public override void Release(bool restore) {}
+		public override float HoldTime(float after, float upTo) => ((mLine.HoldAt > after) && (mLine.HoldAt <= upTo)) ? mLine.HoldAt : -1.0f;
+		public override bool IsHolding => !mLine.Read;
+	}
+}
+
 class SequenceStage
 {
 	public Sedulous.Scene.Scene World = new .("sequence") ~ delete _;
@@ -549,5 +580,152 @@ class SequenceTests
 		Test.Assert(track.SectionCount == 0);
 		track.DeleteKeys(0, second);
 		Test.Assert((track.Keys.Count == 1) && (track.Keys[0].Name == "cue"));
+	}
+
+	/// A sequence of one hold probe over a second, its line read by the test.
+	static Sedulous.Sequence.Sequence HoldSequence(HoldLine line)
+	{
+		let sequence = new Sedulous.Sequence.Sequence();
+		let probe = new HoldProbeTrack();
+		probe.Line = line;
+		sequence.Tracks.Add(probe);
+		sequence.Duration = 1.0f;
+		return sequence;
+	}
+
+
+	[Test]
+	public static void ARunnerHoldsThePlayAtItsTimeUntilItLetsGo()
+	{
+		let stage = scope SequenceStage();
+		let line = scope HoldLine();
+		let sequence = HoldSequence(line);
+		defer delete sequence;
+		let recorder = scope SequenceRecorder();
+		let play = scope SequencePlay(stage.World, sequence);
+		play.SetListener(recorder);
+		play.Play();
+
+		play.Advance(0.75f); // past the runner's hold: it stops there
+		Test.Assert(play.IsHeld);
+		Test.Assert(Near(play.Time, 0.5f));
+		Test.Assert(recorder.Heard.IsEmpty, "a runner's hold is its own to show, not a marker's");
+		let evaluated = line.Evaluated;
+		play.Advance(1.0f); // still held: nothing moves, nothing is evaluated
+		Test.Assert(Near(play.Time, 0.5f));
+		Test.Assert(line.Evaluated == evaluated);
+
+		line.Read = true; // the runner lets go: the next step goes on
+		play.Advance(0.25f);
+		Test.Assert(!play.IsHeld);
+		Test.Assert(Near(play.Time, 0.75f));
+		play.Advance(0.5f); // the hold it left does not stop it again
+		Test.Assert(play.IsFinished);
+	}
+
+	[Test]
+	public static void ARunnersHoldAlreadyLetGoIsPassedInTheSameStep()
+	{
+		let stage = scope SequenceStage();
+		let line = scope HoldLine();
+		line.Read = true; // read before the playhead reaches it
+		let sequence = HoldSequence(line);
+		defer delete sequence;
+		let play = scope SequencePlay(stage.World, sequence);
+		play.Play();
+		play.Advance(0.75f);
+		Test.Assert(!play.IsHeld);
+		Test.Assert(Near(play.Time, 0.75f), "the whole step was played");
+	}
+
+	[Test]
+	public static void AMarkerAndARunnersHoldTheEarlierWinsResumeLetsGoOfBoth()
+	{
+		let stage = scope SequenceStage();
+		{
+			// The marker first, then the runner's.
+			let line = scope HoldLine();
+			let sequence = HoldSequence(line);
+			defer delete sequence;
+			sequence.Markers.Add(new .(0.25f, "line", true));
+			let play = scope SequencePlay(stage.World, sequence);
+			play.Play();
+			play.Advance(0.75f);
+			Test.Assert(Near(play.Time, 0.25f));
+			play.Resume();
+			play.Advance(0.75f);
+			Test.Assert(play.IsHeld);
+			Test.Assert(Near(play.Time, 0.5f));
+		}
+		{
+			// At one time both hold; the line read, the marker still holds; Resume lets go of both.
+			let line = scope HoldLine();
+			let sequence = HoldSequence(line);
+			defer delete sequence;
+			sequence.Markers.Add(new .(0.5f, "line", true));
+			let play = scope SequencePlay(stage.World, sequence);
+			play.Play();
+			play.Advance(0.75f);
+			Test.Assert(Near(play.Time, 0.5f));
+			line.Read = true;
+			play.Advance(0.1f);
+			Test.Assert(play.IsHeld);
+			play.Resume();
+			play.Advance(0.1f);
+			Test.Assert(Near(play.Time, 0.6f));
+		}
+		{
+			// The runner's first: it holds there, the marker's not told until the play reaches it.
+			let line = scope HoldLine();
+			let sequence = HoldSequence(line);
+			defer delete sequence;
+			sequence.Markers.Add(new .(0.75f, "later", true));
+			let recorder = scope SequenceRecorder();
+			let play = scope SequencePlay(stage.World, sequence);
+			play.SetListener(recorder);
+			play.Play();
+			play.Advance(1.0f);
+			Test.Assert(Near(play.Time, 0.5f));
+			Test.Assert(!recorder.Has("held:later"));
+			line.Read = true;
+			play.Advance(1.0f);
+			Test.Assert(Near(play.Time, 0.75f));
+			Test.Assert(recorder.Has("held:later"));
+		}
+		{
+			// Resume overrides a runner still holding.
+			let line = scope HoldLine();
+			let sequence = HoldSequence(line);
+			defer delete sequence;
+			let play = scope SequencePlay(stage.World, sequence);
+			play.Play();
+			play.Advance(0.75f);
+			Test.Assert(play.IsHeld);
+			play.Resume();
+			play.Advance(0.25f);
+			Test.Assert(Near(play.Time, 0.75f));
+		}
+	}
+
+	[Test]
+	public static void ASeekOrAStopLetsGoOfARunnersHold()
+	{
+		let stage = scope SequenceStage();
+		let line = scope HoldLine();
+		let sequence = HoldSequence(line);
+		defer delete sequence;
+		let play = scope SequencePlay(stage.World, sequence);
+		play.Play();
+		play.Advance(0.75f);
+		Test.Assert(play.IsHeld);
+		play.Seek(0.6f);
+		Test.Assert(!play.IsHeld);
+		play.Advance(0.1f);
+		Test.Assert(Near(play.Time, 0.7f));
+		play.Seek(0.0f);
+		play.Advance(0.75f); // reaching it again holds again
+		Test.Assert(play.IsHeld);
+		play.Stop();
+		Test.Assert(!play.IsHeld);
 	}
 }

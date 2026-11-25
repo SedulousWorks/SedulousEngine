@@ -44,6 +44,8 @@ class SequencePlay
 	private bool mRunning = false;
 	private bool mPaused = false;
 	private bool mHeld = false;
+	/// The runners keeping the play held; BORROWED (mRunners owns them).
+	private List<SequenceTrackRunner> mHolders = new .() ~ delete _;
 	private bool mFinished = false;
 	/// The next step starts before 0, so what is at 0 fires.
 	private bool mFromStart = false;
@@ -65,7 +67,8 @@ class SequencePlay
 
 	public bool IsPlaying => mRunning && !mFinished;
 	public bool IsPaused => mPaused;
-	public bool IsHeld => mHeld;
+	/// Held at a hold marker, or by a runner keeping a hold.
+	public bool IsHeld => mHeld || !mHolders.IsEmpty;
 	public bool IsFinished => mFinished;
 	public float Time => mTime;
 	public float Duration => mSequence.Duration;
@@ -127,6 +130,7 @@ class SequencePlay
 			{
 				if (mRunners[r].Track == t)
 				{
+					mHolders.Remove(mRunners[r].Runner);
 					mRunners[r].Runner.Release(false);
 					delete mRunners[r].Runner;
 					mRunners.RemoveAt(r);
@@ -148,6 +152,7 @@ class SequencePlay
 		mRunning = true;
 		mPaused = false;
 		mHeld = false;
+		mHolders.Clear();
 		mFinished = false;
 		mTime = 0.0f;
 		mFromStart = true;
@@ -163,6 +168,7 @@ class SequencePlay
 		mRunning = false;
 		mPaused = false;
 		mHeld = false;
+		mHolders.Clear();
 		mFinished = false;
 	}
 
@@ -175,6 +181,7 @@ class SequencePlay
 		mRunning = false;
 		mPaused = false;
 		mHeld = false;
+		mHolders.Clear();
 		mFinished = false;
 	}
 
@@ -188,10 +195,11 @@ class SequencePlay
 			running.Runner.SetPaused(true);
 	}
 
-	/// Continues after a pause, or from a hold.
+	/// Continues after a pause, or from a hold (a marker's, or one a runner keeps).
 	public void Resume()
 	{
 		mHeld = false;
+		mHolders.Clear();
 		if (!mPaused)
 			return;
 		mPaused = false;
@@ -206,10 +214,11 @@ class SequencePlay
 	/// The editor's preview: applies `time` with no events and no sounds.
 	public void Pose(float time) => Jump(time, true);
 
-	/// Advances by `deltaTime` seconds (times speed): stops at a hold, wraps or ends at the end.
+	/// Advances by `deltaTime` seconds (times speed): stops at a hold, wraps or ends at the end. A
+	/// hold a runner keeps ends by itself, when the runner lets go.
 	public void Advance(float deltaTime)
 	{
-		if (!mRunning || mFinished || mPaused || mHeld)
+		if (!mRunning || mFinished || mPaused || mHeld || !HoldersLetGo())
 			return;
 		let duration = mSequence.Duration;
 		var target = mTime + Math.Max(0.0f, deltaTime * Speed);
@@ -254,6 +263,7 @@ class SequencePlay
 			Begin();
 		mRunning = true;
 		mHeld = false;
+		mHolders.Clear();
 		mFinished = false;
 		mFromStart = false;
 		mTime = Math.Clamp(time, 0.0f, mSequence.Duration);
@@ -329,6 +339,7 @@ class SequencePlay
 
 	private void ClearRunners()
 	{
+		mHolders.Clear();
 		for (let running in mRunners)
 			delete running.Runner;
 		mRunners.Clear();
@@ -340,33 +351,76 @@ class SequencePlay
 			running.Runner.Evaluate(step);
 	}
 
-	/// Plays from the playhead to `to`, stopping at the first hold on the way. True when it stopped
-	/// at one.
+	/// Plays from the playhead to `to`, stopping at the first hold on the way (a marker, or a runner
+	/// whose hold still stands there). True when it stopped at one. Step by step: each step ends at
+	/// the first hold on the way; a runner's hold that no longer stands when it is reached (the line
+	/// was read already) is passed, and the play goes on from there.
 	private bool PlayTo(float to)
 	{
-		var to;
-		let previous = mFromStart ? -1.0f : mTime;
-		// The first hold on the way, if any, ends the step there.
-		SequenceMarker hold = null;
-		for (let marker in mSequence.Markers)
+		let holding = scope List<SequenceTrackRunner>();
+		while (true)
 		{
-			if (marker.Hold && (marker.Time > previous) && (marker.Time <= to) && ((hold == null) || (marker.Time < hold.Time)))
-				hold = marker;
+			let previous = mFromStart ? -1.0f : mTime;
+			var stop = to;
+			SequenceMarker hold = null;
+			for (let marker in mSequence.Markers)
+			{
+				if (marker.Hold && (marker.Time > previous) && (marker.Time <= stop) && ((hold == null) || (marker.Time < hold.Time)))
+				{
+					hold = marker;
+					stop = marker.Time;
+				}
+			}
+			holding.Clear();
+			for (let running in mRunners)
+			{
+				let at = running.Runner.HoldTime(previous, to);
+				if ((at <= previous) || (at > stop))
+					continue;
+				if (at < stop)
+				{
+					stop = at;
+					hold = null;
+					holding.Clear();
+				}
+				holding.Add(running.Runner);
+			}
+
+			var step = SequenceStep();
+			step.Time = stop;
+			step.PreviousTime = previous;
+			mTime = stop;
+			mFromStart = false;
+			Evaluate(step);
+
+			for (let runner in holding)
+			{
+				if (runner.IsHolding)
+					mHolders.Add(runner);
+			}
+			if (hold != null)
+			{
+				mHeld = true;
+				// Only a marker's hold is told: a runner shows its own.
+				if (mListener != null)
+					mListener.OnSequenceHeld(hold.Name);
+			}
+			if (mHeld || !mHolders.IsEmpty)
+				return true;
+			if (stop >= to)
+				return false;
 		}
-		if (hold != null)
-			to = hold.Time;
-		var step = SequenceStep();
-		step.Time = to;
-		step.PreviousTime = previous;
-		mTime = to;
-		mFromStart = false;
-		Evaluate(step);
-		if (hold == null)
-			return false;
-		mHeld = true;
-		if (mListener != null)
-			mListener.OnSequenceHeld(hold.Name);
-		return true;
+	}
+
+	/// Lets go of the runners' holds whose runners no longer keep them; true when none is left.
+	private bool HoldersLetGo()
+	{
+		for (int h = mHolders.Count - 1; h >= 0; h--)
+		{
+			if (!mHolders[h].IsHolding)
+				mHolders.RemoveAt(h);
+		}
+		return mHolders.IsEmpty;
 	}
 
 	private void Finished()
