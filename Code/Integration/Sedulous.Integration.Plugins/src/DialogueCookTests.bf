@@ -14,6 +14,10 @@ using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
+using Sedulous.Resource;
+using Sedulous.Input;
+using Sedulous.Engine.Run;
+using Sedulous.Engine.Behavior;
 using Dialogue;
 
 namespace Sedulous.Integration.Plugins;
@@ -199,6 +203,54 @@ static class DialogueCookTests
 			Test.Assert(deps.References.Contains(castId));
 			Test.Assert(deps.References.Contains(lane));
 			Test.Assert(!deps.References.Contains(gate), "not itself");
+		}
+		{
+			// A run's runner plays the cooked file through the application's resources, its cast's
+			// names on the line it publishes on the run's bus; its host labels an action with what
+			// the player's map binds it to.
+			let resources = scope ResourceManager(session.Project.CookedDb);
+			let dialogues = scope DialogueFactory();
+			let casts = scope DialogueCastFactory();
+			resources.AddFactory(dialogues);
+			resources.AddFactory(casts);
+			let run = scope ApplicationRun();
+			let source = scope ResourceSource(new () => resources);
+			run.Get<BehaviorRunHost>().SetService(source);
+			let runner = scope DialogueRunService(scope DialogueSettings(), run);
+			int lines = 0;
+			delegate void(Variant) listener = scope [&] (payload) =>
+				{
+					let notice = payload.Get<Object>() as DialogueLineNotice;
+					Test.Assert(notice != null);
+					Test.Assert((notice.ShownName == "The Keeper") && (notice.Mood == "worried"), "the cast's, through the run's resources");
+					Test.Assert(notice.Text == "Who goes there?");
+					lines++;
+				};
+			run.Events.Subscribe(StringHash(DialogueEvents.Line), listener);
+			Test.Assert(runner.Play(gate, "gate"));
+			Test.Assert(runner.Waiting == .Line);
+			run.Events.Drain();
+			Test.Assert(lines == 1, "the line went out on the run's bus");
+			runner.Stop();
+			run.Events.Drain();
+
+			let map = scope InputMap();
+			let set = new ActionSet();
+			set.Name.Set("gameplay");
+			map.Sets.Add(set);
+			let action = new InputAction();
+			action.Name.Set("Interact");
+			var key = Binding();
+			key.Source = .Key;
+			key.Code = (uint32)Sedulous.Shell.KeyCode.E;
+			action.Bindings.Add(key);
+			set.Actions.Add(action);
+			run.Get<ActionRuntime>().SetMap(map);
+			let expected = BindingNames.DescribeBinding(key, .. scope .());
+			Test.Assert(!expected.IsEmpty);
+			let runHost = scope DialogueRunHost(run);
+			Test.Assert(runHost.ActionLabel("Interact", .. scope .()) == expected);
+			Test.Assert(runHost.ActionLabel("Missing", .. scope .()).IsEmpty);
 		}
 
 		// A file naming a mood the keeper lacks does not cook, nor one jumping to a conversation the

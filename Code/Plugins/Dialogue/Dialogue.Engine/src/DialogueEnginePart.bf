@@ -10,8 +10,8 @@ namespace Dialogue;
 /// dialogue package, loaded by every host whose project enables it. Its load registers the plugin's
 /// cooked types, reads the project's settings for the plugin into DialogueSettings (the host holds
 /// them while the plugin is loaded; Project Settings edits that object) and, in a host that offers
-/// the engine's service, adds the dialogue's domain: the factories that load a cooked dialogue file
-/// and a cooked cast. What it registers and adds is recorded and taken out again when the plugin
+/// the engine's service, adds the dialogue's domain (the factories that load a cooked dialogue file
+/// and a cooked cast) and a runner to every run. What it registers and adds is recorded and taken out again when the plugin
 /// unloads. The part registers itself when the program starts, so linking it is all a host does;
 /// the project's entry enables it.
 [AlwaysInclude]
@@ -37,8 +37,12 @@ class DialogueEnginePart : PluginPart
 	public override void Load(PluginContext context)
 	{
 		DialogueResources.RegisterAll();
-		context.Settings<DialogueSettings>();
+		let settings = context.Settings<DialogueSettings>();
 		if (let engine = context.Find<EnginePluginServices>())
+		{
 			engine.AddDomain(Domain);
+			if (settings != null)
+				engine.AddRunService(DialogueRun.Contribution(settings));
+		}
 	}
 }

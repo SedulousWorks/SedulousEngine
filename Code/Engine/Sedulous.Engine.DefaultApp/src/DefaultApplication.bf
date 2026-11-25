@@ -120,6 +120,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// written, rather than a fault on a missing service. On the application's services, since no
 	/// subsystem sits beside RunSave's owner (ApplicationRun, a run); a run's own comes first.
 	private SaveFacade mIdleSave = new .(null) ~ delete _;
+	/// What a run's own code loads resources through: this application's manager, whichever it is
+	/// at the call.
+	private ResourceSource mResourceSource ~ delete _;
 	/// The resolution the game draws at, fitted into the window by mRenderFit; nought draws at
 	/// the window's size. With it, the pointer the game and its screen UI read is in render
 	/// pixels (mFittedInput).
@@ -424,6 +427,9 @@ class DefaultApplication : IApplication, ISceneObserver
 				// host's, its run's, then the application's, which each subsystem offers itself.
 			};
 		host.Subsystems.RegisterService(mIdleSave);
+		if (mResourceSource == null)
+			mResourceSource = new .(new () => Resources);
+		host.Subsystems.RegisterService(mResourceSource);
 		// The scene facades' drawer.
 		DebugFacade.Renderer = mRender;
 		WireInstanceScripting(mInstance, host);

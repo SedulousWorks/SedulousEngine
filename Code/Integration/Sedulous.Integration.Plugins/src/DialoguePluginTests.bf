@@ -6,6 +6,7 @@ using Sedulous.Runtime;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Domain;
 using Sedulous.Engine.Composition;
+using Sedulous.Engine.Run;
 using Dialogue;
 
 namespace Sedulous.Integration.Plugins;
@@ -13,8 +14,8 @@ namespace Sedulous.Integration.Plugins;
 /// The engine's official dialogue plugin, linked here as the engine's hosts link it: its manifest
 /// reads and passes the host's checks, an editor links its four parts, and a project that enables
 /// it loads it: the project's settings for it read into its settings type, its domain added to the
-/// engine's composition (the factories for a cooked dialogue file and cast), and all of it taken out
-/// again when it unloads.
+/// engine's composition (the factories for a cooked dialogue file and cast), a runner in every run
+/// whose flags live in the run's save, and all of it taken out again when it unloads.
 class DialoguePluginTests
 {
 	const String cId = "dialogue";
@@ -54,7 +55,7 @@ class DialoguePluginTests
 	static bool SourceRegistered() => GlobalSerializableRegistry.IsRegistered(TypeIdOf(typeof(DialogueSource).GetFullName(.. scope .())));
 
 	[Test]
-	public static void AProjectThatEnablesDialogueLoadsItItsSettingsReadFromTheProjectsEntry()
+	public static void AProjectThatEnablesDialogueLoadsItItsSettingsReadFromTheProjectsEntryItsDomainAddedAndARunnerInEveryRun()
 	{
 		let chosen = scope DialogueSettings();
 		chosen.ProvidedFlags.Add(new .("seen_*"));
@@ -82,7 +83,25 @@ class DialoguePluginTests
 		// The domain: its resource types, which the composition builds the factories from.
 		Test.Assert(HasDomain(cId));
 		Test.Assert(SourceRegistered());
+
+		// Every run gets a runner, its flags in the run's save under the settings' prefix.
+		{
+			let run = scope ApplicationRun();
+			let runner = run.Get<DialogueRunService>();
+			Test.Assert(runner != null);
+			Test.Assert(!runner.IsPlaying);
+			runner.SetFlag("met_keeper", true);
+			Test.Assert(run.Saves.Values.GetBool("flag.met_keeper", false));
+			Test.Assert(run.Saves.HasChanges);
+			Test.Assert(runner.Flag("met_keeper"));
+			Test.Assert(!runner.Resume(), "nothing saved to resume");
+			Test.Assert(!runner.Play(.(), "gate"), "no such file: refused");
+		}
+		let live = scope ApplicationRun();
+		Test.Assert(live.Get<DialogueRunService>() != null);
+
 		host.Unload();
+		Test.Assert(live.Get<DialogueRunService>() == null, "its code is going: out of the live run");
 		Test.Assert(!host.IsLoaded(cId));
 		Test.Assert(!HasDomain(cId), "taken out with the plugin");
 		Test.Assert(!SourceRegistered());
