@@ -108,9 +108,16 @@ interface IDialogueHost
 	/// Whether the staging `token` is still going.
 	bool IsStaging(uint32 token);
 
+	/// The runner's clock, every frame whether or not a conversation plays (a fade goes on after
+	/// the conversation that began it).
+	void Update(float deltaTime) {}
+
 	/// What the runner tells the game. The notice is the host's from the call on (it deletes it, or
-	/// hands it on).
-	void OnLine(DialogueLineNotice notice);
+	/// hands it on). `speaker` is the line's speaker's entry in the cast (BORROWED, for the call);
+	/// null when the cast has none.
+	void OnLine(DialogueLineNotice notice, DialogueSpeaker speaker);
+	/// The line shown has been advanced past, or the conversation ended on it.
+	void OnLineEnded() {}
 	void OnChoice(DialogueChoiceNotice notice);
 	void OnCommand(DialogueCommandNotice notice);
 	void OnEnded(DialogueEndedNotice notice);
@@ -220,6 +227,7 @@ class DialogueRunner : IRunService
 	{
 		if (mWait != .Line)
 			return false;
+		mHost.OnLineEnded();
 		mWait = .Nothing;
 		mStep++;
 		Pump();
@@ -329,9 +337,10 @@ class DialogueRunner : IRunService
 	public bool Flag(StringView name) => mHost.ReadFlag(FlagKey(name, .. scope .()));
 	public void SetFlag(StringView name, bool on) => mHost.WriteFlag(FlagKey(name, .. scope .()), on);
 
-	/// Steps the clock: a `wait` counts down, staging is asked after.
+	/// Steps the clock: the host's, then a `wait` counts down and staging is asked after.
 	public void Update(float deltaTime)
 	{
+		mHost.Update(deltaTime);
 		if (!mPlaying)
 			return;
 		if (mWait == .Time)
@@ -451,7 +460,8 @@ class DialogueRunner : IRunService
 				notice.LineId.Set(step.LineId);
 				Fill(file.Text(step.LineId), notice.Text);
 				let cast = (mCast != .()) ? mHost.LoadCast(mCast) : null;
-				if (let speaker = cast?.Find(step.Speaker))
+				let speaker = cast?.Find(step.Speaker);
+				if (speaker != null)
 				{
 					notice.ShownName.Set(speaker.ShownName);
 					if (notice.Mood.IsEmpty && !speaker.Moods.IsEmpty)
@@ -462,7 +472,7 @@ class DialogueRunner : IRunService
 				mLastLine.Set(step.LineId);
 				WriteResume(conversation, mStep);
 				mWait = .Line;
-				mHost.OnLine(notice);
+				mHost.OnLine(notice, speaker);
 			case .Choice:
 				let notice = new DialogueChoiceNotice();
 				notice.Dialogue = mDialogue;
@@ -563,6 +573,8 @@ class DialogueRunner : IRunService
 		notice.Conversation.Set(mConversation);
 		notice.Stopped = stopped;
 		notice.Left = left;
+		if (mWait == .Line)
+			mHost.OnLineEnded();
 		// Cleared before the game hears it, so it may play another from its handler.
 		mPlaying = false;
 		mWait = .Nothing;

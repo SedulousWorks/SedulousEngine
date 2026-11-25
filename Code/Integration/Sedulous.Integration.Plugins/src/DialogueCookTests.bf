@@ -248,7 +248,7 @@ static class DialogueCookTests
 			run.Get<ActionRuntime>().SetMap(map);
 			let expected = BindingNames.DescribeBinding(key, .. scope .());
 			Test.Assert(!expected.IsEmpty);
-			let runHost = scope DialogueRunHost(run);
+			let runHost = scope DialogueRunHost(scope DialogueSettings(), run);
 			Test.Assert(runHost.ActionLabel("Interact", .. scope .()) == expected);
 			Test.Assert(runHost.ActionLabel("Missing", .. scope .()).IsEmpty);
 		}

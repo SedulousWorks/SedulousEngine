@@ -91,7 +91,13 @@ class DialogueRunnerTests
 
 		public bool IsStaging(uint32 token) => Staging.Contains(token);
 
-		public void OnLine(DialogueLineNotice notice)
+		public uint32 LinesEnded = 0;
+		public float Clock = 0.0f;
+
+		public void Update(float deltaTime) { Clock += deltaTime; }
+		public void OnLineEnded() { LinesEnded++; }
+
+		public void OnLine(DialogueLineNotice notice, DialogueSpeaker speaker)
 		{
 			delete LastLine;
 			LastLine = notice;
@@ -211,6 +217,7 @@ class DialogueRunnerTests
 		Test.Assert(!f.Runner.Choose(0), "no choice offered yet");
 
 		Test.Assert(f.Runner.Advance());
+		Test.Assert(f.Host.LinesEnded == 1, "the line advanced past");
 		Test.Assert(f.Runner.Waiting == .Choice);
 		Test.Assert(f.Told() == "choice A friend. | Nobody.\n");
 		Test.Assert(f.Host.LastChoice.LineIds.Count == 2);
@@ -262,7 +269,9 @@ class DialogueRunnerTests
 
 		Test.Assert(f.Runner.Play(f.Gate, "gate"));
 		Test.Assert(f.Told() == "keeper: Back again.\n");
+		let ended = f.Host.LinesEnded;
 		f.Runner.Stop();
+		Test.Assert(f.Host.LinesEnded == ended + 1, "stopped on a line: it ends too");
 		Test.Assert(f.Told() == "ended gate\n");
 		Test.Assert(f.Host.LastEnded.Stopped);
 
@@ -286,6 +295,7 @@ class DialogueRunnerTests
 		Test.Assert(f.Runner.Play(f.Gate, "gate"));
 		Test.Assert(f.Runner.Waiting == .Time);
 		f.Runner.Update(0.6f);
+		Test.Assert(Math.Abs(f.Host.Clock - 0.6f) < 1e-5f, "the host's clock");
 		Test.Assert(f.Told().IsEmpty);
 		f.Runner.Update(0.6f);
 		Test.Assert(f.Told() == "stage creak\nstage opening\n", "the sound does not wait");

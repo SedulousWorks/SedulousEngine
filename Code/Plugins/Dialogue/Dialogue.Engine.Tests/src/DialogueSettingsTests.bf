@@ -25,6 +25,8 @@ class DialogueSettingsTests
 		Test.Assert(settings.TypingSpeed == 40);
 		Test.Assert(settings.AdvanceAction == "Interact");
 		Test.Assert(!settings.PortraitOnRight);
+		Test.Assert(Math.Abs(settings.FadeSeconds - 0.5f) < 1e-5f);
+		Test.Assert(settings.FadeColor.W == 1.0f);
 	}
 
 	[Test]
@@ -39,6 +41,8 @@ class DialogueSettingsTests
 		written.TypingSpeed = 60;
 		written.AdvanceAction.Set("Confirm");
 		written.PortraitOnRight = true;
+		written.FadeSeconds = 1.25f;
+		written.FadeColor = .(1.0f, 1.0f, 1.0f, 1.0f);
 		written.Cast = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 		written.Assets = Guid(11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
 		let entry = scope List<uint8>();
@@ -55,6 +59,8 @@ class DialogueSettingsTests
 		Test.Assert(read.TypingSpeed == 60);
 		Test.Assert(read.AdvanceAction == "Confirm");
 		Test.Assert(read.PortraitOnRight);
+		Test.Assert(Math.Abs(read.FadeSeconds - 1.25f) < 1e-5f);
+		Test.Assert(read.FadeColor.X == 1.0f);
 		Test.Assert((read.Cast == written.Cast) && (read.Assets == written.Assets));
 	}
 
@@ -69,6 +75,6 @@ class DialogueSettingsTests
 			count++;
 			Test.Assert(field.GetCustomAttribute<SettingAttribute>() case .Ok, scope $"{field.Name} has no label");
 		}
-		Test.Assert(count == 9);
+		Test.Assert(count == 11);
 	}
 }

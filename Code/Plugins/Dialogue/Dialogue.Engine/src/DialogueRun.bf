@@ -1,11 +1,20 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
+using Sedulous.Script;
 using Sedulous.Input;
 using Sedulous.Resource;
 using Sedulous.Run;
+using Sedulous.Scene;
+using Sedulous.Sequence.Resource;
+using Sedulous.Audio.Resource;
 using Sedulous.Engine.Run;
 using Sedulous.Engine.Behavior;
+using Sedulous.Engine.Audio;
+using Sedulous.Engine.Render;
+using Sedulous.Engine.Sequence;
+using Sedulous.Engine.Script.Facades;
 
 namespace Dialogue;
 
@@ -14,15 +23,121 @@ namespace Dialogue;
 /// `{Action}` filled from the player's bindings on the device in hand, and what the runner tells
 /// the game published on the run's bus as DialogueLine, DialogueChoice, DialogueCommand and
 /// DialogueEnded (a behavior's `on<Name>` hears them).
+///
+/// The staging is in the run's current scene. A speaker plays as an entity: the one the game bound
+/// to it (Bind), else the level entity the cast names, else none (told once).
+///   * `play`: the clip once over what the entity animates (the animation's one-shot).
+///   * `sound`: the clip or cue through the run's audio, at the speaker's entity when named.
+///   * `fade`: a claim on the scene's fade, over the sequences' own, held at full until a fade in.
+///   * `sequence`: a play in the scene, each of its bindings named for a speaker filled with that
+///     speaker's entity; `and wait` holds until it ends.
+/// While a line shows, its speaker plays their talk clip (the cast's `Talk`), looping.
 class DialogueRunHost : IDialogueHost
 {
+	private struct Staged
+	{
+		public uint32 Token;
+		public DialogueStepKind Kind;
+		/// A one-shot's.
+		public EntityHandle Entity;
+		/// A sequence's.
+		public uint32 Play;
+	}
+
+	private DialogueSettings mSettings; // BORROWED: the plugin's, which outlive the run
 	private RunBase mRun; // BORROWED: the run holding the runner, which outlives it
 	/// What this run loaded, held so it stays loaded while the run may read it again.
 	private Dictionary<Guid, ResourceHold> mHolds = new .() ~ { for (let hold in _.Values) hold.Release(); delete _; };
+	/// The game's bindings: a speaker's id, and the entity that plays them.
+	private List<(String speaker, EntityHandle entity)> mBindings = new .() ~ { for (let binding in _) delete binding.speaker; delete _; };
+	/// The speakers told to have no entity.
+	private List<String> mUnplaced = new .() ~ DeleteContainerAndItems!(_);
+	private List<Staged> mStaged = new .() ~ delete _;
+	private uint32 mNextToken = 1;
+	// The fade: its claim's scene, where it is and where it goes, and its token while it moves.
+	private ScriptWeakRef mFadeScene;
+	private Float4 mFadeColor = .(0.0f, 0.0f, 0.0f, 1.0f);
+	private float mFadeAmount = 0.0f;
+	private float mFadeFrom = 0.0f;
+	private float mFadeTo = 0.0f;
+	private float mFadeSeconds = 0.0f;
+	private float mFadeTime = 0.0f;
+	private uint32 mFadeToken = 0;
+	// The speaker talking while their line shows.
+	private ScriptWeakRef mTalkScene;
+	private EntityHandle mTalker = .Invalid;
 
-	public this(RunBase run)
+	public this(DialogueSettings settings, RunBase run)
 	{
+		mSettings = settings;
 		mRun = run;
+	}
+
+	public ~this()
+	{
+		StopTalking();
+		ReleaseFade();
+	}
+
+	private ResourceManager Resources => (Find(typeof(ResourceSource)) as ResourceSource)?.Manager;
+	private Scene CurrentScene => mRun.Get<ApplicationRun>()?.CurrentScene;
+
+	/// Plays the speaker `speaker` as `entity` in what follows (invalid: the cast's again).
+	public void Bind(StringView speaker, EntityHandle entity)
+	{
+		for (int i < mBindings.Count)
+		{
+			if (mBindings[i].speaker != speaker)
+				continue;
+			if (entity.IsAssigned)
+			{
+				mBindings[i].entity = entity;
+			}
+			else
+			{
+				delete mBindings[i].speaker;
+				mBindings.RemoveAt(i);
+			}
+			return;
+		}
+		if (entity.IsAssigned)
+			mBindings.Add((new String(speaker), entity));
+	}
+
+	// Whether the game bound `speaker`.
+	private bool IsBound(StringView speaker)
+	{
+		for (let binding in mBindings)
+		{
+			if (binding.speaker == speaker)
+				return true;
+		}
+		return false;
+	}
+
+	// The entity that plays `speaker` (`entry` its cast entry, null for none) in `scene`: the
+	// game's binding, else the entity the cast names; invalid, told once, when none.
+	private EntityHandle EntityOf(Scene scene, StringView speaker, DialogueSpeaker entry)
+	{
+		for (let binding in mBindings)
+		{
+			if ((binding.speaker == speaker) && scene.IsValid(binding.entity))
+				return binding.entity;
+		}
+		if ((entry != null) && !entry.Entity.IsEmpty)
+		{
+			let entity = scene.FindEntityByName(entry.Entity);
+			if (entity.IsAssigned)
+				return entity;
+		}
+		for (let told in mUnplaced)
+		{
+			if (told == speaker)
+				return .Invalid;
+		}
+		mUnplaced.Add(new .(speaker));
+		GlobalLog(.Warning, "Dialogue: the speaker `{}` has no entity in the scene: bind one or name one in the cast", speaker);
+		return .Invalid;
 	}
 
 	// The service the run's scripts would find of type `type`: the run's, then the application's.
@@ -35,7 +150,7 @@ class DialogueRunHost : IDialogueHost
 
 	private T Load<T>(Guid id) where T : class
 	{
-		let resources = (Find(typeof(ResourceSource)) as ResourceSource)?.Manager;
+		let resources = Resources;
 		if ((resources == null) || (id == .()))
 			return null;
 		let proxy = resources.Bind<T>(id);
@@ -87,11 +202,183 @@ class DialogueRunHost : IDialogueHost
 			BindingNames.DescribeBinding(binding, outLabel);
 	}
 
-	/// The staging comes with the run's scene; until then nothing is staged, and nothing waits on it.
-	public uint32 Stage(DialogueStep step, DialogueCastResource cast) => 0;
-	public bool IsStaging(uint32 token) => false;
+	public uint32 Stage(DialogueStep step, DialogueCastResource cast)
+	{
+		let scene = CurrentScene;
+		if (scene == null)
+			return 0;
+		switch (step.Kind)
+		{
+		case .Play:
+			let entity = EntityOf(scene, step.Speaker, cast?.Find(step.Speaker));
+			if (!entity.IsAssigned || (step.Asset == .()))
+				return 0;
+			if (mTalker == entity)
+				mTalker = .Invalid; // the clip takes over from the talk
+			SceneFacades.Resolve<AnimationFacade>(scene).PlayOneShot(entity, step.Asset);
+			let token = mNextToken++;
+			Staged staged = .();
+			staged.Token = token;
+			staged.Kind = step.Kind;
+			staged.Entity = entity;
+			mStaged.Add(staged);
+			return token;
+		case .Sound:
+			let resources = Resources;
+			let audio = Find(typeof(AudioFacade)) as AudioFacade;
+			if ((resources == null) || (audio == null) || (step.Asset == .()))
+				return 0;
+			let instance = resources.Database.GetInstance(step.Asset);
+			let cue = (instance != null) && (instance.TypeName == typeof(SoundCueSource).GetFullName(.. scope .()));
+			let at = step.Speaker.IsEmpty ? EntityHandle.Invalid : EntityOf(scene, step.Speaker, cast?.Find(step.Speaker));
+			if (at.IsAssigned)
+			{
+				let position = scene.GetWorldPosition(at);
+				if (cue)
+					audio.PlayCue3D(step.Asset, position);
+				else
+					audio.PlayOneShot3D(step.Asset, position);
+			}
+			else if (cue)
+			{
+				audio.PlayCue(step.Asset);
+			}
+			else
+			{
+				audio.PlayOneShot(step.Asset);
+			}
+			return 0; // a sound never holds the conversation
+		case .Fade:
+			mFadeScene = scene.TakeScriptWeak();
+			mFadeColor = step.HasColor ? step.Color : mSettings.FadeColor;
+			// A fade in from nothing held starts at full: a conversation that opens on one.
+			mFadeFrom = (step.FadeIn && (mFadeAmount <= 0.0f)) ? 1.0f : mFadeAmount;
+			mFadeTo = step.FadeIn ? 0.0f : 1.0f;
+			mFadeSeconds = (step.Seconds >= 0.0f) ? step.Seconds : mSettings.FadeSeconds;
+			mFadeTime = 0.0f;
+			mFadeToken = mNextToken++;
+			Update(0.0f);
+			return mFadeToken;
+		case .Sequence:
+			let system = scene.GetSystem<SequenceSystem>();
+			let sequence = Load<SequenceResource>(step.Asset);
+			if ((system == null) || (sequence == null))
+			{
+				GlobalLog(.Warning, "Dialogue: sequence: `{}` did not load", step.Name);
+				return 0;
+			}
+			// Each of its bindings named for a speaker is that speaker's entity.
+			let filled = scope List<(StringView name, EntityHandle entity)>();
+			for (let binding in sequence.Sequence.Bindings)
+			{
+				let speaker = cast?.Find(binding.Name);
+				if ((speaker == null) && !IsBound(binding.Name))
+					continue;
+				let entity = EntityOf(scene, binding.Name, speaker);
+				if (entity.IsAssigned)
+					filled.Add((binding.Name, entity));
+			}
+			let play = system.Play(sequence, step.Asset, .Release, .Invalid, mHolds.GetValueOrDefault(step.Asset)?.Handle,
+				scope (running) =>
+				{
+					for (let binding in filled)
+						running.Bind(binding.name, binding.entity);
+				});
+			let token = mNextToken++;
+			Staged staged = .();
+			staged.Token = token;
+			staged.Kind = step.Kind;
+			staged.Play = play;
+			mStaged.Add(staged);
+			return token;
+		default:
+			return 0;
+		}
+	}
 
-	public void OnLine(DialogueLineNotice notice) => Publish(DialogueEvents.Line, notice);
+	public bool IsStaging(uint32 token)
+	{
+		if ((token != 0) && (token == mFadeToken))
+			return true;
+		for (int i < mStaged.Count)
+		{
+			if (mStaged[i].Token != token)
+				continue;
+			bool going = false;
+			if (let scene = CurrentScene)
+			{
+				if (mStaged[i].Kind == .Play)
+				{
+					going = scene.IsValid(mStaged[i].Entity) && SceneFacades.Resolve<AnimationFacade>(scene).IsPlayingOneShot(mStaged[i].Entity);
+				}
+				else if (let system = scene.GetSystem<SequenceSystem>())
+				{
+					let play = system.Find(mStaged[i].Play);
+					going = (play != null) && !play.IsFinished;
+				}
+			}
+			if (!going)
+				mStaged.RemoveAt(i);
+			return going;
+		}
+		return false;
+	}
+
+	public void Update(float deltaTime)
+	{
+		if (mFadeToken == 0)
+			return;
+		mFadeTime += deltaTime;
+		let t = (mFadeSeconds > 0.0f) ? Math.Min(1.0f, mFadeTime / mFadeSeconds) : 1.0f;
+		mFadeAmount = mFadeFrom + (mFadeTo - mFadeFrom) * t;
+		if (t >= 1.0f)
+			mFadeToken = 0;
+		let post = (mFadeScene.Resolve() as Scene)?.GetSystem<PostProcessSystem>();
+		if (post == null)
+			return;
+		if ((mFadeAmount <= 0.0f) && (mFadeToken == 0))
+		{
+			post.FadeClaims.Release(this); // faded in: nothing held
+			return;
+		}
+		// Over the sequences' fades: what a conversation fades to holds until it fades in again.
+		post.FadeClaims.Claim(this, uint64.MaxValue, ScreenFade(Color(mFadeColor.X, mFadeColor.Y, mFadeColor.Z, mFadeColor.W), mFadeAmount));
+	}
+
+	private void ReleaseFade()
+	{
+		if (let post = (mFadeScene.Resolve() as Scene)?.GetSystem<PostProcessSystem>())
+			post.FadeClaims.Release(this);
+		mFadeToken = 0;
+		mFadeAmount = 0.0f;
+	}
+
+	private void StopTalking()
+	{
+		let scene = mTalkScene.Resolve() as Scene;
+		if ((scene != null) && mTalker.IsAssigned && scene.IsValid(mTalker))
+			SceneFacades.Resolve<AnimationFacade>(scene).StopOneShot(mTalker);
+		mTalker = .Invalid;
+	}
+
+	public void OnLine(DialogueLineNotice notice, DialogueSpeaker speaker)
+	{
+		StopTalking();
+		let scene = CurrentScene;
+		if ((scene != null) && (speaker != null) && (speaker.Talk != .()))
+		{
+			let entity = EntityOf(scene, notice.Speaker, speaker);
+			if (entity.IsAssigned)
+			{
+				SceneFacades.Resolve<AnimationFacade>(scene).PlayOneShot(entity, speaker.Talk, 1.0f, 0.2f, 0.2f, -1);
+				mTalkScene = scene.TakeScriptWeak();
+				mTalker = entity;
+			}
+		}
+		Publish(DialogueEvents.Line, notice);
+	}
+
+	public void OnLineEnded() => StopTalking();
 	public void OnChoice(DialogueChoiceNotice notice) => Publish(DialogueEvents.Choice, notice);
 	public void OnCommand(DialogueCommandNotice notice) => Publish(DialogueEvents.Command, notice);
 	public void OnEnded(DialogueEndedNotice notice) => Publish(DialogueEvents.Ended, notice);
@@ -110,9 +397,12 @@ class DialogueRunService : DialogueRunner
 
 	public this(DialogueSettings settings, RunBase run) : base(settings, null)
 	{
-		mRunHost = new .(run);
+		mRunHost = new .(settings, run);
 		mHost = mRunHost;
 	}
+
+	/// Plays the speaker `speaker` as `entity` (invalid: the cast's entity again).
+	public void Bind(StringView speaker, EntityHandle entity) => mRunHost.Bind(speaker, entity);
 }
 
 /// The contribution that gives every run its runner.

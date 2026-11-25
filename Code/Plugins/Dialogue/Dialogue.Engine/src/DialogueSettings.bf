@@ -43,6 +43,12 @@ class DialogueSettings : ISerializable
 	/// The stock box shows the speaker's portrait on the right.
 	[Setting("Portrait on the right", "Dialogue")]
 	public bool PortraitOnRight = false;
+	/// A `fade` that names no length takes this many seconds.
+	[Setting("Fade length", "Dialogue"), Range(0.0f, 10.0f, 0.1f)]
+	public float FadeSeconds = 0.5f;
+	/// A `fade` that names no colour fades to this one.
+	[Setting("Fade colour", "Dialogue"), AsColor]
+	public Float4 FadeColor = .(0.0f, 0.0f, 0.0f, 1.0f);
 
 	public void Serialize(ISerializer ar)
 	{
@@ -57,5 +63,7 @@ class DialogueSettings : ISerializable
 		SerializeValue(ar, "typingSpeed", ref TypingSpeed);
 		Sedulous.Core.Serialization.Serialize(ar, "advanceAction", AdvanceAction);
 		SerializeValue(ar, "portraitOnRight", ref PortraitOnRight);
+		SerializeValue(ar, "fadeSeconds", ref FadeSeconds);
+		SerializeValue(ar, "fadeColor", ref FadeColor);
 	}
 }
