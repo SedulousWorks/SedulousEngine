@@ -9,6 +9,13 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Added
 
+- Dialogue: the official dialogue plugin plays conversations. A project that enables it writes them
+  as text in dialogue files (File > New > Dialogue), with a cast and a list of the assets they
+  name, each edited on its own page. Scripts play one with `Dialogue.Play(dialogue, conversation)`,
+  answer it with `Advance`, `Choose` and `Done`, read and set its flags (kept in the game's save),
+  bind speakers to entities, resume it after a load, and hear `onDialogueLine`,
+  `onDialogueChoice`, `onDialogueCommand` and `onDialogueEnded`. A conversation stages itself with
+  `play` (a clip on a speaker), `sound`, `fade` and `sequence`.
 - Sequences: a sequence asset (File > New, under Animation) is a cutscene timeline that drives
   several entities at once: property and transform tracks, skeletal clips, sounds, camera cuts,
   fades, events, holds that wait for the game, and sequences nested in others. Scripts play one with `scene.Sequences.Play(sequence)`, fill its

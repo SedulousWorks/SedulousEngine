@@ -3,48 +3,104 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Run;
+using Sedulous.Scene;
 
 namespace Dialogue;
 
-/// A line for the game to show.
-class DialogueLineNotice
+/// A line for the game to show. On the run's bus as DialogueLine, which a behavior's
+/// `onDialogueLine(DialogueLineNotice@ notice)` hears.
+[Scriptable, ScriptPayload]
+class DialogueLineNotice : IScriptWeaklyHeld
 {
 	/// The dialogue file.
+	[Scriptable, ReadOnly]
 	public Guid Dialogue = .();
+	[Scriptable, ReadOnly]
 	public String Conversation = new .() ~ delete _;
 	/// A cast id.
+	[Scriptable, ReadOnly]
 	public String Speaker = new .() ~ delete _;
 	/// The cast's name for them; empty shows none.
+	[Scriptable, ReadOnly]
 	public String ShownName = new .() ~ delete _;
+	[Scriptable, ReadOnly]
 	public String Mood = new .() ~ delete _;
 	/// The mood's, else the speaker's; nil for none.
+	[Scriptable, ReadOnly]
 	public Guid Portrait = .();
 	/// Its `{Action}`s filled in.
+	[Scriptable, ReadOnly]
 	public String Text = new .() ~ delete _;
+	[Scriptable, ReadOnly]
 	public String LineId = new .() ~ delete _;
+
+	// Where scripts' handles to it resolve: the bus deletes it once delivered, and a handle a
+	// script kept reads as gone from then.
+	private ScriptWeakSlot mScriptSlot;
+
+	public ~this()
+	{
+		mScriptSlot.Free();
+	}
+
+	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
 }
 
-/// The answers for the game to offer; the runner's Choose takes one.
-class DialogueChoiceNotice
+/// The answers for the game to offer; the runner's Choose takes one. On the run's bus as
+/// DialogueChoice (`onDialogueChoice(DialogueChoiceNotice@ notice)`); a script reads the answers
+/// by index.
+[Scriptable, ScriptPayload]
+class DialogueChoiceNotice : IScriptWeaklyHeld
 {
+	[Scriptable, ReadOnly]
 	public Guid Dialogue = .();
+	[Scriptable, ReadOnly]
 	public String Conversation = new .() ~ delete _;
 	/// Their texts, `{Action}`s filled in.
 	public List<String> Answers = new .() ~ DeleteContainerAndItems!(_);
 	public List<String> LineIds = new .() ~ DeleteContainerAndItems!(_);
+
+	[Scriptable]
+	public int32 AnswerCount() => (int32)Answers.Count;
+	/// Answer `index`'s text; empty past the last.
+	[Scriptable]
+	public StringView Answer(int32 index) => ((index >= 0) && (index < Answers.Count)) ? Answers[index] : "";
+	[Scriptable]
+	public StringView AnswerLineId(int32 index) => ((index >= 0) && (index < LineIds.Count)) ? LineIds[index] : "";
+
+	// Where scripts' handles to it resolve: the bus deletes it once delivered, and a handle a
+	// script kept reads as gone from then.
+	private ScriptWeakSlot mScriptSlot;
+
+	public ~this()
+	{
+		mScriptSlot.Free();
+	}
+
+	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
 }
 
-/// A declared command for the game to carry out.
-class DialogueCommandNotice
+/// A declared command for the game to carry out. On the run's bus as DialogueCommand
+/// (`onDialogueCommand(DialogueCommandNotice@ notice)`); a script reads its arguments by their
+/// names in the command's form.
+[Scriptable, ScriptPayload]
+class DialogueCommandNotice : IScriptWeaklyHeld
 {
+	[Scriptable, ReadOnly]
 	public Guid Dialogue = .();
+	[Scriptable, ReadOnly]
 	public String Conversation = new .() ~ delete _;
+	[Scriptable, ReadOnly]
 	public String Name = new .() ~ delete _;
 	/// The conversation waits for the runner's Done.
+	[Scriptable, ReadOnly]
 	public bool Waits = false;
 	/// The conversation has ended with its place saved.
+	[Scriptable, ReadOnly]
 	public bool Leaves = false;
 	public List<DialogueArgument> Arguments = new .() ~ DeleteContainerAndItems!(_);
+	/// Where an entity argument is looked for (the run's scene), weakly.
+	public ScriptWeakRef Scene;
 
 	/// The argument `name`, or null.
 	public DialogueArgument Find(StringView name)
@@ -56,17 +112,67 @@ class DialogueCommandNotice
 		}
 		return null;
 	}
+
+	/// Whether the argument `name` was written (an optional part, `[running]`).
+	[Scriptable]
+	public bool Has(StringView name) => Find(name)?.Present ?? false;
+	/// The argument `name` as written; empty when absent.
+	[Scriptable]
+	public StringView Text(StringView name) => Find(name)?.Text ?? "";
+	[Scriptable]
+	public float Number(StringView name) => Find(name)?.Number ?? 0.0f;
+	/// An asset argument's asset; nil when absent.
+	[Scriptable]
+	public Guid Asset(StringView name) => Find(name)?.Asset ?? .();
+	/// An entity argument's entity in the run's scene, by its name; invalid when there is none.
+	[Scriptable]
+	public EntityHandle Entity(StringView name)
+	{
+		let argument = Find(name);
+		let scene = Scene.Resolve() as Sedulous.Scene.Scene;
+		if ((argument == null) || (scene == null))
+			return .Invalid;
+		return scene.FindEntityByName(argument.Text);
+	}
+
+	// Where scripts' handles to it resolve: the bus deletes it once delivered, and a handle a
+	// script kept reads as gone from then.
+	private ScriptWeakSlot mScriptSlot;
+
+	public ~this()
+	{
+		mScriptSlot.Free();
+	}
+
+	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
 }
 
-/// The conversation ended: reached its end, was stopped, or left for a command.
-class DialogueEndedNotice
+/// The conversation ended: reached its end, was stopped, or left for a command. On the run's bus
+/// as DialogueEnded (`onDialogueEnded(DialogueEndedNotice@ notice)`).
+[Scriptable, ScriptPayload]
+class DialogueEndedNotice : IScriptWeaklyHeld
 {
+	[Scriptable, ReadOnly]
 	public Guid Dialogue = .();
+	[Scriptable, ReadOnly]
 	public String Conversation = new .() ~ delete _;
 	/// By the runner's Stop.
+	[Scriptable, ReadOnly]
 	public bool Stopped = false;
 	/// By a command that leaves; the runner's Resume goes on from there.
+	[Scriptable, ReadOnly]
 	public bool Left = false;
+
+	// Where scripts' handles to it resolve: the bus deletes it once delivered, and a handle a
+	// script kept reads as gone from then.
+	private ScriptWeakSlot mScriptSlot;
+
+	public ~this()
+	{
+		mScriptSlot.Free();
+	}
+
+	public ScriptWeakRef TakeScriptWeak() => mScriptSlot.Take(this);
 }
 
 /// The names the notices go out under on the run's bus (a behavior's `on<Name>` hears them), and

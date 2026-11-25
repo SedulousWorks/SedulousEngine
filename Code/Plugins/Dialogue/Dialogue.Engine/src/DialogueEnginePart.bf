@@ -11,7 +11,7 @@ namespace Dialogue;
 /// cooked types, reads the project's settings for the plugin into DialogueSettings (the host holds
 /// them while the plugin is loaded; Project Settings edits that object) and, in a host that offers
 /// the engine's service, adds the dialogue's domain (the factories that load a cooked dialogue file
-/// and a cooked cast) and a runner to every run. What it registers and adds is recorded and taken out again when the plugin
+/// and a cooked cast), a runner to every run and the `Dialogue` script service. What it registers and adds is recorded and taken out again when the plugin
 /// unloads. The part registers itself when the program starts, so linking it is all a host does;
 /// the project's entry enables it.
 [AlwaysInclude]
@@ -43,6 +43,26 @@ class DialogueEnginePart : PluginPart
 			engine.AddDomain(Domain);
 			if (settings != null)
 				engine.AddRunService(DialogueRun.Contribution(settings));
+			// `Dialogue` in scripts: each run's, over the idle one a script outside every run finds.
+			engine.AddRunService(DialogueRun.FacadeContribution);
+			engine.AddScriptTypes(cPluginId, => DialogueScriptSurface.Populate);
+			if (context.Subsystems != null)
+			{
+				sIdleFacade = new .(null);
+				context.Subsystems.RegisterService(sIdleFacade);
+			}
 		}
 	}
+
+	public override void Unload(PluginContext context)
+	{
+		if (sIdleFacade == null)
+			return;
+		if ((context.Subsystems != null) && (context.Subsystems.FindService(typeof(DialogueFacade)) === sIdleFacade))
+			context.Subsystems.UnregisterService<DialogueFacade>();
+		DeleteAndNullify!(sIdleFacade);
+	}
+
+	/// The `Dialogue` a script outside every run finds while the plugin is loaded: every call refused.
+	private static DialogueFacade sIdleFacade ~ delete _;
 }

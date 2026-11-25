@@ -9,8 +9,9 @@ namespace Sedulous.Engine.Behavior;
 static class ScriptPayloads
 {
 	/// A bus payload in the frame's kinds: the scalar kinds, a Float3 or a Float4, a string,
-	/// an entity tagged with `scene`, or a [ScriptPayload] struct by its bytes (a sequence's
-	/// notice), which the handler's runtime copies. Anything else is Nil, and the
+	/// an entity tagged with `scene`, a [ScriptPayload] struct by its bytes (a sequence's
+	/// notice), which the handler's runtime copies, or a [ScriptPayload] class that is weakly
+	/// held as a weak handle (a dialogue's notice). Anything else is Nil, and the
 	/// handler is called without it.
 	///
 	/// By reference: a struct crosses as the address of the payload's own bytes, which for a small
@@ -31,6 +32,11 @@ static class ScriptPayloads
 		if (type == typeof(Float4)) return .FromFloat4(payload.Get<Float4>());
 		if (type == typeof(String)) return .FromString(payload.Get<String>());
 		if (IsScriptStruct(type)) return .FromStruct(payload.DataPtr, type);
+		if (type.IsObject && type.HasCustomAttribute<ScriptPayloadAttribute>())
+		{
+			if (let held = payload.Get<Object>() as IScriptWeaklyHeld)
+				return .FromWeakRef(held.TakeScriptWeak());
+		}
 		return .Nil;
 	}
 

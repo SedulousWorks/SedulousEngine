@@ -260,6 +260,34 @@ assets: the profile and the sky texture keep theirs. Runtime only, not saved wit
 The facades are the stable verbs and the first place to look; a component is the direct route
 to its data (see Components). `script_api` lists both.
 
+## Dialogue: conversations (the dialogue plugin)
+
+A project that enables the dialogue plugin writes its conversations as text in dialogue files, and
+plays them from script through `Dialogue`. A dialogue file is an asset, reached by its id as any
+asset is: a property tagged `"asset:DialogueResource"`.
+
+- `Dialogue.Play(dialogue)` plays the file's first conversation, `Play(dialogue, "gate")` the one
+  named; false when one is already playing or there is no such conversation. One plays at a time.
+- A line waits for `Dialogue.Advance()`, a choice for `Dialogue.Choose(i)` (from 0), and a command
+  that waits for `Dialogue.Done()`. `Stop()` ends it; `IsPlaying()` says whether one plays.
+- Flags are what `if`, `set` and `clear` read and write: `Dialogue.Flag(name)` and
+  `SetFlag(name, on)`. They live in the game's save (under the `flag.` prefix the plugin's
+  settings give), so they last between runs.
+- `Dialogue.Bind(speaker, entity)` plays a speaker as an entity (a `play`, a `sound` at them, the
+  parts of a `sequence` named for them); without one, the level entity the cast names.
+- `Dialogue.Resume()` goes on with the conversation the save holds a place in: after a load, or
+  back from a command that left (a fight).
+- What a conversation tells the game reaches behaviours at the next scene tick:
+  `onDialogueLine(DialogueLineNotice@ notice)` (its `Speaker`, `ShownName`, `Mood`, `Portrait`,
+  `Text` with each `{Action}` filled with the player's control for it, `LineId`),
+  `onDialogueChoice(DialogueChoiceNotice@ notice)` (`AnswerCount()`, `Answer(i)`),
+  `onDialogueCommand(DialogueCommandNotice@ notice)` (its `Name`, `Waits`, `Leaves`, and its
+  arguments by name: `Text(name)`, `Number(name)`, `Asset(name)`, `Entity(name)`, `Has(name)`) and
+  `onDialogueEnded(DialogueEndedNotice@ notice)` (`Conversation`, `Stopped`, `Left`).
+- A notice lasts as long as its handler: keep what you need from it (its text, an answer), not the
+  notice. A notice kept past its handler reads as gone (`IsValid()` is false).
+- A script outside every run (an editor tool) finds a `Dialogue` that refuses every call.
+
 ## Components
 
 Components are script types too, as data with a few verbs. Every component a script reaches

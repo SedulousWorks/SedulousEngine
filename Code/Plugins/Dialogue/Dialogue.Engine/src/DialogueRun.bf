@@ -380,7 +380,13 @@ class DialogueRunHost : IDialogueHost
 
 	public void OnLineEnded() => StopTalking();
 	public void OnChoice(DialogueChoiceNotice notice) => Publish(DialogueEvents.Choice, notice);
-	public void OnCommand(DialogueCommandNotice notice) => Publish(DialogueEvents.Command, notice);
+	public void OnCommand(DialogueCommandNotice notice)
+	{
+		// An entity argument is looked for in the run's scene, as it is now.
+		if (let scene = CurrentScene)
+			notice.Scene = scene.TakeScriptWeak();
+		Publish(DialogueEvents.Command, notice);
+	}
 	public void OnEnded(DialogueEndedNotice notice) => Publish(DialogueEvents.Ended, notice);
 
 	// The bus owns the notice from here, and deletes it once delivered.
@@ -405,7 +411,7 @@ class DialogueRunService : DialogueRunner
 	public void Bind(StringView speaker, EntityHandle entity) => mRunHost.Bind(speaker, entity);
 }
 
-/// The contribution that gives every run its runner.
+/// The contributions that give every run its runner, and its `Dialogue` script service.
 static class DialogueRun
 {
 	// The plugin's settings, which the contribution's install reads: set as the contribution is
@@ -418,10 +424,15 @@ static class DialogueRun
 			run.Add(new DialogueRunService(sSettings, run));
 	}
 
-	/// The contribution, reading `settings` (the plugin's, which outlive it).
+	/// The runner's contribution, reading `settings` (the plugin's, which outlive it).
 	public static RunServiceContribution Contribution(DialogueSettings settings)
 	{
 		sSettings = settings;
 		return .("dialogue", typeof(DialogueRunService), => Install);
 	}
+
+	private static void InstallFacade(RunBase run) => run.Add(new DialogueFacade(run));
+
+	/// The `Dialogue` script service's contribution: each run's, reaching its runner.
+	public static RunServiceContribution FacadeContribution => .("dialogue.facade", typeof(DialogueFacade), => InstallFacade);
 }
