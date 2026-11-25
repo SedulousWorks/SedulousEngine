@@ -671,6 +671,7 @@ class EditorSessionTests
 	{
 		public static List<String> Log = new .() ~ DeleteContainerAndItems!(_);
 		public static EditorContext ContextSeen;
+		public static AssetPageServicesSource PageServicesSeen;
 		public static Sedulous.Pipeline.Importer.PipelinePluginServices PipelineSeen;
 		private PluginPartKind mKind;
 
@@ -683,7 +684,10 @@ class EditorSessionTests
 		{
 			Log.Add(new $"load:{mKind}");
 			if (mKind == .Editor)
+			{
 				ContextSeen = context.Find<EditorContext>();
+				PageServicesSeen = context.Find<AssetPageServicesSource>();
+			}
 			if (mKind == .Pipeline)
 				PipelineSeen = context.Find<Sedulous.Pipeline.Importer.PipelinePluginServices>();
 		}
@@ -692,7 +696,7 @@ class EditorSessionTests
 	}
 
 	/// A project's plugins enable with it in the embedded runtime, every part an editor takes, the
-	/// Editor part offered the editor's context, and unload as it closes, in reverse.
+	/// Editor part offered the editor's context and the page services, and unload as it closes, in reverse.
 	[Test]
 	public static void AProjectsPluginsEnableWithItInTheEmbeddedRuntimeAndUnloadAsItCloses()
 	{
@@ -734,9 +738,12 @@ class EditorSessionTests
 		embedded.OnStartup(host);
 		ClearAndDeleteItems!(SessionPart.Log);
 		SessionPart.ContextSeen = null;
+		SessionPart.PageServicesSeen = null;
+		let pageServices = scope AssetPageServicesSource();
 		{
 			let services = bench.Services();
 			services.PluginParts = parts;
+			services.PageServices = pageServices;
 			let session = scope EditorSession(services);
 			bench.Session = session;
 			session.SetEmbedded(host, embedded);
@@ -750,6 +757,7 @@ class EditorSessionTests
 			Test.Assert(SessionPart.Log[0] == "load:Engine");
 			Test.Assert(SessionPart.Log[3] == "load:Editor");
 			Test.Assert(SessionPart.ContextSeen === bench.Context);
+			Test.Assert(SessionPart.PageServicesSeen === pageServices, "what its pages are made with");
 			// A Pipeline part adds to the editor's registries.
 			Test.Assert(SessionPart.PipelineSeen != null);
 			Test.Assert(SessionPart.PipelineSeen.Registries.Builders === bench.Builders);

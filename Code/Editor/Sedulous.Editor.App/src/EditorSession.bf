@@ -42,6 +42,9 @@ class EditorSessionServices
 	/// What the project's plugins' Tooling parts add their MCP tools through (null: none).
 	/// BORROWED.
 	public Sedulous.Editor.Mcp.McpPluginServices PluginTools = null;
+	/// What a plugin's Editor part makes its asset pages with, as the editor's own pages are made
+	/// (null: none, and a plugin's pages are not made). BORROWED.
+	public AssetPageServicesSource PageServices = null;
 	/// Seeds a new project's starter content (the executable composes it); null: none. Owned.
 	public delegate void(EditorContext context, EditorProject project) SeedNewProject ~ delete _;
 	/// The project opened, its services up: the application brings its views up (the MCP host,
@@ -133,6 +136,8 @@ class EditorSession
 		if (plugins == null)
 			return;
 		plugins.Provide(context);
+		if (mServices.PageServices != null)
+			plugins.Provide(mServices.PageServices);
 		if (mPipelinePlugins == null)
 			mPipelinePlugins = new .(PipelineRegistries(mServices.Builders, context.Importers, context.Creators));
 		mPipelinePlugins.Attach(plugins);

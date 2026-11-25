@@ -411,6 +411,7 @@ class EditorApplication : IApplication
 		services.UserSettings = mEditorSettings;
 		services.Projects = mProjectManager;
 		services.PluginTools = mMcpPluginTools;
+		services.PageServices = mPageServices;
 		services.SeedNewProject = new (context, project) =>
 			{
 				if (mConfig.SeedNewProject != null)
