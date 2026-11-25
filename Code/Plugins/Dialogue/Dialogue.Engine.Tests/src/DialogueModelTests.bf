@@ -33,6 +33,7 @@ class DialogueModelTests
 	public static void ACompiledDialogueFileReadsBackAsItWasWritten()
 	{
 		let written = scope DialogueSource();
+		written.Cast = MakeGuid(41);
 		let talk = new DialogueConversation();
 		written.Conversations.Add(talk);
 		talk.Id.Set("gate_talk");
@@ -70,6 +71,7 @@ class DialogueModelTests
 
 		let read = scope DialogueSource();
 		RoundTrip(written, read);
+		Test.Assert(read.Cast == written.Cast);
 		Test.Assert(read.Conversations.Count == 1);
 		let back = read.Conversations[0];
 		Test.Assert((back.Id == "gate_talk") && (back.Level == "Levels/Village"));

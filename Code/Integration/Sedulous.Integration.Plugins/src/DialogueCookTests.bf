@@ -94,6 +94,7 @@ static class DialogueCookTests
 			castInstance.Id, listInstance.Id);
 		let list = scope DialogueAssetListAsset();
 		list.Entries.Add(new .("lane", lane));
+		list.Entries.Add(new .("gate", gate)); // the first file's own, which it does not refer to
 		Test.Assert(listInstance.WriteObject(list) case .Ok);
 		castId = castInstance.Id;
 		assetsId = listInstance.Id;
@@ -154,6 +155,7 @@ static class DialogueCookTests
 			defer delete read;
 			let source = read as DialogueSource;
 			Test.Assert((source != null) && (source.Conversations.Count == 1));
+			Test.Assert(source.Cast == castId, "the runner loads it for the lines' speakers");
 			let conversation = source.Conversations[0];
 			Test.Assert(conversation.Id == "gate");
 			Test.Assert(conversation.Steps[0].Kind == .Line);
@@ -179,6 +181,24 @@ static class DialogueCookTests
 			let selfJump = source.Conversations[0].Steps[1];
 			Test.Assert((selfJump.Kind == .Jump) && (selfJump.File == "lane"));
 			Test.Assert(selfJump.Asset == Guid(), "a jump into its own file by its own name takes no asset");
+		}
+		{
+			// Loaded, the resource names the cast; an export takes the cast and every dialogue asset
+			// but the file itself.
+			let loaded = scope DialogueFactory().Create(null, session.Project.CookedDb.GetInstance(gate));
+			defer delete loaded;
+			let resource = loaded as DialogueResource;
+			Test.Assert((resource != null) && (resource.Cast == castId));
+			let read = session.Project.SourceDb.ReadObject(gate);
+			defer delete read;
+			let context = scope AssetBuildContext();
+			context.SourceDatabase = session.Project.SourceDb;
+			context.Source = session.Project.SourceDb.GetInstance(gate);
+			let deps = scope AssetDependencies();
+			builders.Find(typeof(DialogueAsset)).ScanDependencies(read as DialogueAsset, context, deps);
+			Test.Assert(deps.References.Contains(castId));
+			Test.Assert(deps.References.Contains(lane));
+			Test.Assert(!deps.References.Contains(gate), "not itself");
 		}
 
 		// A file naming a mood the keeper lacks does not cook, nor one jumping to a conversation the

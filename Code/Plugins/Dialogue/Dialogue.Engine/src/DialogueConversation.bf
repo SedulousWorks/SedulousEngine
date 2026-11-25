@@ -181,6 +181,8 @@ class DialogueLineText : ISerializable
 /// The runtime product: one dialogue file's conversations and texts, shared by every play.
 class DialogueResource
 {
+	/// The cast its lines' speakers are from (a cooked DialogueCastSource).
+	public Guid Cast = .();
 	public List<DialogueConversation> Conversations = new .() ~ DeleteContainerAndItems!(_);
 	public List<DialogueLineText> Lines = new .() ~ DeleteContainerAndItems!(_);
 
@@ -210,11 +212,13 @@ class DialogueResource
 /// The cooked form.
 class DialogueSource : ISerializable
 {
+	public Guid Cast = .();
 	public List<DialogueConversation> Conversations = new .() ~ DeleteContainerAndItems!(_);
 	public List<DialogueLineText> Lines = new .() ~ DeleteContainerAndItems!(_);
 
 	public void Serialize(ISerializer ar)
 	{
+		SerializeValue(ar, "cast", ref Cast);
 		ar.Key("conversations");
 		SerializeList(ar, Conversations);
 		ar.Key("lines");
@@ -238,6 +242,7 @@ class DialogueFactory : IResourceFactory
 		if (source == null)
 			return null;
 		let product = new DialogueResource();
+		product.Cast = source.Cast;
 		Swap!(product.Conversations, source.Conversations);
 		Swap!(product.Lines, source.Lines);
 		return product;

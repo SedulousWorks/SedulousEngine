@@ -343,18 +343,36 @@ class DialogueBuilder : IAssetBuilder
 
 	/// The cast, the dialogue assets, the input maps and every other dialogue file are read: a
 	/// change to any of them can change what this file's checks find (the flags the others set, the
-	/// conversations a jump into one names).
+	/// conversations a jump into one names). The cast and every dialogue asset but the file itself
+	/// are what the cooked file refers to at runtime.
 	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)
 	{
 		let file = (DialogueAsset)asset;
 		let db = DialogueCook.SourceDatabase(context);
 		if (db == null)
 			return;
-		if (file.Cast != .())
-			outDeps.Reads.Add(file.Cast);
-		if (file.Assets != .())
-			outDeps.Reads.Add(file.Assets);
 		let self = (context.Source != null) ? context.Source.Id : Guid();
+		if (file.Cast != .())
+		{
+			outDeps.Reads.Add(file.Cast);
+			outDeps.References.Add(file.Cast); // the runner loads it for the lines' speakers
+		}
+		if (file.Assets != .())
+		{
+			outDeps.Reads.Add(file.Assets);
+			// What the conversations play (sounds, sequences, other dialogue files, commands'
+			// assets) is reached through the dialogue assets, so an export takes every one.
+			let read = db.ReadObject(file.Assets);
+			defer { delete read; }
+			if (let list = read as DialogueAssetListAsset)
+			{
+				for (let entry in list.Entries)
+				{
+					if ((entry.Asset != .()) && (entry.Asset != self))
+						outDeps.References.Add(entry.Asset);
+				}
+			}
+		}
 		if (let root = db.RootGroup)
 		{
 			let maps = scope List<Instance>();
@@ -398,6 +416,7 @@ class DialogueBuilder : IAssetBuilder
 		if (!parse.Ok)
 			return .Err(.InvalidArgument);
 		let cooked = scope DialogueSource();
+		cooked.Cast = ((DialogueAsset)asset).Cast;
 		Swap!(cooked.Conversations, parse.Conversations);
 		Swap!(cooked.Lines, parse.Lines);
 		return context.Output.WriteObject(cooked);
