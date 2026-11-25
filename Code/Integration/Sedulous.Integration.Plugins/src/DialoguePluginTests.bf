@@ -7,6 +7,7 @@ using Sedulous.Engine.Project;
 using Sedulous.Engine.Domain;
 using Sedulous.Engine.Composition;
 using Sedulous.Engine.Run;
+using Sedulous.Sequence;
 using Dialogue;
 
 namespace Sedulous.Integration.Plugins;
@@ -67,6 +68,7 @@ class DialoguePluginTests
 		Test.Assert(EnabledPlugin.WriteSettings(chosen, entry.Settings) case .Ok);
 		entries.Add(entry);
 
+		SequenceTracks.Unregister<DialogueLineTrack>(); // what another test registered by hand
 		let subsystems = scope SubsystemManager();
 		let host = scope PluginHost(subsystems, .Player, EngineVersion.String);
 		let engineServices = scope EnginePluginServices();
@@ -83,6 +85,7 @@ class DialoguePluginTests
 		// The domain: its resource types, which the composition builds the factories from.
 		Test.Assert(HasDomain(cId));
 		Test.Assert(SourceRegistered());
+		Test.Assert(SequenceTracks.IsRegistered(typeof(DialogueLineTrack)), "its track kind");
 
 		// Every run gets a runner, its flags in the run's save under the settings' prefix.
 		{
@@ -104,6 +107,7 @@ class DialoguePluginTests
 		Test.Assert(live.Get<DialogueRunService>() == null, "its code is going: out of the live run");
 		Test.Assert(!host.IsLoaded(cId));
 		Test.Assert(!HasDomain(cId), "taken out with the plugin");
+		Test.Assert(!SequenceTracks.IsRegistered(typeof(DialogueLineTrack)), "its track kind too");
 		Test.Assert(!SourceRegistered());
 	}
 

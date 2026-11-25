@@ -291,6 +291,9 @@ class DialogueRunner : IRunService
 	/// The id of the last line shown, the resume record's anchor.
 	String mLastLine = new .() ~ delete _;
 	bool mPumping = false;
+	/// A line shown on its own (a sequence's), not a conversation's; 0 for none.
+	uint32 mShownLine = 0;
+	uint32 mNextLine = 1;
 
 	/// `settings` and `host` outlive the runner.
 	public this(DialogueSettings settings, IDialogueHost host)
@@ -311,6 +314,8 @@ class DialogueRunner : IRunService
 			GlobalLog(.Warning, "Dialogue: play: the conversation `{}` is still playing", mConversation);
 			return false;
 		}
+		if (mShownLine != 0)
+			EndLine(mShownLine); // a conversation takes over from a sequence's line
 		let file = mHost.LoadDialogue(dialogue);
 		if (file == null)
 		{
@@ -331,6 +336,11 @@ class DialogueRunner : IRunService
 	/// Goes on past the line showing; false when none is.
 	public bool Advance()
 	{
+		if (mShownLine != 0)
+		{
+			EndLine(mShownLine);
+			return true;
+		}
 		if (mWait != .Line)
 			return false;
 		mHost.OnLineEnded();
@@ -373,6 +383,59 @@ class DialogueRunner : IRunService
 	{
 		if (mPlaying)
 			Finish(true, false);
+	}
+
+	/// Shows one line on its own (a sequence's line track): the game hears it as a conversation's
+	/// line, Advance ends it, and DialogueEnded (no conversation) follows. Its token, or 0, logged,
+	/// while a conversation plays. A line already shown gives way. `cast` is BORROWED, for the call.
+	public uint32 ShowLine(DialogueCastResource cast, StringView speaker, StringView mood, StringView text, StringView lineId)
+	{
+		if (mPlaying)
+		{
+			GlobalLog(.Warning, "Dialogue: a sequence's line waits for no one: the conversation `{}` is playing", mConversation);
+			return 0;
+		}
+		if (mShownLine != 0)
+			EndLine(mShownLine);
+		let notice = LineNotice(cast, speaker, mood, text, lineId, let entry);
+		mShownLine = mNextLine++;
+		mHost.OnLine(notice, entry);
+		return mShownLine;
+	}
+
+	/// Whether the line `token` is still shown.
+	public bool IsShowing(uint32 token) => (token != 0) && (token == mShownLine);
+
+	/// Ends the line `token` if it is still shown (its play let go of it).
+	public void EndLine(uint32 token)
+	{
+		if ((token == 0) || (token != mShownLine))
+			return;
+		mShownLine = 0;
+		mHost.OnLineEnded();
+		mHost.OnEnded(new DialogueEndedNotice());
+	}
+
+	// A line's notice: its speaker's name, mood and portrait from `cast` (null: none), its text
+	// filled; `entry` the speaker's cast entry, or null.
+	DialogueLineNotice LineNotice(DialogueCastResource cast, StringView speaker, StringView mood, StringView text, StringView lineId,
+		out DialogueSpeaker entry)
+	{
+		let notice = new DialogueLineNotice();
+		notice.Speaker.Set(speaker);
+		notice.Mood.Set(mood);
+		notice.LineId.Set(lineId);
+		Fill(text, notice.Text);
+		entry = cast?.Find(speaker);
+		if (entry != null)
+		{
+			notice.ShownName.Set(entry.ShownName);
+			if (notice.Mood.IsEmpty && !entry.Moods.IsEmpty)
+				notice.Mood.Set(entry.Moods[0].Name); // the first is the default
+			let found = entry.FindMood(notice.Mood);
+			notice.Portrait = ((found != null) && (found.Portrait != .())) ? found.Portrait : entry.Portrait;
+		}
+		return notice;
 	}
 
 	/// Goes on with the conversation the resume record names; false when there is none, or one is
@@ -474,6 +537,7 @@ class DialogueRunner : IRunService
 	/// The run is ending: nothing is left to tell, and the resume record stays for the next.
 	public void OnRunStopping(IRun run)
 	{
+		mShownLine = 0;
 		mPlaying = false;
 		mWait = .Nothing;
 		mConversation.Clear();
@@ -558,23 +622,10 @@ class DialogueRunner : IRunService
 			switch (step.Kind)
 			{
 			case .Line:
-				let notice = new DialogueLineNotice();
+				let cast = (mCast != .()) ? mHost.LoadCast(mCast) : null;
+				let notice = LineNotice(cast, step.Speaker, step.Mood, file.Text(step.LineId), step.LineId, let speaker);
 				notice.Dialogue = mDialogue;
 				notice.Conversation.Set(mConversation);
-				notice.Speaker.Set(step.Speaker);
-				notice.Mood.Set(step.Mood);
-				notice.LineId.Set(step.LineId);
-				Fill(file.Text(step.LineId), notice.Text);
-				let cast = (mCast != .()) ? mHost.LoadCast(mCast) : null;
-				let speaker = cast?.Find(step.Speaker);
-				if (speaker != null)
-				{
-					notice.ShownName.Set(speaker.ShownName);
-					if (notice.Mood.IsEmpty && !speaker.Moods.IsEmpty)
-						notice.Mood.Set(speaker.Moods[0].Name); // the first is the default
-					let mood = speaker.FindMood(notice.Mood);
-					notice.Portrait = ((mood != null) && (mood.Portrait != .())) ? mood.Portrait : speaker.Portrait;
-				}
 				mLastLine.Set(step.LineId);
 				WriteResume(conversation, mStep);
 				mWait = .Line;

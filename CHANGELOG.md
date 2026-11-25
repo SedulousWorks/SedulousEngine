@@ -15,7 +15,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   answer it with `Advance`, `Choose` and `Done`, read and set its flags (kept in the game's save),
   bind speakers to entities, resume it after a load, and hear `onDialogueLine`,
   `onDialogueChoice`, `onDialogueCommand` and `onDialogueEnded`. A conversation stages itself with
-  `play` (a clip on a speaker), `sound`, `fade` and `sequence`.
+  `play` (a clip on a speaker), `sound`, `fade` and `sequence`, and a sequence carries lines on a
+  Dialogue Lines track, its play waiting at each until it is advanced.
 - Sequences: a sequence asset (File > New, under Animation) is a cutscene timeline that drives
   several entities at once: property and transform tracks, skeletal clips, sounds, camera cuts,
   fades, events, holds that wait for the game, and sequences nested in others. Scripts play one with `scene.Sequences.Play(sequence)`, fill its

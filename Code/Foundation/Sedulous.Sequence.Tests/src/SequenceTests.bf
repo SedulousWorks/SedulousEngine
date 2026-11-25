@@ -189,6 +189,26 @@ class SequenceTests
 		return sequence;
 	}
 
+	/// A kind taken back (a plugin unloading) leaves the list and the registry, and registering
+	/// it again (the plugin loading again) brings both back, its reader included.
+	[Test]
+	public static void ATrackKindTakenBackReadsAgainWhenRegisteredAgain()
+	{
+		let id = TypeIdOf(typeof(PauseProbeTrack).GetFullName(.. scope .()));
+		SequenceTracks.Register<PauseProbeTrack>();
+		Test.Assert(SequenceTracks.IsRegistered(typeof(PauseProbeTrack)));
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(id));
+		SequenceTracks.Unregister<PauseProbeTrack>();
+		Test.Assert(!SequenceTracks.IsRegistered(typeof(PauseProbeTrack)));
+		Test.Assert(!GlobalSerializableRegistry.IsRegistered(id));
+		// A host took the reader back while the kind stayed listed: registering again restores it.
+		SequenceTracks.Register<PauseProbeTrack>();
+		GlobalSerializableRegistry.Unregister(id);
+		SequenceTracks.Register<PauseProbeTrack>();
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(id), "its reader again");
+		SequenceTracks.Unregister<PauseProbeTrack>();
+	}
+
 	[Test]
 	public static void OnePlayDrivesSeveralBoundEntitiesAtOnce()
 	{

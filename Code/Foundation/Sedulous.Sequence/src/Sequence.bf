@@ -183,14 +183,23 @@ static class SequenceTracks
 {
 	private static List<Type> sKinds = new .() ~ delete _;
 
-	/// Registers a track kind. Idempotent.
+	/// Registers a track kind. Idempotent. Its reader is registered each time, so a kind whose
+	/// reader a plugin host took back (its plugin unloaded) reads again when it registers again.
 	public static void Register<T>() where T : SequenceTrack, new, delete
 	{
 		let type = typeof(T);
-		if (sKinds.Contains(type))
-			return;
-		sKinds.Add(type);
+		if (!sKinds.Contains(type))
+			sKinds.Add(type);
 		GlobalSerializableRegistry.Register(TypeIdOf(type.GetFullName(.. scope .())), () => new T());
+	}
+
+	/// Takes a track kind back (a plugin unloading): out of the list the editor offers, and its
+	/// reader out of the registry.
+	public static void Unregister<T>() where T : SequenceTrack
+	{
+		let type = typeof(T);
+		sKinds.Remove(type);
+		GlobalSerializableRegistry.Unregister(TypeIdOf(type.GetFullName(.. scope .())));
 	}
 
 	/// The kinds here: property and event tracks. Idempotent; call before reading a sequence.
@@ -202,4 +211,6 @@ static class SequenceTracks
 
 	/// Every registered track kind.
 	public static Span<Type> Kinds => sKinds;
+	/// Whether `type` is a registered track kind.
+	public static bool IsRegistered(Type type) => sKinds.Contains(type);
 }

@@ -52,6 +52,9 @@ class DialogueRunTests
 		SequenceFactory mSequences = new .() ~ delete _;
 		public ResourceManager Resources ~ delete _;
 		public Guid Gate;
+		public Guid CastId;
+		/// Where a test authors more (a sequence of its own).
+		public ContentDatabase Database => mDb;
 		public Guid Walk;
 
 		public this(StringView talk = cStaged)
@@ -60,6 +63,9 @@ class DialogueRunTests
 			DialogueResources.RegisterAll(mTypes);
 			SequenceResources.RegisterAll();
 			SequenceResources.RegisterAll(mTypes);
+			// What the plugin's load registers: the line track kind.
+			SequenceTracks.Register<DialogueLineTrack>();
+			mTypes.Register(TypeIdOf(typeof(DialogueLineTrack).GetFullName(.. scope .())), () => new DialogueLineTrack());
 			RemoveDirectoryRecursive(cDir);
 			CreateDirectory(cDir);
 			mMount = new .(cDir);
@@ -89,6 +95,7 @@ class DialogueRunTests
 			keeper.Entity.Set("Keeper");
 			cast.Speakers.Add(keeper);
 			Test.Assert(castInstance.WriteObject(cast) case .Ok);
+			CastId = castInstance.Id;
 
 			let cue = scope DialogueCommandForm();
 			let error = scope String();
@@ -135,7 +142,8 @@ class DialogueRunTests
 		ResourceSource mSource ~ delete _;
 		public Scene World ~ delete _;
 		public PostProcessSystem Post;
-		public DialogueRunService Runner ~ delete _;
+		/// The run's: it holds it, as the plugin's contribution puts it there.
+		public DialogueRunService Runner;
 		public List<String> Lines = new .() ~ DeleteContainerAndItems!(_);
 		delegate void(Variant) mHeard ~ delete _;
 
@@ -148,7 +156,7 @@ class DialogueRunTests
 			Run.SetScene(World);
 			SequenceDomain.AddSequenceSceneSystems(World);
 			Post = World.AddSystem<PostProcessSystem>();
-			Runner = new .(Settings, Run);
+			Runner = Run.Add(new DialogueRunService(Settings, Run));
 			mHeard = new (payload) =>
 				{
 					if (let notice = payload.Get<Object>() as DialogueLineNotice)
@@ -163,7 +171,8 @@ class DialogueRunTests
 		{
 			// The runner lets go of the scene's fade, then the scene goes before the run it reports
 			// into.
-			DeleteAndNullify!(Runner);
+			Run.RemoveService(typeof(DialogueRunService));
+			Runner = null;
 			Run.SetScene(null);
 			DeleteAndNullify!(World);
 		}
@@ -224,6 +233,63 @@ class DialogueRunTests
 		Test.Assert(r.Runner.Waiting == .Line);
 	}
 
+	/// A sequence's line track: the play shows each line through the run's runner and holds at its
+	/// end until it is advanced.
+	[Test]
+	public static void ASequencesLineTrackShowsItsLineThroughTheRunsRunnerAndHoldsUntilItIsAdvanced()
+	{
+		let r = scope Stage();
+		// A sequence of one line track, cooked and loaded as any sequence: two lines, the second's
+		// text from the dialogue file.
+		let instance = r.Store.Database.RootGroup.CreateInstance("cutscene", typeof(SequenceSource).GetFullName(.. scope .()));
+		{
+			let source = scope SequenceSource();
+			let lines = new DialogueLineTrack();
+			lines.Cast.SetId(r.Store.CastId);
+			let first = new DialogueLineSection();
+			first.Start = 0.5f;
+			first.Length = 1.0f;
+			first.Speaker.Set("keeper");
+			first.Text.Set("Look.");
+			lines.Sections.Add(first);
+			let second = new DialogueLineSection();
+			second.Start = 2.0f;
+			second.Length = 1.0f;
+			second.Speaker.Set("keeper");
+			second.Dialogue.SetId(r.Store.Gate);
+			second.LineId.Set("gate.1");
+			lines.Sections.Add(second);
+			source.Sequence.Tracks.Add(lines);
+			source.Sequence.Duration = 4.0f;
+			Test.Assert(instance.WriteObject(source) case .Ok);
+		}
+		Test.Assert(SequenceTracks.IsRegistered(typeof(DialogueLineTrack)), "the sequence panel's Track menu offers it");
+
+		let system = r.World.GetSystem<SequenceSystem>();
+		let loaded = r.Store.Resources.Bind<SequenceResource>(instance.Id).Get;
+		Test.Assert(loaded != null);
+		Test.Assert(loaded.Sequence.Tracks.Count == 1);
+		let play = system.Play(loaded, instance.Id);
+		for (int i < 4)
+			r.Frame(0.5f); // past the first line's end at 1.5: held there
+		Test.Assert(r.Lines.Count == 1);
+		Test.Assert(r.Lines[0] == "The Keeper: Look.");
+		Test.Assert(system.Find(play) != null);
+		Test.Assert(Near(system.Find(play).Time, 1.5f));
+		Test.Assert(system.Find(play).IsHeld);
+
+		Test.Assert(r.Runner.Advance());
+		for (int i < 4)
+			r.Frame(0.5f);
+		Test.Assert(r.Lines.Count == 2);
+		Test.Assert(r.Lines[1] == "The Keeper: Done.", "the dialogue file's line gate.1");
+		Test.Assert(Near(system.Find(play).Time, 3.0f));
+		Test.Assert(r.Runner.Advance());
+		for (int i < 4)
+			r.Frame(0.5f);
+		Test.Assert(system.Find(play) == null, "played to its end");
+	}
+
 	/// A fade held when the runner goes (its run ending mid conversation) is let go with it.
 	[Test]
 	public static void AFadeHeldIsLetGoWithTheRunner()
@@ -233,7 +299,8 @@ class DialogueRunTests
 		Test.Assert(r.Runner.Play(r.Store.Gate, "gate"));
 		r.Frame(1.0f);
 		Test.Assert(Near(r.Post.Fade.Amount, 1.0f));
-		DeleteAndNullify!(r.Runner);
+		r.Run.RemoveService(typeof(DialogueRunService));
+		r.Runner = null;
 		Test.Assert(!r.Post.FadeClaims.Winning(?), "released as the runner went");
 	}
 }

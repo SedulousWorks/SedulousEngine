@@ -441,6 +441,36 @@ class DialogueRunnerTests
 		Test.Assert(!f.Runner.IsPlaying);
 	}
 
+	[Test]
+	public static void ALineShownOnItsOwnEndsOnAdvanceAndGivesWayToAConversation()
+	{
+		let f = scope Fixture();
+		f.Add(f.Gate, "conversation gate\n" +
+			"@ visitor: A conversation.\n");
+		let line = f.Runner.ShowLine(f.Host.Cast, "keeper", "", "Press {Interact}.", "cutscene.1");
+		Test.Assert(line != 0);
+		Test.Assert(f.Runner.IsShowing(line));
+		Test.Assert(!f.Runner.IsPlaying);
+		Test.Assert(f.Told() == "keeper: Press E.\n");
+		Test.Assert(f.Host.LastLine.ShownName == "The Keeper");
+		Test.Assert(f.Host.LastLine.Conversation.IsEmpty);
+		Test.Assert(f.Runner.Advance());
+		Test.Assert(!f.Runner.IsShowing(line));
+		Test.Assert(f.Told() == "ended \n", "no conversation");
+		Test.Assert(!f.Runner.Advance());
+
+		// A conversation takes over from a line still shown.
+		let second = f.Runner.ShowLine(f.Host.Cast, "keeper", "", "Wait.", "");
+		Test.Assert(f.Runner.Play(f.Gate, "gate"));
+		Test.Assert(!f.Runner.IsShowing(second));
+		Test.Assert(f.Told() == "keeper: Wait.\nended \nvisitor: A conversation.\n");
+
+		// While it plays, a sequence's line is refused.
+		Test.Assert(f.Runner.ShowLine(f.Host.Cast, "keeper", "", "Refused.", "") == 0);
+		f.Runner.EndLine(second); // long gone: nothing happens
+		Test.Assert(f.Told().IsEmpty);
+	}
+
 	/// A file reloaded under a playing conversation (its old product gone) is the one the runner
 	/// reads from then on.
 	[Test]
