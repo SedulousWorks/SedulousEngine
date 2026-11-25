@@ -21,7 +21,7 @@ enum DialogueArgumentKind : uint8
 	case Speaker;
 	/// A flag (one word).
 	case Flag;
-	/// A project asset of `AssetType`, by path (any words).
+	/// A dialogue asset of `AssetType`, by its name in the project's dialogue assets (one word).
 	case Asset;
 	/// One of the named list `ListName` (any words).
 	case List;
@@ -107,6 +107,16 @@ class DialogueParse
 	/// By line.
 	public List<DialogueProblem> Problems = new .() ~ DeleteContainerAndItems!(_);
 
+	/// Sorts the problems by line, keeping the order of those on one line.
+	public void SortProblems()
+	{
+		for (int i = 1; i < Problems.Count; i++)
+		{
+			for (int j = i; (j > 0) && (Problems[j - 1].Line > Problems[j].Line); j--)
+				Swap!(Problems[j], Problems[j - 1]);
+		}
+	}
+
 	/// No errors (warnings may remain).
 	public bool Ok
 	{
@@ -151,12 +161,7 @@ static class DialogueFormat
 	{
 		let parser = scope Parser(text, commands, outParse);
 		parser.Run();
-		let problems = outParse.Problems;
-		for (int i = 1; i < problems.Count; i++)
-		{
-			for (int j = i; (j > 0) && (problems[j - 1].Line > problems[j].Line); j--)
-				Swap!(problems[j], problems[j - 1]);
-		}
+		outParse.SortProblems();
 	}
 
 	// ---- characters and words ----------------------------------------------------------------
@@ -507,7 +512,7 @@ static class DialogueFormat
 	}
 
 	static bool SingleWord(DialogueArgumentKind kind) =>
-		(kind == .Word) || (kind == .Number) || (kind == .OneOf) || (kind == .Speaker) || (kind == .Flag);
+		(kind == .Word) || (kind == .Number) || (kind == .OneOf) || (kind == .Speaker) || (kind == .Flag) || (kind == .Asset);
 
 	/// What a match has taken: per argument part, in order, its text, number and whether it was
 	/// written; per optional group (index = group), whether it was taken.
@@ -628,7 +633,7 @@ static class DialogueFormat
 						return true;
 				}
 				return false;
-			case .Speaker, .Flag:
+			case .Speaker, .Flag, .Asset:
 				return IsWord(text);
 			default:
 				return true;

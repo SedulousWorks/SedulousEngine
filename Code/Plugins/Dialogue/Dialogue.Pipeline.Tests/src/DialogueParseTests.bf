@@ -190,11 +190,11 @@ class DialogueParseTests
 			"wait 1.5\n" +
 			"play keeper Wave Hello and wait\n" +
 			"play keeper Nod\n" +
-			"sound Sounds/Door Creak at keeper\n" +
-			"sound Sounds/Wind\n" +
+			"sound door_creak at keeper\n" +
+			"sound wind\n" +
 			"fade out\n" +
 			"fade in for 0.5 #FFFFFF\n" +
-			"sequence Cutscenes/Gate Open and wait\n" +
+			"sequence gate_open and wait\n" +
 			"jump farewell\n", parse);
 		let staged = Only(parse);
 		Test.Assert(staged.Steps.Count == 10);
@@ -206,7 +206,7 @@ class DialogueParseTests
 		Test.Assert(staged.Steps[1].Waits);
 		Test.Assert(!staged.Steps[2].Waits);
 		Test.Assert(staged.Steps[3].Kind == .Sound);
-		Test.Assert(staged.Steps[3].Name == "Sounds/Door Creak");
+		Test.Assert(staged.Steps[3].Name == "door_creak");
 		Test.Assert(staged.Steps[3].Speaker == "keeper");
 		Test.Assert(staged.Steps[4].Speaker.IsEmpty);
 		Test.Assert(staged.Steps[5].Kind == .Fade);
@@ -219,7 +219,7 @@ class DialogueParseTests
 		Test.Assert(Near(staged.Steps[6].Color.Z, 1.0f));
 		Test.Assert(Near(staged.Steps[6].Color.W, 1.0f), "#RRGGBB is opaque");
 		Test.Assert(staged.Steps[7].Kind == .Sequence);
-		Test.Assert(staged.Steps[7].Name == "Cutscenes/Gate Open");
+		Test.Assert(staged.Steps[7].Name == "gate_open");
 		Test.Assert(staged.Steps[7].Waits);
 		Test.Assert(staged.Steps[8].Kind == .Jump);
 		Test.Assert(staged.Steps[8].Name == "farewell");

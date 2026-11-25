@@ -12,6 +12,13 @@ namespace Dialogue;
 [Reflect(.All)]
 class DialogueSettings : ISerializable
 {
+	/// The project's cast (a DialogueCastAsset): who its conversations' lines may name.
+	[Setting("Cast", "DialogueCastAsset", "(none)", "Dialogue")]
+	public Guid Cast = .();
+	/// The project's dialogue assets (a DialogueAssetListAsset): the sounds, sequences and other
+	/// assets its conversations name, each by a name of its own.
+	[Setting("Dialogue assets", "DialogueAssetListAsset", "(none)", "Dialogue")]
+	public Guid Assets = .();
 	/// The commands the game declares, each a form: literal words, `<name:kind>` arguments,
 	/// `[optional parts]` and how it waits ("move <who:entity> to <target:entity> [and wait]").
 	[Setting("Commands", "Dialogue")]
@@ -39,6 +46,8 @@ class DialogueSettings : ISerializable
 
 	public void Serialize(ISerializer ar)
 	{
+		SerializeValue(ar, "cast", ref Cast);
+		SerializeValue(ar, "assets", ref Assets);
 		ar.Key("commands");
 		SerializeList(ar, Commands);
 		ar.Key("providedFlags");

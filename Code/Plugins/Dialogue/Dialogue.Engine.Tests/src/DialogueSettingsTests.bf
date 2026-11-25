@@ -17,6 +17,7 @@ class DialogueSettingsTests
 	{
 		let settings = scope DialogueSettings();
 		Test.Assert(EnabledPlugin.ReadSettings(default, settings) case .Ok);
+		Test.Assert(settings.Cast == .() && settings.Assets == .());
 		Test.Assert(settings.Commands.IsEmpty);
 		Test.Assert(settings.ProvidedFlags.IsEmpty);
 		Test.Assert(settings.FlagPrefix == "flag.");
@@ -38,6 +39,8 @@ class DialogueSettingsTests
 		written.TypingSpeed = 60;
 		written.AdvanceAction.Set("Confirm");
 		written.PortraitOnRight = true;
+		written.Cast = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+		written.Assets = Guid(11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
 		let entry = scope List<uint8>();
 		Test.Assert(EnabledPlugin.WriteSettings(written, entry) case .Ok);
 
@@ -52,6 +55,7 @@ class DialogueSettingsTests
 		Test.Assert(read.TypingSpeed == 60);
 		Test.Assert(read.AdvanceAction == "Confirm");
 		Test.Assert(read.PortraitOnRight);
+		Test.Assert((read.Cast == written.Cast) && (read.Assets == written.Assets));
 	}
 
 	[Test]
@@ -65,6 +69,6 @@ class DialogueSettingsTests
 			count++;
 			Test.Assert(field.GetCustomAttribute<SettingAttribute>() case .Ok, scope $"{field.Name} has no label");
 		}
-		Test.Assert(count == 7);
+		Test.Assert(count == 9);
 	}
 }

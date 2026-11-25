@@ -57,11 +57,11 @@ class DialogueFormTests
 		Test.Assert(fight.Parts[1].Kind == .List);
 		Test.Assert(fight.Parts[1].ListName == "foes");
 
-		let show = Parsed("show card <card:asset(Texture)> waits", scope .());
+		let show = Parsed("show card <card:asset(TextureAsset)> waits", scope .());
 		Test.Assert(show.Name == "show card");
 		Test.Assert(show.Wait == .Always);
 		Test.Assert(show.Parts[2].Kind == .Asset);
-		Test.Assert(show.Parts[2].AssetType == "Texture");
+		Test.Assert(show.Parts[2].AssetType == "TextureAsset");
 
 		let note = Parsed("note <who:speaker> <what:flag> <tag:word> <text:text>", scope .());
 		Test.Assert(note.Parts[1].Kind == .Speaker);
