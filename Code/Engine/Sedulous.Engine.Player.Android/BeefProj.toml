@@ -8,6 +8,8 @@ StartupObject = "Sedulous.Engine.Player.Android.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+# The engine's official dialogue plugin: a player links its Engine part.
+"Dialogue.Engine" = "*"
 "Sedulous.VFS" = "*"
 "Sedulous.VFS.Pak" = "*"
 "Sedulous.VFS.Zip" = "*"

@@ -20,3 +20,5 @@ corlib = "*"
 # Every engine plugin's parts this role loads, compiled in: each registers itself and does
 # nothing until a project enables it.
 "Imgui.Engine" = "*"
+# The engine's official dialogue plugin: a player links its Engine part.
+"Dialogue.Engine" = "*"

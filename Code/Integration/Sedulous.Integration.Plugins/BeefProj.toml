@@ -28,3 +28,8 @@ corlib = "*"
 "NativeSample.Pipeline" = "*"
 "NativeSample.Tooling" = "*"
 "NativeSample.Editor" = "*"
+# The engine's official dialogue package, every part, as an editor links them.
+"Dialogue.Engine" = "*"
+"Dialogue.Pipeline" = "*"
+"Dialogue.Tooling" = "*"
+"Dialogue.Editor" = "*"

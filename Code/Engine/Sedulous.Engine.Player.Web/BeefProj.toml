@@ -8,6 +8,8 @@ StartupObject = "Sedulous.Engine.Player.Web.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+# The engine's official dialogue plugin: a player links its Engine part.
+"Dialogue.Engine" = "*"
 "Sedulous.Engine.Player" = "*"
 "Sedulous.Engine.Project" = "*"
 "Sedulous.Graphics" = "*"

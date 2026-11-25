@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Dialogue.Tooling"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Dialogue.Engine" = "*"

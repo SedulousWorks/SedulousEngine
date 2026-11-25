@@ -8,6 +8,10 @@ StartupObject = "Sedulous.Tools.Cook.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+# The engine's official dialogue plugin: the tools link every part but the editor's.
+"Dialogue.Engine" = "*"
+"Dialogue.Pipeline" = "*"
+"Dialogue.Tooling" = "*"
 "Sedulous.Content" = "*"
 "Sedulous.VFS" = "*"
 "Sedulous.Pipeline.Core" = "*"
