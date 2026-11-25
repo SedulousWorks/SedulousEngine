@@ -1,15 +1,20 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Serialization;
 using Sedulous.Runtime;
 using Sedulous.Engine.Project;
+using Sedulous.Engine.Domain;
+using Sedulous.Engine.Composition;
 using Dialogue;
 
 namespace Sedulous.Integration.Plugins;
 
 /// The engine's official dialogue plugin, linked here as the engine's hosts link it: its manifest
 /// reads and passes the host's checks, an editor links its four parts, and a project that enables
-/// it loads it, with the project's settings for it read into its settings type.
+/// it loads it: the project's settings for it read into its settings type, its domain added to the
+/// engine's composition (the factories for a cooked dialogue file and cast), and all of it taken out
+/// again when it unloads.
 class DialoguePluginTests
 {
 	const String cId = "dialogue";
@@ -36,6 +41,18 @@ class DialoguePluginTests
 			Test.Assert(seen[i], "every kind linked, as an editor links them");
 	}
 
+	static bool HasDomain(StringView id)
+	{
+		for (let module in EngineComposition.Modules)
+		{
+			if (module.Id == id)
+				return true;
+		}
+		return false;
+	}
+
+	static bool SourceRegistered() => GlobalSerializableRegistry.IsRegistered(TypeIdOf(typeof(DialogueSource).GetFullName(.. scope .())));
+
 	[Test]
 	public static void AProjectThatEnablesDialogueLoadsItItsSettingsReadFromTheProjectsEntry()
 	{
@@ -51,6 +68,8 @@ class DialoguePluginTests
 
 		let subsystems = scope SubsystemManager();
 		let host = scope PluginHost(subsystems, .Player, EngineVersion.String);
+		let engineServices = scope EnginePluginServices();
+		Test.Assert(engineServices.Attach(host));
 		Test.Assert(host.AddRegistered() case .Ok);
 		host.Load((Span<EnabledPlugin>)entries, scope .());
 		Test.Assert(host.IsLoaded(cId));
@@ -60,7 +79,32 @@ class DialoguePluginTests
 		Test.Assert((held.ProvidedFlags.Count == 1) && (held.ProvidedFlags[0] == "seen_*"));
 		Test.Assert(held.StockBox);
 		Test.Assert(held.FlagPrefix == "flag.", "what the entry left out keeps its default");
+		// The domain: its resource types, which the composition builds the factories from.
+		Test.Assert(HasDomain(cId));
+		Test.Assert(SourceRegistered());
 		host.Unload();
 		Test.Assert(!host.IsLoaded(cId));
+		Test.Assert(!HasDomain(cId), "taken out with the plugin");
+		Test.Assert(!SourceRegistered());
+	}
+
+	[Test]
+	public static void AHostWithoutTheEnginesServiceStillRegistersTheCookedTypesAndAddsNoDomain()
+	{
+		let entries = scope List<EnabledPlugin>();
+		defer { ClearAndDeleteItems!(entries); }
+		let entry = new EnabledPlugin();
+		entry.Id.Set(cId);
+		entries.Add(entry);
+
+		let subsystems = scope SubsystemManager();
+		let host = scope PluginHost(subsystems, .Player, EngineVersion.String);
+		Test.Assert(host.AddRegistered() case .Ok);
+		host.Load((Span<EnabledPlugin>)entries, scope .());
+		Test.Assert(host.IsLoaded(cId));
+		Test.Assert(!HasDomain(cId), "no engine service, no domain");
+		Test.Assert(SourceRegistered(), "the cooked types all the same");
+		host.Unload();
+		Test.Assert(!SourceRegistered());
 	}
 }
