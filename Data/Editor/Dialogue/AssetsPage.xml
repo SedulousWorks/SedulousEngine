@@ -1,0 +1,42 @@
+<!--
+  The dialogue assets page: the kit's bar (Save, Undo, Redo and Discard Changes, each an action over
+  the page; the list has no cooked form, so no Cook) with the asset's kind at the end, over the
+  entries as a list beside the grid. The list's bar adds an entry and removes the chosen one; its
+  search keeps the entries whose name holds the text. The grid shows the chosen entry: the name a
+  conversation calls the asset by, and the asset. An asset that did not read says so in place of
+  the grid.
+-->
+<Panel class="page dialogue-assets-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.3 0.7">
+        <Panel class="panel page-pane dialogue-list-pane">
+            <Panel class="panel-toolbar">
+                <ToolButton id="dialogue-add" icon="Editor/Icons/plus.svg" text="Asset" shows-text="true" tooltip="Add an asset"/>
+                <ToolButton id="dialogue-remove" icon="Editor/Icons/trash.svg" tooltip="Remove the chosen asset"/>
+                <Spacer/>
+            </Panel>
+            <Panel class="search-row">
+                <Panel class="search">
+                    <Image class="search-icon" src="Editor/Icons/search.svg"/>
+                    <TextField id="dialogue-search" class="search-field" placeholder="Find an asset"/>
+                </Panel>
+            </Panel>
+            <TreeView id="dialogue-list" class="panel-body tree dialogue-list"/>
+        </Panel>
+        <Panel class="panel page-pane">
+            <Panel id="page-state" class="state-box failed page-state">
+                <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                <Label class="state-title" text="This asset did not read"/>
+                <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+            </Panel>
+            <PropertyGrid id="page-grid" class="panel-body"/>
+        </Panel>
+    </Splitter>
+</Panel>

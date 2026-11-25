@@ -8,7 +8,7 @@ using Sedulous.Resource;
 namespace Dialogue;
 
 /// A mood a speaker's lines may name, and its portrait (a texture; nil uses the speaker's).
-[Reflect(.All)]
+[Reflect(.All), DisplayName("Mood")]
 class DialogueMood : ISerializable
 {
 	[DisplayName("Name")]
@@ -34,7 +34,7 @@ class DialogueMood : ISerializable
 }
 
 /// One speaker: who a conversation's lines name, how the box shows them, and what they play.
-[Reflect(.All)]
+[Reflect(.All), DisplayName("Speaker")]
 class DialogueSpeaker : ISerializable
 {
 	[DisplayName("Id"), Description("What a conversation's lines name the speaker by: one word")]

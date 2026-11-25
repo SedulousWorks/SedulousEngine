@@ -6,7 +6,7 @@ using Sedulous.Core.Serialization;
 namespace Dialogue;
 
 /// One of the project's dialogue assets: the name a conversation calls it by, and the asset.
-[Reflect(.All)]
+[Reflect(.All), DisplayName("Dialogue Asset")]
 class DialogueAssetEntry : ISerializable
 {
 	[DisplayName("Name"), Description("What a conversation calls the asset by: one word")]
