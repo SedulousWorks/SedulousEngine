@@ -48,6 +48,14 @@ interface IDialogueLevels
 	List<String> EntityNames(Guid level);
 }
 
+/// Another dialogue file's conversations, which a jump into it may name.
+class DialogueFileConversations
+{
+	/// Its DialogueAsset.
+	public Guid File = .();
+	public List<String> Conversations = new .() ~ DeleteContainerAndItems!(_);
+}
+
 /// What the checks read beyond the file itself. Everything it names is BORROWED.
 class DialogueCheckInputs
 {
@@ -59,11 +67,11 @@ class DialogueCheckInputs
 	public Span<DialogueCommandForm> Commands;
 	/// Names, or prefixes ending in `*`.
 	public Span<String> ProvidedFlags;
-	/// The project's other dialogue files: their conversation ids.
-	public Span<String> OtherConversations;
-	/// Their explicit (`#line:`) ids.
-	public Span<String> OtherLineIds;
-	/// The flags their `set` and `clear` write.
+	/// This file's DialogueAsset; nil when it has none yet.
+	public Guid Self = .();
+	/// The project's other dialogue files.
+	public Span<DialogueFileConversations> OtherFiles;
+	/// The flags the other files' `set` and `clear` write.
 	public Span<String> OtherFlagsSet;
 	/// Null: the assets' names and types are not checked.
 	public IDialogueAssets Assets;
@@ -74,6 +82,9 @@ class DialogueCheckInputs
 }
 
 /// The cook's checks of a parsed dialogue file: what the parser cannot know, against the project.
+/// Conversation and line ids are a file's own: a script plays a conversation through its file's
+/// asset, so two files may use the same ids; a jump into another file names it by its dialogue
+/// asset.
 static class DialogueChecks
 {
 	/// The asset types `sound` and `sequence` take.
@@ -81,6 +92,8 @@ static class DialogueChecks
 	public static String[?] cSequenceAssetTypes = .("SequenceAsset");
 	/// The asset types a conversation's level takes.
 	public static String[?] cLevelAssetTypes = .("SceneDocument");
+	/// The asset types `jump ... in` takes.
+	public static String[?] cDialogueFileAssetTypes = .("DialogueAsset");
 
 	/// Checks `parse` and adds every problem to it, by line; resolves the clips, sounds and
 	/// sequences its steps name into their `Asset`.
@@ -103,10 +116,10 @@ static class DialogueChecks
 		return false;
 	}
 
-	/// What a parsed file contributes to the others' checks, appended to the lists (copies, the
-	/// caller's to delete).
-	public static void CollectDialogueFacts(DialogueParse parse, List<String> conversations, List<String> explicitLineIds,
-		List<String> flagsSet, List<String> flagsRead)
+	/// What a parsed file contributes to the others' checks: its conversations, and the flags it
+	/// writes and reads (each once), appended to the lists (copies, the caller's to delete).
+	public static void CollectDialogueFacts(DialogueParse parse, List<String> conversations, List<String> flagsSet,
+		List<String> flagsRead)
 	{
 		for (let conversation in parse.Conversations)
 		{
@@ -114,9 +127,7 @@ static class DialogueChecks
 				conversations.Add(new .(conversation.Id));
 			for (let step in conversation.Steps)
 			{
-				if (((step.Kind == .Line) || (step.Kind == .Answer)) && !IsPositionalId(step.LineId, conversation.Id))
-					explicitLineIds.Add(new .(step.LineId));
-				else if (((step.Kind == .Set) || (step.Kind == .Clear)) && !Contains(flagsSet, step.Flag))
+				if (((step.Kind == .Set) || (step.Kind == .Clear)) && !Contains(flagsSet, step.Flag))
 					flagsSet.Add(new .(step.Flag));
 				else if ((step.Kind == .If) && !Contains(flagsRead, step.Flag))
 					flagsRead.Add(new .(step.Flag));
@@ -136,19 +147,6 @@ static class DialogueChecks
 
 	static bool Contains(List<String> list, StringView value) => Contains((Span<String>)list, value);
 
-	/// An id the parser made from the line's place (`<conversation>.<n>`), not one written.
-	static bool IsPositionalId(StringView id, StringView conversation)
-	{
-		if ((id.Length <= conversation.Length + 1) || !id.StartsWith(conversation) || (id[conversation.Length] != '.'))
-			return false;
-		for (int i = conversation.Length + 1; i < id.Length; i++)
-		{
-			if ((id[i] < '0') || (id[i] > '9'))
-				return false;
-		}
-		return true;
-	}
-
 	static void Joined(List<String> words, String outText)
 	{
 		for (let word in words)
@@ -164,7 +162,6 @@ static class DialogueChecks
 		DialogueParse mParse; // the caller's
 		DialogueCheckInputs mInputs; // the caller's
 		List<String> mConversations = new .() ~ DeleteContainerAndItems!(_);
-		List<String> mLineIds = new .() ~ DeleteContainerAndItems!(_);
 		List<String> mFlagsSet = new .() ~ DeleteContainerAndItems!(_);
 		List<String> mFlagsRead = new .() ~ DeleteContainerAndItems!(_);
 		bool mNoCastTold;
@@ -180,7 +177,7 @@ static class DialogueChecks
 		{
 			mParse = parse;
 			mInputs = inputs;
-			CollectDialogueFacts(parse, mConversations, mLineIds, mFlagsSet, mFlagsRead);
+			CollectDialogueFacts(parse, mConversations, mFlagsSet, mFlagsRead);
 		}
 
 		public void Run()
@@ -188,12 +185,10 @@ static class DialogueChecks
 			for (let conversation in mParse.Conversations)
 			{
 				let header = conversation.Steps.IsEmpty ? (uint32)0 : conversation.Steps.Back.SourceLine;
-				if (Contains(mInputs.OtherConversations, conversation.Id))
-					Problem(header, scope $"another dialogue file has a conversation `{conversation.Id}`");
 				Level(conversation, header);
 				ClearAndDeleteItems!(mEntitiesTold);
 				for (let step in conversation.Steps)
-					Step(conversation, step);
+					Step(step);
 				Reachability(conversation);
 				mEntities = null;
 			}
@@ -331,7 +326,7 @@ static class DialogueChecks
 			}
 		}
 
-		void Step(DialogueConversation conversation, DialogueStep step)
+		void Step(DialogueStep step)
 		{
 			switch (step.Kind)
 			{
@@ -355,8 +350,6 @@ static class DialogueChecks
 					}
 				}
 				Actions(step.LineId, step.SourceLine);
-				if (!IsPositionalId(step.LineId, conversation.Id) && Contains(mInputs.OtherLineIds, step.LineId))
-					Problem(step.SourceLine, scope $"another dialogue file has a line `#line:{step.LineId}`");
 			case .Play:
 				if (let speaker = Speaker(step.Speaker, step.SourceLine))
 					Clip(speaker, step);
@@ -367,8 +360,7 @@ static class DialogueChecks
 			case .Sequence:
 				step.Asset = Asset(step.Name, cSequenceAssetTypes, "sequence", step.SourceLine);
 			case .Jump:
-				if (!Contains(mConversations, step.Name) && !Contains(mInputs.OtherConversations, step.Name))
-					Problem(step.SourceLine, scope $"no conversation `{step.Name}` to jump to");
+				Jump(step);
 			case .If:
 				if (!Contains(mFlagsSet, step.Flag) && !Contains(mInputs.OtherFlagsSet, step.Flag) && !IsProvidedFlag(step.Flag, mInputs.ProvidedFlags))
 					Problem(step.SourceLine, scope $"the flag `{step.Flag}` is read but nothing sets it, and the settings do not list it as provided");
@@ -377,6 +369,40 @@ static class DialogueChecks
 			default:
 				break;
 			}
+		}
+
+		/// A jump within the file, or into the file its dialogue asset names (resolved into `Asset`;
+		/// nil when the asset is this file).
+		void Jump(DialogueStep step)
+		{
+			var conversations = mConversations;
+			if (!step.File.IsEmpty)
+			{
+				let file = Asset(step.File, cDialogueFileAssetTypes, "dialogue file", step.SourceLine);
+				if (file == .())
+					return;
+				if (file != mInputs.Self)
+				{
+					step.Asset = file;
+					conversations = null;
+					for (let other in mInputs.OtherFiles)
+					{
+						if (other.File == file)
+						{
+							conversations = other.Conversations;
+							break;
+						}
+					}
+					if (conversations == null)
+						return; // a file that does not parse, which its own cook reports
+				}
+			}
+			if (Contains(conversations, step.Name))
+				return;
+			if (step.File.IsEmpty)
+				Problem(step.SourceLine, scope $"no conversation `{step.Name}` in this file to jump to");
+			else
+				Problem(step.SourceLine, scope $"no conversation `{step.Name}` in `{step.File}` to jump to");
 		}
 
 		void Clip(DialogueSpeaker speaker, DialogueStep step)

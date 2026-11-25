@@ -35,7 +35,8 @@ enum DialogueStepKind : uint8
 	case Fade;
 	/// Plays the sequence `Asset`; waits with `Waits`.
 	case Sequence;
-	/// Ends this conversation and plays the one named `Name`.
+	/// Ends this conversation and plays the one named `Name`, in the dialogue file `Asset` (nil: this
+	/// one).
 	case Jump;
 	/// The declared command `Name` with its `Arguments`; waits with `Waits`, or leaves.
 	case Command;
@@ -80,6 +81,8 @@ class DialogueStep : ISerializable
 	public bool Negate = false;
 	/// A clip's, a conversation's or a command's name.
 	public String Name = new .() ~ delete _;
+	/// A jump's other dialogue file, by its name in the dialogue assets; empty: this one.
+	public String File = new .() ~ delete _;
 	public Guid Asset = .();
 	/// A wait's, or a fade's length; below 0, the settings' default.
 	public float Seconds = -1.0f;
@@ -116,6 +119,7 @@ class DialogueStep : ISerializable
 		Sedulous.Core.Serialization.Serialize(ar, "flag", Flag);
 		SerializeValue(ar, "negate", ref Negate);
 		Sedulous.Core.Serialization.Serialize(ar, "name", Name);
+		Sedulous.Core.Serialization.Serialize(ar, "file", File);
 		SerializeValue(ar, "asset", ref Asset);
 		SerializeValue(ar, "seconds", ref Seconds);
 		SerializeValue(ar, "waits", ref Waits);

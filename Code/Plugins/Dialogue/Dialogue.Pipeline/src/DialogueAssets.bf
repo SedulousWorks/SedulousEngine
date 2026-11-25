@@ -67,10 +67,12 @@ class DialogueProject
 	public bool HasCast;
 	public List<DialogueAssetEntry> DialogueAssets = new .() ~ DeleteContainerAndItems!(_);
 	public bool HasDialogueAssets;
-	/// Every other file's.
-	public List<String> Conversations = new .() ~ DeleteContainerAndItems!(_);
-	public List<String> LineIds = new .() ~ DeleteContainerAndItems!(_);
+	/// Every other dialogue file's conversations.
+	public List<DialogueFileConversations> OtherFiles = new .() ~ DeleteContainerAndItems!(_);
+	/// The flags every other file sets or clears.
 	public List<String> FlagsSet = new .() ~ DeleteContainerAndItems!(_);
+	/// The file's own asset; nil when it has none yet.
+	public Guid Self = .();
 	/// Every other dialogue file's asset.
 	public List<Guid> Files = new .() ~ delete _;
 	/// Every input map's actions.
@@ -82,6 +84,7 @@ class DialogueProject
 	/// none) from `db`, reading the other files' sources through `reader`'s sources.
 	public void Gather(DialogueSettings settings, DialogueAsset file, IContentDatabase db, AssetBuildContext reader, Guid self)
 	{
+		Self = self;
 		let error = scope String();
 		for (let text in settings.Commands)
 		{
@@ -157,7 +160,10 @@ class DialogueProject
 				DialogueFormat.ParseDialogue(text, Commands, parse);
 				let flagsRead = scope List<String>(); // what a file reads is no other file's business
 				defer { ClearAndDeleteItems!(flagsRead); }
-				DialogueChecks.CollectDialogueFacts(parse, Conversations, LineIds, FlagsSet, flagsRead);
+				let facts = new DialogueFileConversations();
+				facts.File = instance.Id;
+				OtherFiles.Add(facts);
+				DialogueChecks.CollectDialogueFacts(parse, facts.Conversations, FlagsSet, flagsRead);
 			}
 		}
 	}
@@ -284,8 +290,8 @@ static class DialogueCook
 		inputs.DialogueAssets = project.HasDialogueAssets ? project.DialogueAssets : null;
 		inputs.Commands = project.Commands;
 		inputs.ProvidedFlags = settings.ProvidedFlags;
-		inputs.OtherConversations = project.Conversations;
-		inputs.OtherLineIds = project.LineIds;
+		inputs.Self = project.Self;
+		inputs.OtherFiles = project.OtherFiles;
 		inputs.OtherFlagsSet = project.FlagsSet;
 		inputs.Assets = assets;
 		inputs.Actions = project.HasInputMap ? project.Actions : null;
@@ -336,7 +342,8 @@ class DialogueBuilder : IAssetBuilder
 	}
 
 	/// The cast, the dialogue assets, the input maps and every other dialogue file are read: a
-	/// change to any of them can change what this file's checks find.
+	/// change to any of them can change what this file's checks find (the flags the others set, the
+	/// conversations a jump into one names).
 	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)
 	{
 		let file = (DialogueAsset)asset;

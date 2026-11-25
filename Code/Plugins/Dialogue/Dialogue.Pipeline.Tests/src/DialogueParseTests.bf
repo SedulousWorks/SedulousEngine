@@ -203,9 +203,10 @@ class DialogueParseTests
 			"fade out\n" +
 			"fade in for 0.5 #FFFFFF\n" +
 			"sequence gate_open and wait\n" +
-			"jump farewell\n", parse);
+			"jump farewell\n" +
+			"jump farewell in farewells\n", parse);
 		let staged = Only(parse);
-		Test.Assert(staged.Steps.Count == 10);
+		Test.Assert(staged.Steps.Count == 11);
 		Test.Assert(staged.Steps[0].Kind == .Wait);
 		Test.Assert(Near(staged.Steps[0].Seconds, 1.5f));
 		Test.Assert(staged.Steps[1].Kind == .Play);
@@ -231,6 +232,10 @@ class DialogueParseTests
 		Test.Assert(staged.Steps[7].Waits);
 		Test.Assert(staged.Steps[8].Kind == .Jump);
 		Test.Assert(staged.Steps[8].Name == "farewell");
+		Test.Assert(staged.Steps[8].File.IsEmpty);
+		Test.Assert(staged.Steps[9].Kind == .Jump);
+		Test.Assert(staged.Steps[9].Name == "farewell");
+		Test.Assert(staged.Steps[9].File == "farewells");
 	}
 
 	[Test]
@@ -302,6 +307,15 @@ class DialogueParseTests
 			"move Player \"to\" Old Well\n", parse);
 		Test.Assert(!parse.Ok);
 		Test.Assert(HasProblem(parse, 2, "the nearest is `move"));
+	}
+
+	[Test]
+	public static void AJumpNamesAnotherFileByOneWord()
+	{
+		let parse = scope DialogueParse();
+		Parse("conversation gate\n" +
+			"jump farewell in far-wells\n", parse);
+		Test.Assert(HasProblem(parse, 2, "names a dialogue file by its dialogue asset's name, a word"));
 	}
 
 	[Test]

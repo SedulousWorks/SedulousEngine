@@ -740,7 +740,7 @@ static class DialogueFormat
 			String[?] texts = .("wait <seconds:number>", "set <flag:flag>", "clear <flag:flag>",
 				"play <speaker:speaker> <clip:text> [and wait]", "sound <sound:asset(Sound)> [at <speaker:speaker>]",
 				"fade <direction:in|out> [for <seconds:number>] [<color:word>]",
-				"sequence <sequence:asset(Sequence)> [and wait]", "jump <conversation:word>");
+				"sequence <sequence:asset(Sequence)> [and wait]", "jump <conversation:word> [in <dialogue:word>]");
 			let error = scope String();
 			for (let text in texts)
 			{
@@ -1216,9 +1216,16 @@ static class DialogueFormat
 			{
 				step.Kind = .Jump;
 				step.Name.Set(Text("conversation"));
+				step.File.Set(Text("dialogue"));
 				if (!IsWord(step.Name))
 				{
 					Problem(line.Number, "`jump` names a conversation by its id, a word");
+					delete step;
+					return;
+				}
+				if (!step.File.IsEmpty && !IsWord(step.File))
+				{
+					Problem(line.Number, "`jump ... in` names a dialogue file by its dialogue asset's name, a word");
 					delete step;
 					return;
 				}

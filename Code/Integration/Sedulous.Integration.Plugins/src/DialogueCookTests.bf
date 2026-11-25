@@ -21,8 +21,10 @@ namespace Sedulous.Integration.Plugins;
 /// The dialogue plugin's assets cooked through the standalone MCP host's tools, as an agent or the
 /// editor cooks them. A project enables the plugin; its dialogue files each name their cast and
 /// dialogue assets. A file that names only what the project has cooks to its compiled
-/// conversations, one with an error fails the cook, and File > New's three creators make their
-/// assets, a new dialogue file taking the settings' default cast and dialogue assets.
+/// conversations, one with an error (a jump to a conversation the other file lacks among them)
+/// fails the cook, and File > New's three creators make their assets, a new dialogue file taking
+/// the settings' default cast and dialogue assets. Conversation ids are a file's own: two files may
+/// share one, and a jump into another file names it by its dialogue asset.
 static class DialogueCookTests
 {
 	/// A dialogue file in the project's sources and its asset, naming `cast` and `assets`; its guid.
@@ -42,10 +44,11 @@ static class DialogueCookTests
 		return instance.Id;
 	}
 
-	/// A scratch project enabling dialogue: its cast (a keeper and a visitor), its dialogue assets
-	/// (empty) and one clean dialogue file naming them; the settings declare a command and a provided
-	/// flag, and name the cast and the assets as a new file's defaults. The file's guid.
-	static Guid MakeProject(StringView dir, out Guid castId, out Guid assetsId)
+	/// A scratch project enabling dialogue: its cast (a keeper and a visitor), its dialogue assets (the
+	/// second file, as `lane`) and two clean dialogue files naming them, the first jumping into the
+	/// second, both with a conversation `gate`, the second jumping within itself by its own name; the settings declare a command and a provided flag,
+	/// and name the cast and the assets as a new file's defaults. The first file's guid.
+	static Guid MakeProject(StringView dir, out Guid lane, out Guid castId, out Guid assetsId)
 	{
 		RemoveDirectoryRecursive(dir);
 		Test.Assert(EditorProject.Create(dir, "Dialogue Cook") case .Ok);
@@ -67,7 +70,6 @@ static class DialogueCookTests
 		Test.Assert(castInstance.WriteObject(cast) case .Ok);
 
 		let listInstance = root.CreateInstance("Dialogue Assets", typeof(DialogueAssetListAsset).GetFullName(.. scope .()));
-		Test.Assert(listInstance.WriteObject(scope DialogueAssetListAsset()) case .Ok);
 
 		let gate = AddDialogueFile(project, root, "Gate",
 			"conversation gate\n" +
@@ -80,8 +82,19 @@ static class DialogueCookTests
 			"if seen_gate\n" +
 			"  @ visitor: Again.\n" +
 			"end\n" +
-			"cue lights dim\n",
+			"cue lights dim\n" +
+			"jump lane in lane\n",
 			castInstance.Id, listInstance.Id);
+		lane = AddDialogueFile(project, root, "Lane",
+			"conversation gate\n" +
+			"@ visitor: The other gate.\n" +
+			"jump lane in lane\n" +
+			"conversation lane\n" +
+			"@ visitor: Down the lane.\n",
+			castInstance.Id, listInstance.Id);
+		let list = scope DialogueAssetListAsset();
+		list.Entries.Add(new .("lane", lane));
+		Test.Assert(listInstance.WriteObject(list) case .Ok);
 		castId = castInstance.Id;
 		assetsId = listInstance.Id;
 
@@ -104,8 +117,8 @@ static class DialogueCookTests
 		let cwd = Directory.GetCurrentDirectory(.. scope .());
 		let dir = PathJoin(cwd, "scratch_plugins_dialogue_cook", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
-		Guid castId, assetsId;
-		let gate = MakeProject(dir, out castId, out assetsId);
+		Guid lane, castId, assetsId;
+		let gate = MakeProject(dir, out lane, out castId, out assetsId);
 
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
@@ -145,6 +158,10 @@ static class DialogueCookTests
 			Test.Assert(conversation.Id == "gate");
 			Test.Assert(conversation.Steps[0].Kind == .Line);
 			Test.Assert(conversation.Steps.Back.Kind == .End);
+			let jump = conversation.Steps[conversation.Steps.Count - 2];
+			Test.Assert(jump.Kind == .Jump);
+			Test.Assert(jump.Name == "lane");
+			Test.Assert(jump.Asset == lane);
 			bool cue = false;
 			for (let step in conversation.Steps)
 				cue |= (step.Kind == .Command) && (step.Name == "cue");
@@ -154,16 +171,30 @@ static class DialogueCookTests
 				nobody |= (line.Id == "nobody") && (line.Text == "Nobody.");
 			Test.Assert(nobody);
 		}
+		{
+			let read = session.Project.CookedDb.ReadObject(lane);
+			defer delete read;
+			let source = read as DialogueSource;
+			Test.Assert((source != null) && (source.Conversations.Count == 2));
+			let selfJump = source.Conversations[0].Steps[1];
+			Test.Assert((selfJump.Kind == .Jump) && (selfJump.File == "lane"));
+			Test.Assert(selfJump.Asset == Guid(), "a jump into its own file by its own name takes no asset");
+		}
 
-		// A file naming a mood the keeper lacks does not cook.
+		// A file naming a mood the keeper lacks does not cook, nor one jumping to a conversation the
+		// other file lacks.
 		AddDialogueFile(session.Project, session.Project.SourceDb.RootGroup, "Wrong",
 			"conversation wrong\n" +
 			"@ keeper angry: Out!\n", castId, assetsId);
+		AddDialogueFile(session.Project, session.Project.SourceDb.RootGroup, "Astray",
+			"conversation astray\n" +
+			"@ visitor: This way.\n" +
+			"jump nowhere in lane\n", castId, assetsId);
 		Test.Assert(Call(server, "asset_cook", JsonValue.MakeObject(), text..Clear()), text);
 		{
 			let failing = JsonValue.Parse(text);
 			defer delete failing;
-			Test.Assert(failing.Get("failed").AsInt() == 1, text);
+			Test.Assert(failing.Get("failed").AsInt() == 2, text);
 		}
 
 		// File > New: the three creators make their types.

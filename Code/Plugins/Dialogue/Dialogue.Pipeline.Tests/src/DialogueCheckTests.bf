@@ -5,8 +5,8 @@ using Dialogue;
 namespace Dialogue.Tests;
 
 /// The cook's checks: speakers, moods and clips against the cast, assets by their names in the
-/// dialogue assets with their types, flags, jumps and ids against the project's other files, and
-/// what nothing reaches.
+/// dialogue assets with their types, flags against the project's other files, jumps within the file
+/// or into another by its dialogue asset, and what nothing reaches. Ids are a file's own.
 class DialogueCheckTests
 {
 	static Guid MakeGuid(uint8 seed) => Guid(seed, seed, 0, 0, 0, 0, 0, 0, 0, 0, seed);
@@ -60,13 +60,14 @@ class DialogueCheckTests
 		public TableLevels Levels = new .() ~ delete _;
 		public List<DialogueCommandForm> Commands = new .() ~ DeleteContainerAndItems!(_);
 		public List<String> Provided = new .() ~ DeleteContainerAndItems!(_);
-		public List<String> OtherConversations = new .() ~ DeleteContainerAndItems!(_);
-		public List<String> OtherLineIds = new .() ~ DeleteContainerAndItems!(_);
+		public Guid Self;
+		public List<DialogueFileConversations> OtherFiles = new .() ~ DeleteContainerAndItems!(_);
 		public List<String> OtherFlagsSet = new .() ~ DeleteContainerAndItems!(_);
 		public Guid Wave;
 		public Guid Creak;
 		public Guid GateOpen;
 		public Guid Card;
+		public Guid Farewells;
 
 		public this()
 		{
@@ -83,6 +84,10 @@ class DialogueCheckTests
 			Levels.Names.Add(new .("Keeper"));
 			Levels.Names.Add(new .("Well"));
 			DialogueAssets.Add(new .("village", Levels.Level));
+			Self = Assets.Add("Gate", "DialogueAsset", 7);
+			Farewells = Assets.Add("Farewells", "DialogueAsset", 8);
+			DialogueAssets.Add(new .("gate", Self));
+			DialogueAssets.Add(new .("farewells", Farewells));
 			Actions.Add(new .("Interact"));
 			Actions.Add(new .("Move"));
 			let keeper = new DialogueSpeaker();
@@ -106,8 +111,11 @@ class DialogueCheckTests
 			}
 			Provided.Add(new .("seen_*"));
 			Provided.Add(new .("has_lamp"));
-			OtherConversations.Add(new .("farewell"));
-			OtherLineIds.Add(new .("taken"));
+			let other = new DialogueFileConversations();
+			other.File = Farewells;
+			other.Conversations.Add(new .("farewell"));
+			other.Conversations.Add(new .("gate")); // a file's ids are its own
+			OtherFiles.Add(other);
 			OtherFlagsSet.Add(new .("met_elsewhere"));
 		}
 
@@ -119,8 +127,8 @@ class DialogueCheckTests
 			inputs.DialogueAssets = withAssets ? DialogueAssets : null;
 			inputs.Commands = Commands;
 			inputs.ProvidedFlags = Provided;
-			inputs.OtherConversations = OtherConversations;
-			inputs.OtherLineIds = OtherLineIds;
+			inputs.Self = Self;
+			inputs.OtherFiles = OtherFiles;
 			inputs.OtherFlagsSet = OtherFlagsSet;
 			inputs.Assets = Assets;
 			inputs.Actions = withActions ? Actions : null;
@@ -168,9 +176,11 @@ class DialogueCheckTests
 			"end\n" +
 			"if met\n" +
 			"end\n" +
-			"jump farewell\n", parse);
+			"jump farewell in farewells\n", parse);
 		RequireClean(parse);
 		let steps = parse.Conversations[0].Steps;
+		Test.Assert(steps[steps.Count - 2].Kind == .Jump);
+		Test.Assert(steps[steps.Count - 2].Asset == project.Farewells);
 		Test.Assert(steps[2].Asset == project.Wave);
 		Test.Assert(steps[3].Asset == project.Creak);
 		Test.Assert(steps[4].Asset == project.GateOpen);
@@ -183,7 +193,7 @@ class DialogueCheckTests
 	{
 		let project = scope Project();
 		let parse = scope DialogueParse();
-		project.Check("conversation farewell\n" + // 1: another file has it
+		project.Check("conversation farewell\n" + // 1: another file's id too, which is fine
 			"@ stranger: Hello.\n" + // 2
 			"@ keeper angry: Leave.\n" + // 3
 			"play keeper Dance\n" + // 4
@@ -196,8 +206,11 @@ class DialogueCheckTests
 			"if never_set\n" + // 11
 			"end\n" + // 12
 			"@ keeper: Taken. #line:taken\n" + // 13
-			"jump nowhere\n", parse); // 14
-		Test.Assert(HasProblem(parse, 1, "another dialogue file has a conversation"));
+			"jump nowhere\n" + // 14
+			"jump nowhere in farewells\n" + // 15
+			"jump farewell in door_creak\n" + // 16: not a dialogue file
+			"jump farewell in elsewhere\n", parse); // 17
+		Test.Assert(!HasProblem(parse, 1, ""));
 		Test.Assert(HasProblem(parse, 2, "no speaker `stranger`"));
 		Test.Assert(HasProblem(parse, 3, "no mood `angry` (has neutral, worried)"));
 		Test.Assert(HasProblem(parse, 4, "no clip `Dance` (has Wave, Nod)"));
@@ -208,11 +221,29 @@ class DialogueCheckTests
 		Test.Assert(HasProblem(parse, 9, "is of type AudioClipAsset, which is no TextureAsset"));
 		Test.Assert(HasProblem(parse, 10, "no speaker `stranger`"));
 		Test.Assert(HasProblem(parse, 11, "`never_set` is read but nothing sets it"));
-		Test.Assert(HasProblem(parse, 13, "another dialogue file has a line `#line:taken`"));
-		Test.Assert(HasProblem(parse, 14, "no conversation `nowhere`"));
+		Test.Assert(!HasProblem(parse, 13, ""));
+		Test.Assert(HasProblem(parse, 14, "no conversation `nowhere` in this file"));
+		Test.Assert(HasProblem(parse, 15, "no conversation `nowhere` in `farewells`"));
+		Test.Assert(HasProblem(parse, 16, "`door_creak` is of type AudioClipAsset, which is no dialogue file"));
+		Test.Assert(HasProblem(parse, 17, "no dialogue asset `elsewhere`"));
 		Test.Assert(!parse.Ok);
 		for (int i = 1; i < parse.Problems.Count; i++)
 			Test.Assert(parse.Problems[i - 1].Line <= parse.Problems[i].Line, "by line");
+	}
+
+	[Test]
+	public static void AJumpWithinTheFileOrIntoThisFileByItsOwnNameTakesNoAsset()
+	{
+		let project = scope Project();
+		let parse = scope DialogueParse();
+		project.Check("conversation gate\n" +
+			"jump lane\n" +
+			"conversation lane\n" +
+			"jump gate in gate\n", parse);
+		RequireClean(parse);
+		Test.Assert(parse.Conversations[0].Steps[0].Asset == Guid());
+		Test.Assert(parse.Conversations[1].Steps[0].File == "gate");
+		Test.Assert(parse.Conversations[1].Steps[0].Asset == Guid());
 	}
 
 	[Test]
@@ -246,7 +277,7 @@ class DialogueCheckTests
 		let parse = scope DialogueParse();
 		project.Check("conversation early\n" +
 			"@ keeper: Off you go.\n" +
-			"jump farewell\n" +
+			"jump farewell in farewells\n" +
 			"@ keeper: Never said.\n", parse);
 		Test.Assert(parse.Ok);
 		Test.Assert(HasProblem(parse, 4, "nothing reaches", true));
@@ -254,7 +285,7 @@ class DialogueCheckTests
 	}
 
 	[Test]
-	public static void WhatAFileGivesTheOthersChecksItsIdsWrittenAndItsFlags()
+	public static void WhatAFileGivesTheOthersChecksItsConversationsAndItsFlags()
 	{
 		let parse = scope DialogueParse();
 		DialogueFormat.ParseDialogue("conversation gate\n" +
@@ -265,19 +296,16 @@ class DialogueCheckTests
 			"end\n", .(), parse);
 		Test.Assert(parse.Ok);
 		let conversations = scope List<String>();
-		let lineIds = scope List<String>();
 		let flagsSet = scope List<String>();
 		let flagsRead = scope List<String>();
 		defer
 		{
 			ClearAndDeleteItems!(conversations);
-			ClearAndDeleteItems!(lineIds);
 			ClearAndDeleteItems!(flagsSet);
 			ClearAndDeleteItems!(flagsRead);
 		}
-		DialogueChecks.CollectDialogueFacts(parse, conversations, lineIds, flagsSet, flagsRead);
+		DialogueChecks.CollectDialogueFacts(parse, conversations, flagsSet, flagsRead);
 		Test.Assert((conversations.Count == 1) && (conversations[0] == "gate"));
-		Test.Assert((lineIds.Count == 1) && (lineIds[0] == "gate_named"), "only the ids written, not those made from a line's place");
 		Test.Assert((flagsSet.Count == 1) && (flagsSet[0] == "met"));
 		Test.Assert((flagsRead.Count == 1) && (flagsRead[0] == "met"));
 	}
