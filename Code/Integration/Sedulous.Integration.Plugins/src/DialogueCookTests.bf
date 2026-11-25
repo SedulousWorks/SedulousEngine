@@ -12,6 +12,8 @@ using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
+using Sedulous.Scene;
+using Sedulous.Scene.Resource;
 using Dialogue;
 
 namespace Sedulous.Integration.Plugins;
@@ -178,6 +180,33 @@ static class DialogueCookTests
 		session.Project = null;
 		DeleteAndNullify!(owner.Project);
 		pluginTools.DetachServer(server);
+	}
+
+	/// The levels a conversation names load from the source database into a scratch scene: their
+	/// entities' names, each level loaded once; a level that is not there gives none.
+	[Test]
+	public static void ALevelsEntitiesAreReadFromItsScene()
+	{
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		let dir = PathJoin(cwd, "scratch_plugins_dialogue_level", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Dialogue Level") case .Ok);
+		let project = EditorProject.Open(dir);
+		defer delete project;
+		let instance = project.SourceDb.RootGroup.CreateInstance("Village", typeof(SceneDocument).GetFullName(.. scope .()));
+		{
+			let scene = scope Scene("Village");
+			scene.CreateEntity("Keeper");
+			scene.CreateEntity("Well");
+			Test.Assert(SceneStorage.SaveScene(scene, instance) case .Ok);
+		}
+		let levels = scope LoadedLevels(project.SourceDb);
+		let names = levels.EntityNames(instance.Id);
+		Test.Assert((names != null) && (names.Count == 2));
+		Test.Assert(names.Contains("Keeper") && names.Contains("Well"));
+		Test.Assert(levels.EntityNames(instance.Id) === names, "loaded once");
+		Test.Assert(levels.EntityNames(Guid(9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9)) == null);
 	}
 
 	static JsonValue Arguments(StringView key, StringView value)

@@ -871,19 +871,16 @@ static class DialogueFormat
 			let words = scope List<Word>();
 			StatementWords(header.Text, words);
 			let conversation = new DialogueConversation();
-			if ((words.Count < 2) || !IsWord(words[1].Text) || ((words.Count > 2) && ((words[2].Text != "in") || (words.Count < 4))))
+			if (((words.Count != 2) && (words.Count != 4)) || !IsWord(words[1].Text)
+				|| ((words.Count == 4) && ((words[2].Text != "in") || !IsWord(words[3].Text))))
 			{
-				Problem(header.Number, "a conversation is `conversation <id> [in <level>]`");
+				Problem(header.Number, "a conversation is `conversation <id> [in <level>]`, the level a dialogue asset's name");
 			}
 			else
 			{
 				conversation.Id.Set(words[1].Text);
-				for (int w = 3; w < words.Count; w++)
-				{
-					if (w > 3)
-						conversation.Level.Append(' ');
-					conversation.Level.Append(words[w].Text);
-				}
+				if (words.Count == 4)
+					conversation.Level.Set(words[3].Text);
 				for (let other in mOut.Conversations)
 				{
 					if (other.Id == conversation.Id)

@@ -42,11 +42,22 @@ class DialogueCheckTests
 		}
 	}
 
+	/// A project's levels: the entity names of each.
+	class TableLevels : IDialogueLevels
+	{
+		public Guid Level;
+		public List<String> Names = new .() ~ DeleteContainerAndItems!(_);
+
+		public List<String> EntityNames(Guid id) => (id == Level) ? Names : null;
+	}
+
 	class Project
 	{
 		public TableAssets Assets = new .() ~ delete _;
 		public List<DialogueSpeaker> Cast = new .() ~ DeleteContainerAndItems!(_);
 		public List<DialogueAssetEntry> DialogueAssets = new .() ~ DeleteContainerAndItems!(_);
+		public List<String> Actions = new .() ~ DeleteContainerAndItems!(_);
+		public TableLevels Levels = new .() ~ delete _;
 		public List<DialogueCommandForm> Commands = new .() ~ DeleteContainerAndItems!(_);
 		public List<String> Provided = new .() ~ DeleteContainerAndItems!(_);
 		public List<String> OtherConversations = new .() ~ DeleteContainerAndItems!(_);
@@ -68,17 +79,24 @@ class DialogueCheckTests
 			DialogueAssets.Add(new .("gate_open", GateOpen));
 			DialogueAssets.Add(new .("title_card", Card));
 			DialogueAssets.Add(new .("lost", MakeGuid(99))); // refers to nothing
+			Levels.Level = Assets.Add("Village", "SceneDocument", 6);
+			Levels.Names.Add(new .("Keeper"));
+			Levels.Names.Add(new .("Well"));
+			DialogueAssets.Add(new .("village", Levels.Level));
+			Actions.Add(new .("Interact"));
+			Actions.Add(new .("Move"));
 			let keeper = new DialogueSpeaker();
 			keeper.Id.Set("keeper");
 			keeper.Moods.Add(new .("neutral", .()));
 			keeper.Moods.Add(new .("worried", .()));
 			keeper.Clips.Add(Wave);
 			keeper.Clips.Add(nod);
+			keeper.Entity.Set("Keeper");
 			Cast.Add(keeper);
 			let visitor = new DialogueSpeaker();
 			visitor.Id.Set("visitor");
 			Cast.Add(visitor);
-			String[?] forms = .("show card <card:asset(TextureAsset)>", "greet <who:speaker>");
+			String[?] forms = .("show card <card:asset(TextureAsset)>", "greet <who:speaker>", "walk <who:entity> to <target:entity>");
 			let error = scope String();
 			for (let text in forms)
 			{
@@ -93,7 +111,7 @@ class DialogueCheckTests
 			OtherFlagsSet.Add(new .("met_elsewhere"));
 		}
 
-		public void Check(StringView text, DialogueParse parse, bool withCast = true, bool withAssets = true)
+		public void Check(StringView text, DialogueParse parse, bool withCast = true, bool withAssets = true, bool withActions = true)
 		{
 			DialogueFormat.ParseDialogue(text, (Span<DialogueCommandForm>)Commands, parse);
 			let inputs = scope DialogueCheckInputs();
@@ -105,6 +123,8 @@ class DialogueCheckTests
 			inputs.OtherLineIds = OtherLineIds;
 			inputs.OtherFlagsSet = OtherFlagsSet;
 			inputs.Assets = Assets;
+			inputs.Actions = withActions ? Actions : null;
+			inputs.Levels = Levels;
 			DialogueChecks.CheckDialogue(parse, inputs);
 		}
 	}
@@ -271,5 +291,58 @@ class DialogueCheckTests
 		Test.Assert(DialogueChecks.IsProvidedFlag("has_lamp", provided));
 		Test.Assert(!DialogueChecks.IsProvidedFlag("has_lamps", provided));
 		Test.Assert(!DialogueChecks.IsProvidedFlag("unseen", provided));
+	}
+
+	[Test]
+	public static void TheActionsALineNamesAreTheInputMaps()
+	{
+		let project = scope Project();
+		let parse = scope DialogueParse();
+		project.Check("conversation hint\n" +
+			"@ keeper: Press {Interact} to open, {{or not}}.\n" + // 2: clean
+			"@ keeper: Press {Jump}.\n" + // 3
+			"choice\n" +
+			"> {Move} away\n" + // 5: clean
+			"> {Fly} away\n" + // 6
+			"end\n" +
+			"@ keeper: An open {brace.\n", parse); // 8
+		Test.Assert(!HasProblem(parse, 2, ""));
+		Test.Assert(HasProblem(parse, 3, "no action `Jump`"));
+		Test.Assert(!HasProblem(parse, 5, ""));
+		Test.Assert(HasProblem(parse, 6, "no action `Fly`"));
+		Test.Assert(HasProblem(parse, 8, "a `{` with no `}`"));
+
+		let bare = scope DialogueParse();
+		project.Check("conversation bare\n" +
+			"@ keeper: Press {Interact}.\n" +
+			"@ keeper: Press {Move}.\n", bare, true, true, false);
+		Test.Assert(bare.Problems.Count == 1);
+		Test.Assert(HasProblem(bare, 2, "`{Interact}` names an action, but the project has no input map"));
+	}
+
+	[Test]
+	public static void AConversationsLevelItsEntitiesNamedAMissingOneAWarning()
+	{
+		let project = scope Project();
+		let parse = scope DialogueParse();
+		project.Check("conversation square in village\n" +
+			"@ keeper: Here.\n" + // the keeper's entity is there
+			"walk Keeper to Well\n" + // both there
+			"walk Keeper to Old Mill\n" + // 4: not there
+			"walk Old Mill to Keeper\n", parse); // 5: told once
+		Test.Assert(parse.Ok);
+		Test.Assert(HasProblem(parse, 4, "no entity `Old Mill` (`walk`'s target) in the level `village`", true));
+		Test.Assert(!HasProblem(parse, 5, "Old Mill", true));
+
+		project.Cast[0].Entity.Set("Gatekeeper");
+		let moved = scope DialogueParse();
+		project.Check("conversation square in village\n" +
+			"@ keeper: Here.\n", moved);
+		Test.Assert(HasProblem(moved, 2, "no entity `Gatekeeper` (the speaker `keeper`'s)", true));
+
+		let wrong = scope DialogueParse();
+		project.Check("conversation square in door_creak\n" +
+			"@ keeper: Here.\n", wrong);
+		Test.Assert(HasProblem(wrong, 1, "`door_creak` is of type AudioClipAsset, which is no level"));
 	}
 }

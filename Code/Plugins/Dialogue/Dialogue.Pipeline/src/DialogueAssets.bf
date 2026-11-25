@@ -8,6 +8,10 @@ using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.VFS;
+using Sedulous.Input.Pipeline;
+using Sedulous.Scene;
+using Sedulous.Scene.Resource;
+using Sedulous.Engine.Composition;
 
 namespace Dialogue;
 
@@ -64,6 +68,10 @@ class DialogueProject
 	public List<String> FlagsSet = new .() ~ DeleteContainerAndItems!(_);
 	/// Every other dialogue file's asset.
 	public List<Guid> Files = new .() ~ delete _;
+	/// Every input map's actions.
+	public List<String> Actions = new .() ~ DeleteContainerAndItems!(_);
+	public bool HasInputMap;
+	public List<Guid> InputMaps = new .() ~ delete _;
 
 	/// Gathers it for the file `self` (nil for none) from `db`, reading the other files' sources
 	/// through `reader`'s sources.
@@ -109,6 +117,23 @@ class DialogueProject
 		}
 		if (let root = db.RootGroup)
 		{
+			let maps = scope List<Instance>();
+			InstancesOf(root, typeof(InputMapAsset), maps);
+			for (let instance in maps)
+			{
+				let read = db.ReadObject(instance.Id);
+				defer { delete read; }
+				let map = read as InputMapAsset;
+				if (map == null)
+					continue;
+				HasInputMap = true;
+				InputMaps.Add(instance.Id);
+				for (let set in map.Map.Sets)
+				{
+					for (let action in set.Actions)
+						Actions.Add(new .(action.Name));
+				}
+			}
 			let files = scope List<Instance>();
 			DialogueAssetsOf(root, files);
 			let text = scope String();
@@ -133,16 +158,24 @@ class DialogueProject
 	}
 
 	/// Every dialogue file's instance under `group`, its subgroups included.
-	public static void DialogueAssetsOf(Group group, List<Instance> outInstances)
+	public static void DialogueAssetsOf(Group group, List<Instance> outInstances) => InstancesOf(group, typeof(DialogueAsset), outInstances);
+
+	/// Every instance of the asset type `type` under `group`, its subgroups included.
+	public static void InstancesOf(Group group, Type type, List<Instance> outInstances)
 	{
-		let typeName = typeof(DialogueAsset).GetFullName(.. scope .());
+		let typeName = type.GetFullName(.. scope .());
+		InstancesNamed(group, typeName, outInstances);
+	}
+
+	static void InstancesNamed(Group group, StringView typeName, List<Instance> outInstances)
+	{
 		for (let instance in group.Instances)
 		{
 			if (instance.TypeName == typeName)
 				outInstances.Add(instance);
 		}
 		for (let child in group.Groups)
-			DialogueAssetsOf(child, outInstances);
+			InstancesNamed(child, typeName, outInstances);
 	}
 }
 
@@ -174,10 +207,65 @@ class DatabaseDialogueAssets : IDialogueAssets
 	}
 }
 
+/// The levels conversations name, each loaded once into a scratch scene (its prefabs placed, as a
+/// load places them) for its entities' names.
+class LoadedLevels : IDialogueLevels
+{
+	class Loaded
+	{
+		public Guid Level;
+		public List<String> Names = new .() ~ DeleteContainerAndItems!(_);
+		public bool Ok;
+	}
+
+	IContentDatabase mDb; // the caller's
+	List<Loaded> mLoaded = new .() ~ DeleteContainerAndItems!(_);
+
+	public this(IContentDatabase db)
+	{
+		mDb = db;
+	}
+
+	public List<String> EntityNames(Guid level)
+	{
+		for (let loaded in mLoaded)
+		{
+			if (loaded.Level == level)
+				return loaded.Ok ? loaded.Names : null;
+		}
+		let loaded = new Loaded();
+		loaded.Level = level;
+		mLoaded.Add(loaded);
+		let instance = mDb.GetInstance(level);
+		if (instance == null)
+			return null;
+		let scratch = scope Scene("__dialogue_level");
+		EngineSceneComposition.AddAllSceneManagers(scratch);
+		if (SceneStorage.LoadScene(instance, scratch) case .Err)
+			return null;
+		if (scratch.PendingPrefabInstanceCount > 0)
+		{
+			// The spawn owns each stream it is handed; a nested prefab resolves through the same
+			// reader, one level at a time.
+			let db = mDb;
+			ScenePrefabs.PayloadResolver resolver = scope (prefabId) =>
+			{
+				let prefab = db.GetInstance(prefabId);
+				return (prefab != null) ? prefab.ReadData(SceneExportSupport.cSceneStream) : null;
+			};
+			ScenePrefabs.ResolveScenePrefabs(scratch, resolver);
+		}
+		scratch.ForEachEntity(scope [&](entity) => { loaded.Names.Add(new .(scratch.GetEntityName(entity))); });
+		loaded.Ok = true;
+		return loaded.Names;
+	}
+}
+
 static class DialogueCook
 {
 	/// Parses `text` into `outParse` and checks it against `project`, its assets reached through
-	/// `db` (null: their names and types are not checked).
+	/// `db` (null: their names and types are not checked) and the levels its conversations name
+	/// loaded into scratch scenes from it.
 	public static void CookDialogue(StringView text, DialogueSettings settings, DialogueProject project, IContentDatabase db,
 		DialogueParse outParse)
 	{
@@ -185,6 +273,7 @@ static class DialogueCook
 		for (let problem in project.SettingsProblems)
 			outParse.Problems.Add(new .(problem.Line, problem.Message, problem.Warning));
 		let assets = (db != null) ? scope:: DatabaseDialogueAssets(db) : null;
+		let levels = (db != null) ? scope:: LoadedLevels(db) : null;
 		let inputs = scope DialogueCheckInputs();
 		inputs.Cast = project.HasCast ? project.Cast : null;
 		inputs.DialogueAssets = project.HasDialogueAssets ? project.DialogueAssets : null;
@@ -194,6 +283,8 @@ static class DialogueCook
 		inputs.OtherLineIds = project.LineIds;
 		inputs.OtherFlagsSet = project.FlagsSet;
 		inputs.Assets = assets;
+		inputs.Actions = project.HasInputMap ? project.Actions : null;
+		inputs.Levels = levels;
 		DialogueChecks.CheckDialogue(outParse, inputs);
 	}
 
@@ -242,8 +333,8 @@ class DialogueBuilder : IAssetBuilder
 		}
 	}
 
-	/// The cast, the dialogue assets and every other dialogue file are read: a change to any of them
-	/// can change what this file's checks find.
+	/// The cast, the dialogue assets, the input maps and every other dialogue file are read: a
+	/// change to any of them can change what this file's checks find.
 	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)
 	{
 		let db = DialogueCook.SourceDatabase(context);
@@ -256,6 +347,10 @@ class DialogueBuilder : IAssetBuilder
 		let self = (context.Source != null) ? context.Source.Id : Guid();
 		if (let root = db.RootGroup)
 		{
+			let maps = scope List<Instance>();
+			DialogueProject.InstancesOf(root, typeof(InputMapAsset), maps);
+			for (let instance in maps)
+				outDeps.Reads.Add(instance.Id);
 			let files = scope List<Instance>();
 			DialogueProject.DialogueAssetsOf(root, files);
 			for (let instance in files)

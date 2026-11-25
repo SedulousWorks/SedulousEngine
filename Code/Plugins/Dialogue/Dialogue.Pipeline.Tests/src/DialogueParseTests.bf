@@ -105,14 +105,22 @@ class DialogueParseTests
 	public static void AConversationNamesItsLevelAndAFileHoldsSeveral()
 	{
 		let parse = scope DialogueParse();
-		Parse("conversation first in Levels/Old Village\n" +
+		Parse("conversation first in village\n" +
 			"@ keeper: One.\n" +
 			"conversation second\n" +
 			"@ keeper: Two.\n", parse);
 		Test.Assert(parse.Ok);
 		Test.Assert(parse.Conversations.Count == 2);
-		Test.Assert(parse.Conversations[0].Level == "Levels/Old Village");
+		Test.Assert(parse.Conversations[0].Level == "village");
 		Test.Assert(parse.Conversations[1].Steps[0].LineId == "second.1");
+
+		// The level is a dialogue asset's name, one word; nothing else follows `in`.
+		let spaced = scope DialogueParse();
+		Parse("conversation square in Old Village\n" +
+			"@ keeper: Here.\n" +
+			"conversation alone in\n", spaced);
+		Test.Assert(HasProblem(spaced, 1, "the level a dialogue asset's name"));
+		Test.Assert(HasProblem(spaced, 3, "the level a dialogue asset's name"));
 	}
 
 	[Test]

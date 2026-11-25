@@ -40,6 +40,14 @@ interface IDialogueAssets
 	void TypeOf(Guid id, String outType);
 }
 
+/// The project's levels as the checks see them.
+interface IDialogueLevels
+{
+	/// The names of the entities in the scene `level` (BORROWED, the implementation's); null when it
+	/// does not load.
+	List<String> EntityNames(Guid level);
+}
+
 /// What the checks read beyond the file itself. Everything it names is BORROWED.
 class DialogueCheckInputs
 {
@@ -59,6 +67,10 @@ class DialogueCheckInputs
 	public Span<String> OtherFlagsSet;
 	/// Null: the assets' names and types are not checked.
 	public IDialogueAssets Assets;
+	/// The input maps' actions; null: the project has no input map.
+	public List<String> Actions;
+	/// Null: a level's entities are not checked.
+	public IDialogueLevels Levels;
 }
 
 /// The cook's checks of a parsed dialogue file: what the parser cannot know, against the project.
@@ -67,6 +79,8 @@ static class DialogueChecks
 	/// The asset types `sound` and `sequence` take.
 	public static String[?] cSoundAssetTypes = .("AudioClipAsset", "SoundCueAsset");
 	public static String[?] cSequenceAssetTypes = .("SequenceAsset");
+	/// The asset types a conversation's level takes.
+	public static String[?] cLevelAssetTypes = .("SceneDocument");
 
 	/// Checks `parse` and adds every problem to it, by line; resolves the clips, sounds and
 	/// sequences its steps name into their `Asset`.
@@ -155,6 +169,12 @@ static class DialogueChecks
 		List<String> mFlagsRead = new .() ~ DeleteContainerAndItems!(_);
 		bool mNoCastTold;
 		bool mNoAssetsTold;
+		bool mNoActionsTold;
+		/// The conversation's level's entities, when it names one that loads (BORROWED).
+		List<String> mEntities;
+		StringView mLevelName;
+		/// The entities a warning has named in this conversation.
+		List<String> mEntitiesTold = new .() ~ DeleteContainerAndItems!(_);
 
 		public this(DialogueParse parse, DialogueCheckInputs inputs)
 		{
@@ -170,9 +190,12 @@ static class DialogueChecks
 				let header = conversation.Steps.IsEmpty ? (uint32)0 : conversation.Steps.Back.SourceLine;
 				if (Contains(mInputs.OtherConversations, conversation.Id))
 					Problem(header, scope $"another dialogue file has a conversation `{conversation.Id}`");
+				Level(conversation, header);
+				ClearAndDeleteItems!(mEntitiesTold);
 				for (let step in conversation.Steps)
 					Step(conversation, step);
 				Reachability(conversation);
+				mEntities = null;
 			}
 		}
 
@@ -239,6 +262,75 @@ static class DialogueChecks
 			return .();
 		}
 
+		/// The level a conversation names: its entities, which later steps check their names against.
+		void Level(DialogueConversation conversation, uint32 header)
+		{
+			mEntities = null;
+			mLevelName = conversation.Level;
+			if (conversation.Level.IsEmpty)
+				return;
+			let level = Asset(conversation.Level, cLevelAssetTypes, "level", header);
+			if ((level != .()) && (mInputs.Levels != null))
+				mEntities = mInputs.Levels.EntityNames(level);
+		}
+
+		/// A warning when the conversation's level has no entity `name`: one spawned at play is not
+		/// in the scene, so it may be there when the conversation plays.
+		void Entity(StringView name, StringView whose, uint32 line)
+		{
+			if ((mEntities == null) || name.IsEmpty || Contains(mEntities, name) || Contains(mEntitiesTold, name))
+				return;
+			mEntitiesTold.Add(new .(name));
+			Problem(line, scope $"no entity `{name}` ({whose}) in the level `{mLevelName}`, unless it is spawned at play", true);
+		}
+
+		/// The actions a line's or an answer's text names (`{Interact}`; `{{` is a brace).
+		void Actions(StringView id, uint32 line)
+		{
+			StringView text = "";
+			for (let entry in mParse.Lines)
+			{
+				if (entry.Id == id)
+				{
+					text = entry.Text;
+					break;
+				}
+			}
+			for (int i = 0; i < text.Length; i++)
+			{
+				if (text[i] != '{')
+					continue;
+				if ((i + 1 < text.Length) && (text[i + 1] == '{'))
+				{
+					i++;
+					continue;
+				}
+				let close = text.IndexOf('}', i + 1);
+				if (close < 0)
+				{
+					Problem(line, "a `{` with no `}`: an action is `{Name}`, a brace `{{`");
+					return;
+				}
+				let action = text.Substring(i + 1, close - i - 1);
+				if (mInputs.Actions == null)
+				{
+					if (!mNoActionsTold)
+					{
+						let braced = scope String("{");
+						braced.Append(action);
+						braced.Append('}');
+						Problem(line, scope $"`{braced}` names an action, but the project has no input map");
+						mNoActionsTold = true;
+					}
+				}
+				else if (!Contains(mInputs.Actions, action))
+				{
+					Problem(line, scope $"no action `{action}` in the project's input maps");
+				}
+				i = close;
+			}
+		}
+
 		void Step(DialogueConversation conversation, DialogueStep step)
 		{
 			switch (step.Kind)
@@ -248,6 +340,7 @@ static class DialogueChecks
 				{
 					if (let speaker = Speaker(step.Speaker, step.SourceLine))
 					{
+						Entity(speaker.Entity, scope $"the speaker `{speaker.Id}`'s", step.SourceLine);
 						if (!step.Mood.IsEmpty && (speaker.FindMood(step.Mood) == null))
 						{
 							let moods = scope String();
@@ -261,6 +354,7 @@ static class DialogueChecks
 						}
 					}
 				}
+				Actions(step.LineId, step.SourceLine);
 				if (!IsPositionalId(step.LineId, conversation.Id) && Contains(mInputs.OtherLineIds, step.LineId))
 					Problem(step.SourceLine, scope $"another dialogue file has a line `#line:{step.LineId}`");
 			case .Play:
@@ -338,6 +432,10 @@ static class DialogueChecks
 					if (part.Kind == .Speaker)
 					{
 						Speaker(argument.Text, step.SourceLine);
+					}
+					else if (part.Kind == .Entity)
+					{
+						Entity(argument.Text, scope $"`{step.Name}`'s {argument.Name}", step.SourceLine);
 					}
 					else if (part.Kind == .Asset)
 					{
