@@ -15,12 +15,17 @@ using Sedulous.Engine.Composition;
 
 namespace Dialogue;
 
-/// A dialogue file: a `.dialogue` text in the project's sources, which the cook parses and checks.
+/// A dialogue file: a `.dialogue` text in the project's sources, which the cook parses and checks,
+/// and the cast and dialogue assets its conversations name, which several files may share.
 [Category("Dialogue")]
 [DisplayName("Dialogue")]
 [Serializable]
 class DialogueAsset : Asset
 {
+	[DisplayName("Cast"), References(typeof(DialogueCastAsset))]
+	public Guid Cast = .();
+	[DisplayName("Dialogue Assets"), References(typeof(DialogueAssetListAsset))]
+	public Guid Assets = .();
 }
 
 /// The project's cast, edited in the inspector: the speakers its conversations name.
@@ -73,9 +78,9 @@ class DialogueProject
 	public bool HasInputMap;
 	public List<Guid> InputMaps = new .() ~ delete _;
 
-	/// Gathers it for the file `self` (nil for none) from `db`, reading the other files' sources
-	/// through `reader`'s sources.
-	public void Gather(DialogueSettings settings, IContentDatabase db, AssetBuildContext reader, Guid self)
+	/// Gathers it for the dialogue file `file` (its cast and dialogue assets; `self`, its id, nil for
+	/// none) from `db`, reading the other files' sources through `reader`'s sources.
+	public void Gather(DialogueSettings settings, DialogueAsset file, IContentDatabase db, AssetBuildContext reader, Guid self)
 	{
 		let error = scope String();
 		for (let text in settings.Commands)
@@ -95,9 +100,9 @@ class DialogueProject
 			}
 			Commands.Add(form);
 		}
-		if (settings.Cast != .())
+		if (file.Cast != .())
 		{
-			let read = db.ReadObject(settings.Cast);
+			let read = db.ReadObject(file.Cast);
 			defer { delete read; }
 			if (let castAsset = read as DialogueCastAsset)
 			{
@@ -105,9 +110,9 @@ class DialogueProject
 				HasCast = true;
 			}
 		}
-		if (settings.Assets != .())
+		if (file.Assets != .())
 		{
-			let read = db.ReadObject(settings.Assets);
+			let read = db.ReadObject(file.Assets);
 			defer { delete read; }
 			if (let list = read as DialogueAssetListAsset)
 			{
@@ -314,10 +319,7 @@ class DialogueBuilder : IAssetBuilder
 	{
 		get
 		{
-			var cast = mSettings.Cast;
-			var assets = mSettings.Assets;
-			var hash = HashBytes(&cast, sizeof(Guid));
-			hash = HashBytes(&assets, sizeof(Guid), hash);
+			var hash = FnvOffsetBasis;
 			char8 separator = '\n';
 			for (let form in mSettings.Commands)
 			{
@@ -337,13 +339,14 @@ class DialogueBuilder : IAssetBuilder
 	/// change to any of them can change what this file's checks find.
 	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)
 	{
+		let file = (DialogueAsset)asset;
 		let db = DialogueCook.SourceDatabase(context);
 		if (db == null)
 			return;
-		if (mSettings.Cast != .())
-			outDeps.Reads.Add(mSettings.Cast);
-		if (mSettings.Assets != .())
-			outDeps.Reads.Add(mSettings.Assets);
+		if (file.Cast != .())
+			outDeps.Reads.Add(file.Cast);
+		if (file.Assets != .())
+			outDeps.Reads.Add(file.Assets);
 		let self = (context.Source != null) ? context.Source.Id : Guid();
 		if (let root = db.RootGroup)
 		{
@@ -380,7 +383,7 @@ class DialogueBuilder : IAssetBuilder
 		let db = DialogueCook.SourceDatabase(context);
 		let project = scope DialogueProject();
 		if (db != null)
-			project.Gather(mSettings, db, context, (context.Source != null) ? context.Source.Id : Guid());
+			project.Gather(mSettings, (DialogueAsset)asset, db, context, (context.Source != null) ? context.Source.Id : Guid());
 		let parse = scope DialogueParse();
 		DialogueCook.CookDialogue(text, mSettings, project, db, parse);
 		for (let problem in parse.Problems)
@@ -480,9 +483,11 @@ static class DialogueCreators
 		"# conversation greeting\n" +
 		"# @ speaker mood: What the speaker says.\n";
 
-	public static void AddCreators(PipelinePluginServices services)
+	/// File > New's three creators; a new dialogue file takes the settings' default cast and dialogue
+	/// assets (`settings`, the plugin's, outlives the creators, which leave with the plugin).
+	public static void AddCreators(PipelinePluginServices services, DialogueSettings settings)
 	{
-		services.AddCreator(new AssetCreator(cDialogueCreator, "Dialogue", typeof(DialogueAsset), new (context) => CreateDialogueFile(context)).Under("Dialogue"));
+		services.AddCreator(new AssetCreator(cDialogueCreator, "Dialogue", typeof(DialogueAsset), new [=settings] (context) => CreateDialogueFile(context, settings)).Under("Dialogue"));
 		services.AddCreator(new AssetCreator(cDialogueCastCreator, "Dialogue", typeof(DialogueCastAsset), new (context) =>
 			{
 				let target = context.Target;
@@ -508,7 +513,7 @@ static class DialogueCreators
 	/// A new dialogue file from the starter text in the target group's folder under the sources
 	/// (the next free name when another file has that one), and the asset pointing at it. Refused
 	/// without a sources folder or for a name that is not one file name.
-	static Instance CreateDialogueFile(AssetCreationContext context)
+	static Instance CreateDialogueFile(AssetCreationContext context, DialogueSettings settings)
 	{
 		let target = context.Target;
 		if ((target == null) || context.SourcesRoot.IsEmpty)
@@ -526,6 +531,8 @@ static class DialogueCreators
 			return null;
 		let asset = scope DialogueAsset();
 		asset.FileName.Set(fileName);
+		asset.Cast = settings.Cast;
+		asset.Assets = settings.Assets;
 		if (instance.WriteObject(asset) case .Err)
 			return null;
 		return instance;

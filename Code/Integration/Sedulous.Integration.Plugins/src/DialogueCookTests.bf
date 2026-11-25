@@ -19,14 +19,14 @@ using Dialogue;
 namespace Sedulous.Integration.Plugins;
 
 /// The dialogue plugin's assets cooked through the standalone MCP host's tools, as an agent or the
-/// editor cooks them. A project enables the plugin with its cast and its dialogue assets named in
-/// the settings; a dialogue file that names only what the project has cooks to its compiled
+/// editor cooks them. A project enables the plugin; its dialogue files each name their cast and
+/// dialogue assets. A file that names only what the project has cooks to its compiled
 /// conversations, one with an error fails the cook, and File > New's three creators make their
-/// assets.
+/// assets, a new dialogue file taking the settings' default cast and dialogue assets.
 static class DialogueCookTests
 {
-	/// A dialogue file in the project's sources and its asset; its guid.
-	static Guid AddDialogueFile(EditorProject project, Group group, StringView name, StringView text)
+	/// A dialogue file in the project's sources and its asset, naming `cast` and `assets`; its guid.
+	static Guid AddDialogueFile(EditorProject project, Group group, StringView name, StringView text, Guid cast, Guid assets)
 	{
 		let fileName = scope $"Dialogue/{name}.dialogue";
 		let path = project.SourceFile(fileName, .. scope .());
@@ -36,14 +36,16 @@ static class DialogueCookTests
 		Test.Assert(instance != null);
 		let asset = scope DialogueAsset();
 		asset.FileName.Set(fileName);
+		asset.Cast = cast;
+		asset.Assets = assets;
 		Test.Assert(instance.WriteObject(asset) case .Ok);
 		return instance.Id;
 	}
 
 	/// A scratch project enabling dialogue: its cast (a keeper and a visitor), its dialogue assets
-	/// (empty) and one clean dialogue file, the settings naming the cast, the assets, a command and
-	/// a provided flag. The file's guid.
-	static Guid MakeProject(StringView dir)
+	/// (empty) and one clean dialogue file naming them; the settings declare a command and a provided
+	/// flag, and name the cast and the assets as a new file's defaults. The file's guid.
+	static Guid MakeProject(StringView dir, out Guid castId, out Guid assetsId)
 	{
 		RemoveDirectoryRecursive(dir);
 		Test.Assert(EditorProject.Create(dir, "Dialogue Cook") case .Ok);
@@ -78,7 +80,10 @@ static class DialogueCookTests
 			"if seen_gate\n" +
 			"  @ visitor: Again.\n" +
 			"end\n" +
-			"cue lights dim\n");
+			"cue lights dim\n",
+			castInstance.Id, listInstance.Id);
+		castId = castInstance.Id;
+		assetsId = listInstance.Id;
 
 		let settings = scope DialogueSettings();
 		settings.Cast = castInstance.Id;
@@ -99,7 +104,8 @@ static class DialogueCookTests
 		let cwd = Directory.GetCurrentDirectory(.. scope .());
 		let dir = PathJoin(cwd, "scratch_plugins_dialogue_cook", .. scope .());
 		defer RemoveDirectoryRecursive(dir);
-		let gate = MakeProject(dir);
+		Guid castId, assetsId;
+		let gate = MakeProject(dir, out castId, out assetsId);
 
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
@@ -152,7 +158,7 @@ static class DialogueCookTests
 		// A file naming a mood the keeper lacks does not cook.
 		AddDialogueFile(session.Project, session.Project.SourceDb.RootGroup, "Wrong",
 			"conversation wrong\n" +
-			"@ keeper angry: Out!\n");
+			"@ keeper angry: Out!\n", castId, assetsId);
 		Test.Assert(Call(server, "asset_cook", JsonValue.MakeObject(), text..Clear()), text);
 		{
 			let failing = JsonValue.Parse(text);
@@ -161,7 +167,7 @@ static class DialogueCookTests
 		}
 
 		// File > New: the three creators make their types.
-		void Create(StringView creator, StringView name, Type type)
+		Guid Create(StringView creator, StringView name, Type type)
 		{
 			let arguments = Arguments("creator", creator);
 			arguments.Set("name", JsonValue.MakeString(name));
@@ -170,8 +176,16 @@ static class DialogueCookTests
 			let result = JsonValue.Parse(made);
 			defer delete result;
 			Test.Assert(result.Get("type").AsString() == type.GetFullName(.. scope .()), made);
+			return Guid.Parse(result.Get("guid").AsString()).GetValueOrDefault();
 		}
-		Create(DialogueCreators.cDialogueCreator, "Village", typeof(DialogueAsset));
+		let village = Create(DialogueCreators.cDialogueCreator, "Village", typeof(DialogueAsset));
+		{
+			let read = session.Project.SourceDb.ReadObject(village);
+			defer delete read;
+			let asset = read as DialogueAsset;
+			Test.Assert(asset != null);
+			Test.Assert((asset.Cast == castId) && (asset.Assets == assetsId), "the settings' defaults");
+		}
 		Create(DialogueCreators.cDialogueCastCreator, "Second Cast", typeof(DialogueCastAsset));
 		Create(DialogueCreators.cDialogueAssetsCreator, "More Assets", typeof(DialogueAssetListAsset));
 

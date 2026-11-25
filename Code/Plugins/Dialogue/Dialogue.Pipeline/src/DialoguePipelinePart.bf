@@ -34,6 +34,6 @@ class DialoguePipelinePart : PluginPart
 		pipeline.AddBuilder(new DialogueBuilder(settings));
 		pipeline.AddBuilder(new DialogueCastBuilder());
 		pipeline.AddImporter(new DialogueFileImporter());
-		DialogueCreators.AddCreators(pipeline);
+		DialogueCreators.AddCreators(pipeline, settings);
 	}
 }

@@ -224,7 +224,7 @@ class DialogueCheckTests
 			"sound door_creak\n" +
 			"sequence gate_open\n", parse, true, false);
 		Test.Assert(parse.Problems.Count == 1);
-		Test.Assert(HasProblem(parse, 2, "name no dialogue assets"));
+		Test.Assert(HasProblem(parse, 2, "names no dialogue assets"));
 	}
 
 	[Test]
@@ -236,7 +236,7 @@ class DialogueCheckTests
 			"@ keeper: One.\n" +
 			"@ keeper: Two.\n", parse, false);
 		Test.Assert(parse.Problems.Count == 1);
-		Test.Assert(HasProblem(parse, 2, "name no cast"));
+		Test.Assert(HasProblem(parse, 2, "names no cast"));
 	}
 
 	[Test]

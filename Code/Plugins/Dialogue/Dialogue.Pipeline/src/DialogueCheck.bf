@@ -51,9 +51,9 @@ interface IDialogueLevels
 /// What the checks read beyond the file itself. Everything it names is BORROWED.
 class DialogueCheckInputs
 {
-	/// Null: the settings name no cast.
+	/// Null: the file names no cast.
 	public List<DialogueSpeaker> Cast;
-	/// Null: the settings name no dialogue assets.
+	/// Null: the file names no dialogue assets.
 	public List<DialogueAssetEntry> DialogueAssets;
 	/// The declared commands the file was parsed with.
 	public Span<DialogueCommandForm> Commands;
@@ -211,7 +211,7 @@ static class DialogueChecks
 			{
 				if (!mNoCastTold)
 				{
-					Problem(line, "the project's dialogue settings name no cast");
+					Problem(line, "the dialogue file names no cast");
 					mNoCastTold = true;
 				}
 				return null;
@@ -233,7 +233,7 @@ static class DialogueChecks
 			{
 				if (!mNoAssetsTold)
 				{
-					Problem(line, "the project's dialogue settings name no dialogue assets");
+					Problem(line, "the dialogue file names no dialogue assets");
 					mNoAssetsTold = true;
 				}
 				return .();
