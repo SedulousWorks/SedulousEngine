@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Content;
 using Sedulous.GUI;
@@ -359,6 +360,142 @@ class DialogueAssetsPage : DialogueListPage
 	}
 }
 
+/// A dialogue file's text in the code editor (Data/Editor/Dialogue/DialoguePage.xml), coloured as
+/// dialogue (Data/Editor/Code/dialogue.xml) and checked as the cook checks it a moment after each
+/// edit (DialogueCook.CheckDialogueText, its project gathered with the other files read from the
+/// sources), the problems in the list and on their lines; an outline of its conversations, which
+/// moves the cursor to the one chosen; and the file's own slots, its cast and its dialogue assets,
+/// in the grid.
+class DialogueTextPage : CodeAssetPage
+{
+	public const String cMarkupPath = "Editor/Dialogue/DialoguePage.xml";
+
+	private class Entry
+	{
+		public String Id = new .() ~ delete _;
+		/// From 1.
+		public uint32 Line;
+	}
+
+	/// The plugin's, which outlive the page.
+	private DialogueSettings mSettings;
+	/// The conversations as the last check found them.
+	private List<Entry> mConversations = new .() ~ DeleteContainerAndItems!(_);
+	private TreeModel mModel = new .() ~ delete _;
+	/// The markup's.
+	private TreeView mOutline = null;
+	/// Set while the check fills the outline, so it is not taken as the user's choice.
+	private bool mShowing = false;
+
+	public this(EditorContext context, AssetPageServices services, Instance instance, DialogueSettings settings)
+		: base(context, services, instance, typeof(DialogueAsset), cMarkupPath)
+	{
+		mSettings = settings;
+		mOutline = Find<TreeView>("dialogue-outline");
+		if (mOutline != null)
+		{
+			mOutline.Model = mModel;
+			mOutline.SetOnSelectionChanged(new [=this] (index) =>
+				{
+					if (!mShowing && index.IsValid)
+						GoToConversation((int)index.InternalId);
+				});
+		}
+		OpenCode("dialogue");
+	}
+
+	public ~this()
+	{
+		if (mOutline != null)
+			mOutline.Model = null;
+	}
+
+	/// Moves the cursor to conversation `index` of the last check.
+	public void GoToConversation(int index)
+	{
+		if ((index >= 0) && (index < mConversations.Count))
+			ShowLine(mConversations[index].Line, 1);
+	}
+
+	// === For tests ===
+
+	/// The outline's rows, one a line, appended.
+	public void Outline(String outText)
+	{
+		for (let entry in mConversations)
+			outText.AppendF("{}\n", entry.Id);
+	}
+
+	/// The line conversation `index`'s header is on (from 1); 0 when there is none.
+	public uint32 ConversationLine(int index) => ((index >= 0) && (index < mConversations.Count)) ? mConversations[index].Line : 0;
+
+	protected override void CheckCode(StringView text, List<CodeProblem> outProblems)
+	{
+		ClearAndDeleteItems!(mConversations);
+		let project = Context.Project;
+		if (project == null)
+			return;
+		DialogueSourceReader read = scope (fileName, outText) =>
+			{
+				let bytes = scope List<uint8>();
+				if (ReadFile(project.SourceFile(fileName, .. scope .()), bytes) case .Err)
+					return false;
+				if (!bytes.IsEmpty)
+					outText.Append(StringView((char8*)bytes.Ptr, bytes.Count));
+				return true;
+			};
+		let parse = scope DialogueParse();
+		DialogueCook.CheckDialogueText(text, mSettings, InstanceId, project.SourceDb, read, parse);
+		for (let problem in parse.Problems)
+			outProblems.Add(new CodeProblem(problem.Warning ? .Warning : .Error, problem.Message, "", (problem.Line > 0) ? problem.Line - 1 : 0, 0, false));
+		for (let conversation in parse.Conversations)
+		{
+			let entry = new Entry();
+			entry.Id.Set(conversation.Id);
+			// Its header's line, which its End (the last step) carries.
+			entry.Line = conversation.Steps.IsEmpty ? 0 : conversation.Steps.Back.SourceLine;
+			mConversations.Add(entry);
+		}
+	}
+
+	protected override void OnCodeChecked()
+	{
+		mShowing = true;
+		mModel.Clear();
+		for (let entry in mConversations)
+			mModel.AddNode(TreeModel.Root, entry.Id);
+		mShowing = false;
+	}
+
+	protected override void CleanSummary(String outText)
+	{
+		if (mConversations.Count == 1)
+			outText.Append("No problems: 1 conversation");
+		else
+			outText.AppendF("No problems: {} conversations", mConversations.Count);
+	}
+}
+
+/// Opens a DialogueAsset in the text page, checking against the plugin's settings; a page asks for
+/// its services when it is made.
+class DialogueTextPageFactory : IEditorPageFactory
+{
+	/// Borrowed, both: the editor's (or a test's) services and the plugin's settings, which outlive it.
+	private AssetPageServicesSource mServices;
+	private DialogueSettings mSettings;
+
+	public this(AssetPageServicesSource services, DialogueSettings settings)
+	{
+		mServices = services;
+		mSettings = settings;
+	}
+
+	public Type PrimaryType => typeof(DialogueAsset);
+
+	public EditorPage CreatePage(EditorContext context, Instance instance) =>
+		new DialogueTextPage(context, mServices.Make(), instance, mSettings);
+}
+
 /// Opens a DialogueCastAsset in the cast page; a page asks for its services when it is made.
 class DialogueCastPageFactory : IEditorPageFactory
 {
@@ -396,10 +533,12 @@ class DialogueAssetsPageFactory : IEditorPageFactory
 
 static class DialoguePages
 {
-	/// Adds the dialogue's pages to the editor's page registry; their keys, to remove them by, are
-	/// appended to `outKeys`. `services` is borrowed and outlives the pages.
-	public static void Register(EditorContext context, AssetPageServicesSource services, List<uint64> outKeys)
+	/// Adds the dialogue's pages to the editor's page registry, the text page checking against
+	/// `settings`; their keys, to remove them by, are appended to `outKeys`. `services` and
+	/// `settings` (the plugin's) are borrowed and outlive the pages.
+	public static void Register(EditorContext context, AssetPageServicesSource services, DialogueSettings settings, List<uint64> outKeys)
 	{
+		outKeys.Add(context.Pages.Register(new DialogueTextPageFactory(services, settings)));
 		outKeys.Add(context.Pages.Register(new DialogueCastPageFactory(services)));
 		outKeys.Add(context.Pages.Register(new DialogueAssetsPageFactory(services)));
 	}

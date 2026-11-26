@@ -16,9 +16,11 @@ using Dialogue;
 namespace Sedulous.Integration.Plugins;
 
 /// The dialogue plugin's Editor part in an editor session. Opening a project that enables the plugin
-/// adds the cast's and the dialogue assets' pages; a cast opens in its page, its speakers a list by
-/// id beside the chosen one's rows, where a speaker is added, undone, found and removed, and a
-/// dialogue assets list opens in its; closing the project removes the pages again.
+/// adds the dialogue file's, the cast's and the dialogue assets' pages; a cast opens in its page,
+/// its speakers a list by id beside the chosen one's rows, where a speaker is added, undone, found
+/// and removed, a dialogue assets list opens in its, and a dialogue file opens in the text page with
+/// its problems as the cook finds them and its conversations in the outline; closing the project
+/// removes the pages again.
 static class DialogueEditorTests
 {
 	class HostOnly : IApplicationHost
@@ -41,7 +43,7 @@ static class DialogueEditorTests
 	}
 
 	[Test]
-	public static void InTheEditorTheCastAndTheDialogueAssetsOpenInTheirPagesWhichLeaveWithThePlugin()
+	public static void InTheEditorADialogueFileTheCastAndTheDialogueAssetsOpenInTheirPagesWhichLeaveWithThePlugin()
 	{
 		EditorAppSerializables.RegisterEditorProjectSettingsTypes();
 		let dir = scope String();
@@ -150,11 +152,46 @@ static class DialogueEditorTests
 			Test.Assert(List(entries, text) == "asset\nasset_2");
 			Test.Assert(context.OpenPages.Count == 2);
 
+			// A dialogue file opens in the text page: its problems as the cook finds them, at their
+			// lines, and its conversations in the outline. (With no window the page has no code editor
+			// to type in; typing and its checks are the code pages' own.)
+			Test.Assert(context.Pages.FindFactory(typeof(DialogueAsset)) != null);
+			let source = "conversation gate\n" +
+				"@ keeper: Who goes there?\n" +
+				"conversation lane\n" +
+				"@ stranger: Me.\n";
+			let path = context.Project.SourceFile("Dialogue/Gate.dialogue", .. scope .());
+			CreateDirectory(PathParent(path, .. scope .()));
+			Test.Assert(WriteFile(path, Span<uint8>((uint8*)source.Ptr, source.Length)) case .Ok);
+			let file = root.CreateInstance("Gate", typeof(DialogueAsset).GetFullName(.. scope .()));
+			Test.Assert(file != null);
+			{
+				let fileAsset = scope DialogueAsset();
+				fileAsset.FileName.Set("Dialogue/Gate.dialogue");
+				fileAsset.Cast = cast.Id;
+				Test.Assert(file.WriteObject(fileAsset) case .Ok);
+			}
+			let filePage = context.OpenPage(file);
+			Test.Assert(filePage != null);
+			let textPage = filePage as DialogueTextPage;
+			Test.Assert(textPage != null);
+			Test.Assert(textPage.SourceRead);
+			textPage.Outline(text..Clear());
+			Test.Assert(text == "gate\nlane\n", text);
+			Test.Assert(textPage.ConversationLine(0) == 1);
+			Test.Assert(textPage.ConversationLine(1) == 3);
+			Test.Assert(textPage.Found.Length == 1);
+			Test.Assert(textPage.Found[0].Line == 3); // the fourth line, from 0
+			Test.Assert(textPage.Found[0].Severity == .Error);
+			Test.Assert(textPage.Found[0].Message.Contains("no speaker `stranger`"), textPage.Found[0].Message);
+			Test.Assert(context.OpenPages.Count == 3);
+
 			session.Close();
 			Test.Assert(context.Plugins == null);
 			Test.Assert(context.OpenPages.Count == 0, "the plugin's pages closed with it");
 			Test.Assert(context.Pages.FindFactory(typeof(DialogueCastAsset)) == null);
 			Test.Assert(context.Pages.FindFactory(typeof(DialogueAssetListAsset)) == null);
+			Test.Assert(context.Pages.FindFactory(typeof(DialogueAsset)) == null);
 		}
 		host.Subsystems.Shutdown();
 		embedded.OnShutdown(host);

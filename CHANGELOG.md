@@ -20,6 +20,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
   box (Stock box in its settings) shows lines typed out and a choice's answers, for the pad, the
   keys and the mouse, and a project restyles it with a sheet of its own. Over MCP,
   `dialogue_validate` checks dialogue files without cooking and `dialogue_read` shows what one holds.
+  A dialogue file opens in a page of its own: its text coloured and checked as it is edited, beside
+  an outline of its conversations and its cast and dialogue assets.
 - Sequences: a sequence asset (File > New, under Animation) is a cutscene timeline that drives
   several entities at once: property and transform tracks, skeletal clips, sounds, camera cuts,
   fades, events, holds that wait for the game, and sequences nested in others. Scripts play one with `scene.Sequences.Play(sequence)`, fill its

@@ -268,5 +268,17 @@ class CodeLanguageTests
 		Test.Assert(state.Depth == 0);
 		CheckRuns(css, "toast { background: var(--toast-background, #222); }", ref state,
 			"selector:toast punctuation:{ property:background punctuation:: builtin:var punctuation:( text:--toast-background punctuation:, constant:#222 punctuation:); punctuation:}");
+
+		// The dialogue plugin's format: statements' words, a line's speaker and text, an answer, a comment.
+		let talk = scope CodeLanguage();
+		Test.Assert(LoadSandboxLanguage("dialogue", talk));
+		state = CodeLexState();
+		CheckRuns(talk, "conversation gate in village", ref state, "keyword:conversation text:gate keyword:in text:village");
+		CheckRuns(talk, "@ keeper worried: Who goes there?", ref state,
+			"punctuation:@ type: keeper worried punctuation:: string: Who goes there?");
+		Test.Assert(state.Depth == 0); // the line's end leaves the text
+		CheckRuns(talk, "> A friend.", ref state, "punctuation:> string: A friend.");
+		CheckRuns(talk, "wait 1.5 # a pause", ref state, "keyword:wait number:1.5 comment:# a pause");
+		Test.Assert(state.Depth == 0);
 	}
 }

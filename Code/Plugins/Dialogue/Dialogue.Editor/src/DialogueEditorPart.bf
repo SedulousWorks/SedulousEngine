@@ -7,9 +7,10 @@ using Sedulous.Editor.App;
 namespace Dialogue;
 
 /// Dialogue.Editor: the Editor part of the engine's official dialogue package, which only the editor
-/// loads. Load adds the cast's and the dialogue assets' pages to the editor's page registry, where
-/// the editor offers its context and its page services; Unload removes them, closing the pages they
-/// made, since those run this part's code.
+/// loads. Load adds the dialogue file's, the cast's and the dialogue assets' pages to the editor's
+/// page registry (the file's checking against the plugin's settings), where the editor offers its
+/// context and its page services; Unload removes them, closing the pages they made, since those run
+/// this part's code.
 [AlwaysInclude]
 class DialogueEditorPart : PluginPart
 {
@@ -31,9 +32,10 @@ class DialogueEditorPart : PluginPart
 	{
 		let editor = context.Find<EditorContext>();
 		let services = context.Find<AssetPageServicesSource>();
-		if ((editor == null) || (services == null))
+		let settings = context.Settings<DialogueSettings>();
+		if ((editor == null) || (services == null) || (settings == null))
 			return;
-		DialoguePages.Register(editor, services, mPages);
+		DialoguePages.Register(editor, services, settings, mPages);
 	}
 
 	public override void Unload(PluginContext context)

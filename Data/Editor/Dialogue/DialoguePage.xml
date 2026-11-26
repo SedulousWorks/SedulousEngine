@@ -1,0 +1,55 @@
+<!--
+  The dialogue page: the kit's bar (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset,
+  each an action over the page) with the asset's kind at the end, over the dialogue file's text and
+  its problems, one above the other, beside the outline of its conversations and the file's own
+  slots (its cast and its dialogue assets). The text is coloured as dialogue and checked as the
+  cook checks it a moment after each edit; choosing a conversation in the outline moves the cursor
+  to it. Preview plays the chosen conversation (the first, when none is) in the open scene page's
+  Simulate, in the stock box, with flags of its own that go when it stops; its pane says what the
+  conversation waits on and takes the advance, the answers and a command's done, since Simulate's
+  pointer is the scene's. An asset that did not read says so in place of the text.
+-->
+<Panel class="page code-page dialogue-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <ToolButton id="dialogue-preview" toggle="true" icon="Editor/Icons/play.svg" text="Preview" shows-text="true" tooltip="Play the chosen conversation in the open scene page, in the stock box"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Panel id="page-state" class="state-box failed page-state">
+        <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+        <Label class="state-title" text="This asset did not read"/>
+        <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+    </Panel>
+    <Splitter id="dialogue-body" class="page-body" axis="horizontal" weights="0.72 0.28">
+        <Splitter class="code-pane" axis="vertical" weights="0.8 0.2">
+            <CodeEditor id="page-code" class="page-code"/>
+            <Panel id="page-problems" class="panel page-problems"/>
+        </Splitter>
+        <Splitter class="panel page-pane" axis="vertical" weights="0.6 0.4">
+            <Panel class="panel dialogue-outline-pane">
+                <Label class="panel-title" text="Conversations"/>
+                <TreeView id="dialogue-outline" class="panel-body tree dialogue-outline"/>
+            </Panel>
+            <Panel class="panel dialogue-side">
+                <Panel id="dialogue-preview-pane" class="panel dialogue-preview-pane">
+                    <Label class="panel-title" text="Preview"/>
+                    <Label id="dialogue-preview-state" class="dialogue-preview-state" text="Not playing"/>
+                    <Panel id="dialogue-preview-answers" class="dialogue-preview-answers"/>
+                    <Panel class="dialogue-preview-buttons">
+                        <Button id="dialogue-preview-advance" text="Advance"/>
+                        <Button id="dialogue-preview-done" text="Done"/>
+                    </Panel>
+                </Panel>
+                <PropertyGrid id="page-grid" class="panel-body"/>
+            </Panel>
+        </Splitter>
+    </Splitter>
+</Panel>

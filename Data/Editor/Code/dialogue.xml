@@ -1,0 +1,110 @@
+<!-- The dialogue format's definition for the code editors (the dialogue plugin's page), read through
+   the engine's XML serialization. The statements' words are keywords; a line's speaker is a type,
+   its text and an answer's text strings (a line's `#line:<id>` with them); `#` to the end of a line
+   is a comment. -->
+<root>
+	<object>
+		<string name="id">dialogue</string>
+		<string name="name">Dialogue</string>
+		<array name="extensions" count="1">
+			<string>dialogue</string>
+		</array>
+		<bool name="identifierDashes">false</bool>
+		<array name="words" count="2">
+			<object>
+				<string name="token">keyword</string>
+				<string name="list">conversation choice end if not else set clear wait play sound fade sequence jump in and at for out</string>
+			</object>
+			<object>
+				<string name="token">constant</string>
+				<string name="list">true false</string>
+			</object>
+		</array>
+		<array name="contexts" count="5">
+			<object>
+				<string name="name">statements</string>
+				<string name="token">text</string>
+				<array name="rules" count="6">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">#</string>
+						<string name="token">comment</string>
+						<string name="enter">comment</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">@</string>
+						<string name="token">punctuation</string>
+						<string name="enter">speaker</string>
+						<bool name="lineStart">true</bool>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">&gt;</string>
+						<string name="token">punctuation</string>
+						<string name="enter">said</string>
+						<bool name="lineStart">true</bool>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">"</string>
+						<string name="token">string</string>
+						<string name="enter">quoted</string>
+					</object>
+					<object>
+						<string name="match">number</string>
+						<string name="token">number</string>
+					</object>
+					<object>
+						<string name="match">identifier</string>
+						<string name="token">text</string>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">comment</string>
+				<string name="token">comment</string>
+				<bool name="endsAtLineEnd">true</bool>
+				<array name="rules" count="0">
+				</array>
+			</object>
+			<object>
+				<string name="name">speaker</string>
+				<string name="token">type</string>
+				<bool name="endsAtLineEnd">true</bool>
+				<array name="rules" count="2">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">:</string>
+						<string name="token">punctuation</string>
+						<u8 name="leave">1</u8>
+						<string name="enter">said</string>
+					</object>
+					<object>
+						<string name="match">identifier</string>
+						<string name="token">type</string>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">said</string>
+				<string name="token">string</string>
+				<bool name="endsAtLineEnd">true</bool>
+				<array name="rules" count="0">
+				</array>
+			</object>
+			<object>
+				<string name="name">quoted</string>
+				<string name="token">string</string>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">"</string>
+						<string name="token">string</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+		</array>
+	</object>
+</root>
