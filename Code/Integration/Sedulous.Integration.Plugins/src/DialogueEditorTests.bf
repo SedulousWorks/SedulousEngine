@@ -11,6 +11,7 @@ using Sedulous.Engine.DefaultApp;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
+using Sedulous.Run;
 using Dialogue;
 
 namespace Sedulous.Integration.Plugins;
@@ -39,6 +40,12 @@ static class DialogueEditorTests
 	static String List(DialogueListPage page, String outText)
 	{
 		page.List(outText..Clear());
+		return outText;
+	}
+
+	static String State(DialogueTextPage page, String outText)
+	{
+		page.PreviewState(outText..Clear());
 		return outText;
 	}
 
@@ -185,6 +192,57 @@ static class DialogueEditorTests
 			Test.Assert(textPage.Found[0].Severity == .Error);
 			Test.Assert(textPage.Found[0].Message.Contains("no speaker `stranger`"), textPage.Found[0].Message);
 			Test.Assert(context.OpenPages.Count == 3);
+
+			// Preview plays the text as it reads, here in a plain run and scene (the editor plays it
+			// in the open scene page's Simulate); text with errors does not play.
+			let run = scope RunBase("preview");
+			let scene = scope Sedulous.Scene.Scene("preview");
+			scene.SetRun(run);
+			Test.Assert(!textPage.PlayPreview(scene, run), "`stranger` is no speaker");
+			Test.Assert(!textPage.IsPreviewing);
+			let clean = "conversation talk\n" +
+				"set seen\n" +
+				"if seen\n" +
+				"  @ keeper: Seen.\n" +
+				"end\n" +
+				"choice\n" +
+				"> Yes.\n" +
+				"> No.\n" +
+				"end\n";
+			let cleanPath = context.Project.SourceFile("Dialogue/Talk.dialogue", .. scope .());
+			Test.Assert(WriteFile(cleanPath, Span<uint8>((uint8*)clean.Ptr, clean.Length)) case .Ok);
+			let talk = root.CreateInstance("Talk", typeof(DialogueAsset).GetFullName(.. scope .()));
+			Test.Assert(talk != null);
+			{
+				let talkAsset = scope DialogueAsset();
+				talkAsset.FileName.Set("Dialogue/Talk.dialogue");
+				talkAsset.Cast = cast.Id;
+				Test.Assert(talk.WriteObject(talkAsset) case .Ok);
+			}
+			let talkPage = context.OpenPage(talk) as DialogueTextPage;
+			Test.Assert(talkPage != null);
+			Test.Assert(State(talkPage, text) == "Not playing");
+			Test.Assert(talkPage.PlayPreview(scene, run));
+			let runner = talkPage.PreviewRunner;
+			Test.Assert(runner != null);
+			Test.Assert(runner.Waiting == .Line);
+			Test.Assert(runner.Flag("seen"), "a flag of the preview's own: the run has no save");
+			Test.Assert(State(talkPage, text) == "A line shows: Advance goes on");
+			Test.Assert(runner.Advance());
+			Test.Assert(runner.Waiting == .Choice);
+			Test.Assert(State(talkPage, text) == "A choice: take an answer");
+			Test.Assert(runner.Choose(1));
+			Test.Assert(State(talkPage, text) == "Ended");
+			talkPage.StopPreview();
+			Test.Assert(!talkPage.IsPreviewing);
+			Test.Assert(State(talkPage, text) == "Not playing");
+			// Played again: the text is built again for it (the last play took what the check built).
+			Test.Assert(talkPage.PlayPreview(scene, run));
+			Test.Assert(talkPage.PreviewRunner.Waiting == .Line);
+			talkPage.StopPreview();
+			// With no scene page open, Start tells and plays nothing.
+			Test.Assert(!talkPage.StartPreview());
+			Test.Assert(!talkPage.IsPreviewing);
 
 			session.Close();
 			Test.Assert(context.Plugins == null);

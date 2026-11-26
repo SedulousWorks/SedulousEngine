@@ -413,6 +413,13 @@ waveform::cut { background-color: rgba(0, 0, 0, 0.45); }
 .input-tree-pane { flex-direction: column; }
 .input-tree-pane > .search-row { flex-direction: row; padding: var(--space-s); }
 .input-tree { flex-grow: 1; min-height: 0; }
+/* The dialogue page (the dialogue plugin's): beside its code, the outline over the preview's pane
+   (what the conversation waits on, its answers, Advance and Done) and the file's slots. */
+.dialogue-side { flex-direction: column; flex-grow: 1; }
+.dialogue-preview-pane { flex-direction: column; gap: var(--space-s); padding: var(--space-m); }
+.dialogue-preview-state { white-space: normal; color: var(--text-dim); }
+.dialogue-preview-answers { flex-direction: column; gap: var(--space-s); }
+.dialogue-preview-buttons { flex-direction: row; gap: var(--space-s); }
 /* A code page: its code over its problems, beside what is the page's own (such as a script's API
    browser). */
 .code-page { flex-direction: column; }

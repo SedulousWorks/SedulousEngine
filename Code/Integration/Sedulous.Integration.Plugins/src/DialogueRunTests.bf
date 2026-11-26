@@ -343,6 +343,47 @@ class DialogueRunTests
 		Test.Assert(gui.Screens.Top == null, "popped");
 	}
 
+	/// A preview shows the stock box though the project's settings leave it off, and takes its
+	/// presses while it shows it.
+	[Test]
+	public static void APreviewShowsTheStockBoxWithTheSettingOff()
+	{
+		let dataRoot = FindDataRoot(.. scope .());
+		let data = scope NativeFileSystem(dataRoot);
+		let gui = new GuiSubsystem(data);
+		defer delete gui;
+		let application = scope SubsystemManager();
+		application.RegisterSubsystem<GuiSubsystem>(gui);
+		application.Startup();
+		// Disposed while the borrowed GUI lives: unregistering it needs it.
+		defer application.Dispose();
+		let r = scope Stage(DialogueScriptTests.cTalk);
+		r.Run.RunHost.Subsystems = application;
+		r.Settings.StockBox = false;
+		r.Settings.TypingSpeed = 0;
+		r.Runner.SetFlag("met", true);
+		let stockBox = r.Runner.Box;
+
+		Test.Assert(r.Runner.Play(r.Store.Gate, "gate"));
+		Test.Assert(!stockBox.IsShown, "off in the settings");
+		r.Runner.Stop();
+
+		r.Runner.Host.ShowStockBox(true);
+		Test.Assert(r.Runner.Play(r.Store.Gate, "gate"));
+		Test.Assert(stockBox.IsShown, "a preview shows it");
+		Test.Assert(stockBox.ShownText == "Welcome back.");
+		stockBox.PressBox();
+		r.Frame(0.0f);
+		Test.Assert(r.Runner.Waiting == .Choice, "the box's press advances");
+		Test.Assert(stockBox.AnswerCount == 2);
+
+		r.Runner.Host.ShowStockBox(false);
+		stockBox.Press(1);
+		r.Frame(0.0f);
+		Test.Assert(r.Runner.Waiting == .Choice, "off again: the box's presses are not taken");
+		r.Runner.Stop();
+	}
+
 	/// A fade held when the runner goes (its run ending mid conversation) is let go with it.
 	[Test]
 	public static void AFadeHeldIsLetGoWithTheRunner()

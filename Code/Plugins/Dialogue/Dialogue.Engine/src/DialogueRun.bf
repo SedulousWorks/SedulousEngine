@@ -36,6 +36,10 @@ namespace Dialogue;
 /// While a line shows, its speaker plays their talk clip (the cast's `Talk`), looping, and their
 /// voice (the cast's `Voice`) once as it starts.
 ///
+/// A run with no save (an editor page's) keeps flags and the resume record in a store of the
+/// host's own, dropped with it. A preview (the dialogue page's) plays a file's text as it is edited
+/// (SetDialogue) and stages in the scene it names (SetScene).
+///
 /// With the settings' `StockBox` on, the host shows what it tells the game in the plugin's own box
 /// as well (DialogueStockBox), on the run's screen stack, and takes the player's advance and answers
 /// from it.
@@ -75,6 +79,15 @@ class DialogueRunHost : IDialogueHost
 	// The speaker talking while their line shows.
 	private ScriptWeakRef mTalkScene;
 	private EntityHandle mTalker = .Invalid;
+	/// The file SetDialogue replaces, and what plays in its place.
+	private Guid mPreviewId = .();
+	private DialogueResource mPreview = null ~ delete _;
+	/// SetScene's.
+	private ScriptWeakRef mScene;
+	private bool mHasScene = false;
+	private bool mShowBox = false;
+	/// The store of a run with no save.
+	private Dictionary<String, String> mScratch = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
 
 	public this(DialogueSettings settings, RunBase run)
 	{
@@ -87,6 +100,28 @@ class DialogueRunHost : IDialogueHost
 	public void SetRunner(DialogueRunner runner) => mRunner = runner;
 	public DialogueStockBox Box => mBox;
 
+	/// Loads `resource` (TAKEN) for the dialogue file `id` in place of its cooked form (a preview of
+	/// its text as it is edited); null goes back to the cooked one.
+	public void SetDialogue(Guid id, DialogueResource resource)
+	{
+		if (mPreview != resource)
+			delete mPreview;
+		mPreviewId = id;
+		mPreview = resource;
+	}
+
+	/// Shows the stock box whatever the settings say (a preview).
+	public void ShowStockBox(bool show) => mShowBox = show;
+
+	/// Stages in `scene` rather than the run's current scene (null: the run's again).
+	public void SetScene(Scene scene)
+	{
+		mScene = (scene != null) ? scene.TakeScriptWeak() : default;
+		mHasScene = scene != null;
+	}
+
+	private bool BoxOn => mShowBox || mSettings.StockBox;
+
 	public ~this()
 	{
 		StopTalking();
@@ -94,7 +129,7 @@ class DialogueRunHost : IDialogueHost
 	}
 
 	private ResourceManager Resources => (Find(typeof(ResourceSource)) as ResourceSource)?.Manager;
-	private Scene CurrentScene => mRun.Get<ApplicationRun>()?.CurrentScene;
+	private Scene CurrentScene => mHasScene ? (mScene.Resolve() as Scene) : mRun.Get<ApplicationRun>()?.CurrentScene;
 
 	/// Plays the speaker `speaker` as `entity` in what follows (invalid: the cast's again).
 	public void Bind(StringView speaker, EntityHandle entity)
@@ -174,19 +209,28 @@ class DialogueRunHost : IDialogueHost
 		return proxy.Get;
 	}
 
-	public DialogueResource LoadDialogue(Guid id) => Load<DialogueResource>(id);
+	public DialogueResource LoadDialogue(Guid id)
+	{
+		if ((mPreview != null) && (id == mPreviewId))
+			return mPreview;
+		return Load<DialogueResource>(id);
+	}
 	public DialogueCastResource LoadCast(Guid id) => Load<DialogueCastResource>(id);
 
 	public bool ReadFlag(StringView key)
 	{
 		let save = mRun.Get<RunSave>();
-		return (save != null) && save.Values.GetBool(key, false);
+		if (save == null)
+			return Scratch(key) == "true";
+		return save.Values.GetBool(key, false);
 	}
 
 	public void WriteFlag(StringView key, bool on)
 	{
 		let save = mRun.Get<RunSave>();
-		if ((save != null) && save.Values.SetBool(key, on))
+		if (save == null)
+			WriteScratch(key, on ? "true" : "false");
+		else if (save.Values.SetBool(key, on))
 			save.MarkChanged();
 	}
 
@@ -194,15 +238,47 @@ class DialogueRunHost : IDialogueHost
 	{
 		if (let save = mRun.Get<RunSave>())
 			outText.Append(save.Values.GetText(key, ""));
+		else
+			outText.Append(Scratch(key));
 	}
 
 	public void WriteText(StringView key, StringView text)
 	{
 		let save = mRun.Get<RunSave>();
 		if (save == null)
+		{
+			WriteScratch(key, text);
 			return;
+		}
 		if (text.IsEmpty ? save.Values.Remove(key) : save.Values.SetText(key, text))
 			save.MarkChanged();
+	}
+
+	// The store of a run with no save: `key`'s value, empty when it has none.
+	private StringView Scratch(StringView key)
+	{
+		if (mScratch.TryGetAlt(key, ?, let value))
+			return value;
+		return "";
+	}
+
+	// Sets `key` to `value` in the store of a run with no save (empty removes it).
+	private void WriteScratch(StringView key, StringView value)
+	{
+		if (mScratch.TryGetAlt(key, let stored, let current))
+		{
+			if (value.IsEmpty)
+			{
+				mScratch.Remove(stored);
+				delete stored;
+				delete current;
+			}
+			else
+				current.Set(value);
+			return;
+		}
+		if (!value.IsEmpty)
+			mScratch[new .(key)] = new .(value);
 	}
 
 	public void ActionLabel(StringView action, String outLabel)
@@ -342,7 +418,7 @@ class DialogueRunHost : IDialogueHost
 	public void Update(float deltaTime)
 	{
 		UpdateFade(deltaTime);
-		if (!mSettings.StockBox || !mBox.IsShown || (mRunner == null))
+		if (!BoxOn || !mBox.IsShown || (mRunner == null))
 			return;
 		bool pressed = false;
 		if (let input = Find(typeof(ActionRuntime)) as ActionRuntime)
@@ -418,7 +494,7 @@ class DialogueRunHost : IDialogueHost
 		StopTalking();
 		if ((speaker != null) && (speaker.Voice != .()))
 			(Find(typeof(AudioFacade)) as AudioFacade)?.PlayOneShot(speaker.Voice);
-		if (mSettings.StockBox && BoxPlace(let gui, let stack))
+		if (BoxOn && BoxPlace(let gui, let stack))
 			mBox.ShowLine(gui, stack, BoxSheet(.. scope .()), notice, speaker);
 		let scene = CurrentScene;
 		if ((scene != null) && (speaker != null) && (speaker.Talk != .()))
@@ -437,7 +513,7 @@ class DialogueRunHost : IDialogueHost
 	public void OnLineEnded() => StopTalking();
 	public void OnChoice(DialogueChoiceNotice notice)
 	{
-		if (mSettings.StockBox && BoxPlace(let gui, let stack))
+		if (BoxOn && BoxPlace(let gui, let stack))
 			mBox.ShowChoice(gui, stack, BoxSheet(.. scope .()), notice);
 		Publish(DialogueEvents.Choice, notice);
 	}
@@ -475,6 +551,8 @@ class DialogueRunService : DialogueRunner
 
 	/// The stock box (for tests).
 	public DialogueStockBox Box => mRunHost.Box;
+	/// The run's host, for a preview's hooks (SetDialogue, SetScene, ShowStockBox).
+	public DialogueRunHost Host => mRunHost;
 
 	/// Plays the speaker `speaker` as `entity` (invalid: the cast's entity again).
 	public void Bind(StringView speaker, EntityHandle entity) => mRunHost.Bind(speaker, entity);
