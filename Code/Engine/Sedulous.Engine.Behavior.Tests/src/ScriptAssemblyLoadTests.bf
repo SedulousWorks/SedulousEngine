@@ -13,7 +13,7 @@ class ImageRuntime : ScriptRuntime
 {
 	public const String cLanguage = "imaged";
 
-	private class ImageObject : ScriptObject
+	private class ImageObject : BehaviorObject
 	{
 	}
 
@@ -23,7 +23,7 @@ class ImageRuntime : ScriptRuntime
 	public List<uint8> LastSymbols = new .() ~ delete _;
 	/// The first section's name the last load was handed: the class's own file.
 	public String LastSection = new .() ~ delete _;
-	private List<ScriptObject> mLive = new .() ~ DeleteContainerAndItems!(_);
+	private List<BehaviorObject> mLive = new .() ~ DeleteContainerAndItems!(_);
 
 	public static void Register() => ScriptBackends.Register(cLanguage, => Create);
 
@@ -55,7 +55,7 @@ class ImageRuntime : ScriptRuntime
 
 	public override bool ModuleInUse(StringView moduleName) => false;
 
-	public override ScriptObject Instantiate(StringView moduleName, StringView className)
+	public override BehaviorObject Instantiate(StringView moduleName, StringView className)
 	{
 		for (let module in Modules)
 		{
@@ -70,7 +70,7 @@ class ImageRuntime : ScriptRuntime
 		return null;
 	}
 
-	public override void Release(ScriptObject scriptObject)
+	public override void Release(BehaviorObject scriptObject)
 	{
 		if (mLive.Remove(scriptObject))
 			delete scriptObject;

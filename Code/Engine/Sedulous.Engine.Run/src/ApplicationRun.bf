@@ -120,7 +120,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// OWNED: `Net` to this run's scripts, over the networking controller.
 	private NetFacade mNetFacade = null ~ delete _;
 	/// The orchestrator: an instance of the game script's class. Null when no script runs.
-	private ScriptObject mGame = null;
+	private BehaviorObject mGame = null;
 	/// BORROWED: the resource manager owns the product.
 	private BehaviorClass mGameClass = null;
 	/// Why the last game script stopped on its own: the handler it faulted in and the

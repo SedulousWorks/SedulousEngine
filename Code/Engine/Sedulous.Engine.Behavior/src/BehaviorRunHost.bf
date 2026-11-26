@@ -266,7 +266,7 @@ class BehaviorRunHost
 	/// An instance of the class, its module loaded or reloaded as needed. Null on failure,
 	/// logged, and for a class not of the kind `kind` the place it is set takes (a scene's
 	/// Level slot a SceneBehavior, an entity's an EntityBehavior, the run's a RunBehavior).
-	public ScriptObject Instantiate(BehaviorClass scriptClass, BehaviorKind kind)
+	public BehaviorObject Instantiate(BehaviorClass scriptClass, BehaviorKind kind)
 	{
 		if (scriptClass.Kind != kind)
 		{

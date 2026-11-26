@@ -2500,7 +2500,7 @@ class AngelScriptRuntime : ScriptRuntime
 
 	// ==================== script objects ====================
 
-	public override ScriptObject Instantiate(StringView moduleName, StringView className)
+	public override BehaviorObject Instantiate(StringView moduleName, StringView className)
 	{
 		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);
 		if (module == null)
@@ -2560,7 +2560,7 @@ class AngelScriptRuntime : ScriptRuntime
 		return object;
 	}
 
-	public override void Release(ScriptObject object)
+	public override void Release(BehaviorObject object)
 	{
 		let o = object as AngelScriptObject;
 		if (o == null)
@@ -2665,7 +2665,7 @@ class AngelScriptRuntime : ScriptRuntime
 		return null;
 	}
 
-	public override bool HasMethod(ScriptObject object, StringView name, int arity)
+	public override bool HasMethod(BehaviorObject object, StringView name, int arity)
 	{
 		let o = object as AngelScriptObject;
 		if (o == null)
@@ -2744,7 +2744,7 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
-	public override bool Invoke(ScriptObject object, StringView name, Span<ScriptValue> args, ref ScriptValue result)
+	public override bool Invoke(BehaviorObject object, StringView name, Span<ScriptValue> args, ref ScriptValue result)
 	{
 		let o = object as AngelScriptObject;
 		if (o == null)
@@ -2778,7 +2778,7 @@ class AngelScriptRuntime : ScriptRuntime
 		return Execute(found.Function, o.Object, args, ref result, found.What);
 	}
 
-	public override bool GetProperty(ScriptObject object, StringView name, ref ScriptValue value)
+	public override bool GetProperty(BehaviorObject object, StringView name, ref ScriptValue value)
 	{
 		let o = object as AngelScriptObject;
 		if (o == null)
@@ -2790,7 +2790,7 @@ class AngelScriptRuntime : ScriptRuntime
 		return true;
 	}
 
-	public override bool SetProperty(ScriptObject object, StringView name, ScriptValue value)
+	public override bool SetProperty(BehaviorObject object, StringView name, ScriptValue value)
 	{
 		let o = object as AngelScriptObject;
 		if (o == null)
@@ -3131,7 +3131,7 @@ class AngelScriptRuntime : ScriptRuntime
 			Drop(co);
 	}
 
-	public override void CancelCoroutinesFor(ScriptObject object)
+	public override void CancelCoroutinesFor(BehaviorObject object)
 	{
 		let o = object as AngelScriptObject;
 		if (o == null)

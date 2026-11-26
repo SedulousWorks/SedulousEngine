@@ -63,7 +63,7 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 
 	// ---- the Level tier ----
 	private SceneBehaviorSettings mSettings = new .() ~ delete _;
-	private ScriptObject mLevel = null;
+	private BehaviorObject mLevel = null;
 	private BehaviorClass mLevelClass = null;
 	/// Keeps mLevelClass's resource loaded while the Level lives; null with none.
 	private ResourceHold mLevelHold = null ~ _?.Release();
@@ -834,7 +834,7 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 		mLevelStarted = false;
 	}
 
-	public ScriptObject Level => mLevel;
+	public BehaviorObject Level => mLevel;
 
 	/// Reads a property of the live Level object into `value` (a playtest probes a level's
 	/// state with it); false with no Level live or no such property.

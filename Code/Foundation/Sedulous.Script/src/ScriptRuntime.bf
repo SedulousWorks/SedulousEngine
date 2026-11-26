@@ -135,9 +135,9 @@ abstract class ScriptRuntime
 
 	/// Creates an instance of `className` from the module, null when the class is not
 	/// there or its construction faulted (the reason in Problems).
-	public virtual ScriptObject Instantiate(StringView moduleName, StringView className) => null;
+	public virtual BehaviorObject Instantiate(StringView moduleName, StringView className) => null;
 
-	public virtual void Release(ScriptObject object) {}
+	public virtual void Release(BehaviorObject object) {}
 
 	/// The public properties and methods of a compiled class, as the language reports
 	/// them. What a cook harvests properties and handlers from. False when the class is
@@ -145,15 +145,15 @@ abstract class ScriptRuntime
 	public virtual bool DescribeClass(StringView moduleName, StringView className, List<ScriptMemberDesc> outMembers) => false;
 
 	/// Whether the object's class has a method of that name taking `arity` arguments.
-	public virtual bool HasMethod(ScriptObject object, StringView name, int arity) => false;
+	public virtual bool HasMethod(BehaviorObject object, StringView name, int arity) => false;
 
 	/// Calls the method matching the name and the arguments; false with the reason in
 	/// Problems when there is none or the call faulted.
-	public virtual bool Invoke(ScriptObject object, StringView name, Span<ScriptValue> args, ref ScriptValue result) => false;
+	public virtual bool Invoke(BehaviorObject object, StringView name, Span<ScriptValue> args, ref ScriptValue result) => false;
 
 	/// The object's property by name, in the kinds a frame carries. False when it has none.
-	public virtual bool GetProperty(ScriptObject object, StringView name, ref ScriptValue value) => false;
-	public virtual bool SetProperty(ScriptObject object, StringView name, ScriptValue value) => false;
+	public virtual bool GetProperty(BehaviorObject object, StringView name, ref ScriptValue value) => false;
+	public virtual bool SetProperty(BehaviorObject object, StringView name, ScriptValue value) => false;
 
 	// ---- coroutines ----
 	//
@@ -184,7 +184,7 @@ abstract class ScriptRuntime
 	public virtual bool IsDebugPaused => false;
 
 	public virtual void AdvanceCoroutines(double deltaSeconds) {}
-	public virtual void CancelCoroutinesFor(ScriptObject object) {}
+	public virtual void CancelCoroutinesFor(BehaviorObject object) {}
 	public virtual int CoroutineCount => 0;
 
 	/// What went wrong, in order: registration, compile and runtime messages.

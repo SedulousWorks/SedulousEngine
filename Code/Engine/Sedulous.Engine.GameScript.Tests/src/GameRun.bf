@@ -174,7 +174,7 @@ class GameRun
 		}
 	}
 
-	public ScriptObject Game => Instance.[Friend]mGame;
+	public BehaviorObject Game => Instance.[Friend]mGame;
 
 	public ScriptValue Prop(StringView name)
 	{

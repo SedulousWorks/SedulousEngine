@@ -13,7 +13,7 @@ class AssembledRuntime : ScriptRuntime
 {
 	public const String cLanguage = "assembled";
 
-	private class AssembledGame : ScriptObject
+	private class AssembledGame : BehaviorObject
 	{
 	}
 
@@ -21,7 +21,7 @@ class AssembledRuntime : ScriptRuntime
 	public static List<String> sCalls = new .() ~ DeleteContainerAndItems!(_);
 	public static bool sCompiled = false;
 
-	private List<ScriptObject> mLive = new .() ~ DeleteContainerAndItems!(_);
+	private List<BehaviorObject> mLive = new .() ~ DeleteContainerAndItems!(_);
 
 	public static void Register() => ScriptBackends.Register(cLanguage, => Create);
 
@@ -51,7 +51,7 @@ class AssembledRuntime : ScriptRuntime
 
 	public override bool ModuleInUse(StringView moduleName) => false;
 
-	public override ScriptObject Instantiate(StringView moduleName, StringView className)
+	public override BehaviorObject Instantiate(StringView moduleName, StringView className)
 	{
 		if ((className != "Game") || sLoaded.IsEmpty)
 			return null;
@@ -62,15 +62,15 @@ class AssembledRuntime : ScriptRuntime
 		return made;
 	}
 
-	public override void Release(ScriptObject scriptObject)
+	public override void Release(BehaviorObject scriptObject)
 	{
 		if (mLive.Remove(scriptObject))
 			delete scriptObject;
 	}
 
-	public override bool HasMethod(ScriptObject scriptObject, StringView name, int arity) => true;
+	public override bool HasMethod(BehaviorObject scriptObject, StringView name, int arity) => true;
 
-	public override bool Invoke(ScriptObject scriptObject, StringView name, Span<ScriptValue> args, ref ScriptValue result)
+	public override bool Invoke(BehaviorObject scriptObject, StringView name, Span<ScriptValue> args, ref ScriptValue result)
 	{
 		sCalls.Add(new String(name));
 		return true;

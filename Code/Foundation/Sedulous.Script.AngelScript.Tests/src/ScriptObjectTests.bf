@@ -284,7 +284,7 @@ static class ScriptObjectTests
 	}
 
 	private static AngelScriptRuntime sChurnRuntime;
-	private static ScriptObject sChurnOwner;
+	private static BehaviorObject sChurnOwner;
 
 	/// `cancelOwner()`: what destroying a behaviour does to its coroutines, called from a
 	/// coroutine of that behaviour.

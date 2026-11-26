@@ -7,7 +7,7 @@ namespace Sedulous.Script.AngelScript;
 
 /// A script class instance: the AngelScript object, with its methods and properties
 /// resolved once by name, so a dispatch per frame is a lookup, not a search.
-class AngelScriptObject : ScriptObject
+class AngelScriptObject : BehaviorObject
 {
 	public AS.ScriptObject* Object;
 	public AS.TypeInfo* Type;

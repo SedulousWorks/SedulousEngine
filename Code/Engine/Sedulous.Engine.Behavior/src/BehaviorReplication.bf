@@ -116,7 +116,7 @@ extension BehaviorComponentManager
 	}
 
 	/// The instance's current value of `property`, as the property's own kind.
-	private static bool LiveValue(ScriptRuntime runtime, ScriptObject instance, BehaviorProperty property, ref BehaviorPropertyValue value)
+	private static bool LiveValue(ScriptRuntime runtime, BehaviorObject instance, BehaviorProperty property, ref BehaviorPropertyValue value)
 	{
 		var live = ScriptValue.Nil;
 		if (!runtime.GetProperty(instance, property.Name, ref live))

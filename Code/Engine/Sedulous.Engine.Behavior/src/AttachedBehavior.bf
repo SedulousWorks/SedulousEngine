@@ -28,7 +28,7 @@ class AttachedBehavior : ISerializable
 	// ---- runtime, transient ----
 
 	/// The live object, the runtime's; null until the first simulated tick builds it.
-	public ScriptObject Instance = null;
+	public BehaviorObject Instance = null;
 	/// The product the instance was built from, BORROWED: a reload swaps the product and
 	/// the instance is rebuilt.
 	public BehaviorClass BoundClass = null;

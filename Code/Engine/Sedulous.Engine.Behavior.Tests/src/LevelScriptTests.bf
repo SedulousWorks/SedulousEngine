@@ -31,7 +31,7 @@ static class LevelScriptTests
 		}
 		""";
 
-	private static int Int(ScriptPlayScene play, ScriptObject level, StringView name)
+	private static int Int(ScriptPlayScene play, BehaviorObject level, StringView name)
 	{
 		var v = ScriptValue.Nil;
 		play.Runtime.GetProperty(level, name, ref v);
