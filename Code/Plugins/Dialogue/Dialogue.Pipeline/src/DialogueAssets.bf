@@ -360,10 +360,12 @@ class DialogueBuilder : IAssetBuilder
 		}
 	}
 
-	/// The cast, the dialogue assets, the input maps and every other dialogue file are read: a
-	/// change to any of them can change what this file's checks find (the flags the others set, the
-	/// conversations a jump into one names). The cast and every dialogue asset but the file itself
-	/// are what the cooked file refers to at runtime.
+	/// The cast, the dialogue assets and the input maps are read, and every other dialogue file's
+	/// text: a change to any of them can change what this file's checks find (the flags the others
+	/// set, the conversations a jump into one names). The other files are their text, not reads: a
+	/// read folds in the read asset's own recipe, and each file reading every other is a cycle. The
+	/// cast and every dialogue asset but the file itself are what the cooked file refers to at
+	/// runtime.
 	public void ScanDependencies(Asset asset, AssetBuildContext context, AssetDependencies outDeps)
 	{
 		let file = (DialogueAsset)asset;
@@ -404,7 +406,6 @@ class DialogueBuilder : IAssetBuilder
 			{
 				if (instance.Id == self)
 					continue;
-				outDeps.Reads.Add(instance.Id);
 				let read = db.ReadObject(instance.Id);
 				defer { delete read; }
 				if (let other = read as DialogueAsset)

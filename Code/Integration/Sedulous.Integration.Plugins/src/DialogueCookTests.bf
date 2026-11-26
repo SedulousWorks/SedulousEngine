@@ -205,6 +205,13 @@ static class DialogueCookTests
 			Test.Assert(deps.References.Contains(castId));
 			Test.Assert(deps.References.Contains(lane));
 			Test.Assert(!deps.References.Contains(gate), "not itself");
+			// The other file is its text, not a read: two files reading each other would be a cycle.
+			Test.Assert(deps.Reads.Contains(castId) && deps.Reads.Contains(assetsId));
+			Test.Assert(!deps.Reads.Contains(lane) && !deps.Reads.Contains(gate));
+			bool laneText = false;
+			for (let file in deps.Files)
+				laneText |= (file.Value == "Dialogue/Lane.dialogue");
+			Test.Assert(laneText, "the other file's text");
 		}
 		{
 			// A run's runner plays the cooked file through the application's resources, its cast's
