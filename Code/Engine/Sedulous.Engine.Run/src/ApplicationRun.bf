@@ -124,7 +124,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// BORROWED: the resource manager owns the product.
 	private BehaviorClass mGameClass = null;
 	/// Why the last game script stopped on its own: the handler it faulted in and the
-	/// runtime's problems, or that it did not instantiate. Empty while it runs or after a
+	/// runtime's problems, or why it did not start. Empty while it runs or after a
 	/// clean stop; a start clears it.
 	private String mRunBehaviorFault = new .() ~ delete _;
 	/// Seconds of frames TickScript has run since ResetRunClock: the host's delta, NOT scaled
@@ -698,8 +698,11 @@ class ApplicationRun : RunBase, IRunInput
 		let game = mRunHost.Instantiate(scriptClass, .Run);
 		if (game == null)
 		{
-			GlobalLog(.Error, scope $"Run: the game script '{scriptClass.ClassName}' did not instantiate");
-			mRunBehaviorFault.AppendF("the game script '{}' did not instantiate (log_read, category Script, has why)", scriptClass.ClassName);
+			let why = mRunHost.Scripts.TakeLastError(.. scope .());
+			mRunBehaviorFault.AppendF("the run behavior '{}' did not start", scriptClass.SourceName);
+			if (!why.IsEmpty)
+				mRunBehaviorFault.AppendF(": {}", why);
+			GlobalLog(.Error, scope $"Run: {mRunBehaviorFault}");
 			return false;
 		}
 		mGame = game;

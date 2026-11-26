@@ -356,6 +356,28 @@ static class GameScriptTests
 		run.Instance.StopRunBehavior();
 	}
 
+	/// A run behavior whose class does not load is made as every behavior is, and the run's fault
+	/// says why: the load's own problem, not only that it failed.
+	[Test]
+	public static void ARunBehaviorThatDoesNotLoadGivesTheFaultItsReason()
+	{
+		let run = scope GameRun("scratch_game_run_load_fault");
+		let game = run.Class("Game", "class Game { Game() {} void onStart() {} }");
+		// The cooked source changed under it to one that does not compile.
+		game.Source.Set("class Game { Game() { undefinedThing(); } void onStart() {} }");
+		Test.Assert(!run.Instance.StartRunBehavior(game));
+		Test.Assert(!run.Instance.RunBehaviorRunning);
+		let fault = run.Instance.RunBehaviorFault;
+		Test.Assert(fault.StartsWith("the run behavior 'Game.as' did not start: "), scope String(fault));
+		Test.Assert(fault.Contains("undefinedThing"), scope String(fault));
+
+		// The reason is taken: a start that works leaves no fault.
+		game.Source.Set("class Game { Game() {} void onStart() {} }");
+		Test.Assert(run.Instance.StartRunBehavior(game), scope String(run.Instance.RunBehaviorFault));
+		Test.Assert(run.Instance.RunBehaviorFault.IsEmpty);
+		run.Instance.StopRunBehavior();
+	}
+
 	[Test]
 	public static void EachInstanceRunsItsOwnGameOnItsOwnHost()
 	{

@@ -102,6 +102,8 @@ class ScriptBehaviorClasses
 	/// resets a module's globals, which an instance made before the reload may still read.
 	private List<String> mReplaced = new .() ~ DeleteContainerAndItems!(_);
 	private bool mWarnedLanguage = false;
+	/// Why the last class failed to load or instantiate, kept until taken (TakeLastError).
+	private String mLastError = new .() ~ delete _;
 
 	public this(BehaviorRunHost host)
 	{
@@ -112,6 +114,14 @@ class ScriptBehaviorClasses
 	public bool IsActive => mRuntime != null;
 	public int Generation => mGeneration;
 
+	/// Appends why the last class failed to load or instantiate, then forgets it; appends nothing
+	/// when none failed since the last take.
+	public void TakeLastError(String outText)
+	{
+		outText.Append(mLastError);
+		mLastError.Clear();
+	}
+
 	/// The runtime for the language, created on first use.
 	public ScriptRuntime EnsureRuntime(StringView language)
 	{
@@ -119,6 +129,7 @@ class ScriptBehaviorClasses
 		{
 			if (mLanguage != language)
 			{
+				mLastError.Set(scope $"a run has one language; '{language}' refused, the run is '{mLanguage}'");
 				if (!mWarnedLanguage)
 				{
 					GlobalLog(.Error, scope $"Script: a run has one language; '{language}' refused, the run is '{mLanguage}'");
@@ -132,6 +143,7 @@ class ScriptBehaviorClasses
 		if (runtime == null)
 		{
 			GlobalLog(.Error, scope $"Script: no backend registered for '{language}'");
+			mLastError.Set(scope $"no backend registered for '{language}'");
 			return null;
 		}
 		mRuntime = runtime;
@@ -222,7 +234,12 @@ class ScriptBehaviorClasses
 			return null;
 		let instance = mRuntime.Instantiate(ModuleOf(scriptClass.ClassName), scriptClass.ClassName);
 		if (instance == null)
-			ReportProblems();
+		{
+			mLastError.Clear();
+			ReportProblems(mLastError);
+			if (mLastError.IsEmpty)
+				mLastError.AppendF("class '{}' did not instantiate", scriptClass.ClassName);
+		}
 		return instance;
 	}
 
@@ -276,7 +293,10 @@ class ScriptBehaviorClasses
 		if (!loadedModule)
 		{
 			GlobalLog(.Error, scope $"Script: class '{scriptClass.ClassName}' failed to load");
-			ReportProblems();
+			mLastError.Clear();
+			ReportProblems(mLastError);
+			if (mLastError.IsEmpty)
+				mLastError.AppendF("class '{}' failed to load", scriptClass.ClassName);
 			return false;
 		}
 		if (replaced != null)
@@ -318,5 +338,6 @@ class ScriptBehaviorClasses
 		ClearAndDeleteItems!(mLoaded);
 		ClearAndDeleteItems!(mReplaced);
 		mWarnedLanguage = false;
+		mLastError.Clear();
 	}
 }

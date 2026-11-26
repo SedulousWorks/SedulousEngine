@@ -258,6 +258,8 @@ commit that makes it; a release turns Unreleased into its version and date. The 
 
 ### Fixed
 
+- Scripting: a game script that does not load says why its run did not start (the script's own
+  error), not only that it did not instantiate.
 - MCP: `plugin_list` reports a plugin's number and colour settings, and `plugin_settings_set` sets
   them (a number within its range; a colour as `[r, g, b]` or `[r, g, b, a]`).
 - MCP: a plugin enabled while its project is open is reported as pending, loading when the project

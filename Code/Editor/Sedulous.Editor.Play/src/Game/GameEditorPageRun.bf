@@ -286,7 +286,7 @@ extension GameEditorPage
 		if (scriptId.IsNil || (mContext.Resources == null))
 			return;
 		let scriptClass = mContext.Resources.Bind<BehaviorClass>(scriptId).Get;
-		if ((scriptClass == null) || scriptClass.Source.IsEmpty)
+		if (scriptClass == null)
 		{
 			mContext.Notify(.Warning, "Game: the run behavior asset was not found.");
 			return;
