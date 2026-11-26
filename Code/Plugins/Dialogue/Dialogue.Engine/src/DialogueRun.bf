@@ -32,7 +32,8 @@ namespace Dialogue;
 ///   * `sound`: the clip or cue through the run's audio, at the speaker's entity when named.
 ///   * `fade`: a claim on the scene's fade, over the sequences' own, held at full until a fade in.
 ///   * `sequence`: a play in the scene, each of its bindings named for a speaker filled with that
-///     speaker's entity; `and wait` holds until it ends.
+///     speaker's entity, and one named for no speaker with the level entity of its name; `and wait`
+///     holds until it ends.
 /// While a line shows, its speaker plays their talk clip (the cast's `Talk`), looping, and their
 /// voice (the cast's `Voice`) once as it starts.
 ///
@@ -357,14 +358,13 @@ class DialogueRunHost : IDialogueHost
 				GlobalLog(.Warning, "Dialogue: sequence: `{}` did not load", step.Name);
 				return 0;
 			}
-			// Each of its bindings named for a speaker is that speaker's entity.
+			// Each of its bindings named for a speaker is that speaker's entity; one named for no
+			// speaker is the level entity of its name (a prop the scene moves: a cart, a door).
 			let filled = scope List<(StringView name, EntityHandle entity)>();
 			for (let binding in sequence.Sequence.Bindings)
 			{
 				let speaker = cast?.Find(binding.Name);
-				if ((speaker == null) && !IsBound(binding.Name))
-					continue;
-				let entity = EntityOf(scene, binding.Name, speaker);
+				let entity = ((speaker != null) || IsBound(binding.Name)) ? EntityOf(scene, binding.Name, speaker) : scene.FindEntityByName(binding.Name);
 				if (entity.IsAssigned)
 					filled.Add((binding.Name, entity));
 			}

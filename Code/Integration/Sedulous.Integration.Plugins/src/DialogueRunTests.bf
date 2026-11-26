@@ -40,8 +40,8 @@ class DialogueRunTests
 		"@ keeper: Done.\n";
 
 	/// A content database holding a cooked conversation (`talk`, parsed with the command `cue`),
-	/// its cast (the keeper played by "Keeper") and a sequence that walks its binding "keeper" to X
-	/// 10 over a second, which the conversation's `sequence walk` plays.
+	/// its cast (the keeper played by "Keeper") and a sequence that walks its binding "keeper", and
+	/// "Cart" (no speaker), to X 10 over a second, which the conversation's `sequence walk` plays.
 	public class DialogueStore
 	{
 		const String cDir = "scratch_plugins_dialogue_run";
@@ -86,6 +86,16 @@ class DialogueRunTests
 			move.Property.Channels[0].AddKey(.(0.0f, 0.0f));
 			move.Property.Channels[0].AddKey(.(1.0f, 10.0f));
 			walk.Sequence.Tracks.Add(move);
+			// A second part named for no speaker: the level entity of that name (a prop).
+			walk.Sequence.Bindings.Add(new .("Cart"));
+			let roll = new PropertySequenceTrack();
+			roll.Binding = 1;
+			roll.Property.ComponentType.Set(TrackTargets.cTransform);
+			roll.Property.PropertyPath.Set("Position");
+			roll.Property.Kind = .Float3;
+			roll.Property.Channels[0].AddKey(.(0.0f, 0.0f));
+			roll.Property.Channels[0].AddKey(.(1.0f, 10.0f));
+			walk.Sequence.Tracks.Add(roll);
 			walk.Sequence.Duration = 1.0f;
 			Test.Assert(walkInstance.WriteObject(walk) case .Ok);
 
@@ -198,6 +208,7 @@ class DialogueRunTests
 	{
 		let r = scope Stage();
 		let keeper = r.World.CreateEntity("Keeper");
+		let cart = r.World.CreateEntity("Cart");
 		Test.Assert(r.Runner.Play(r.Store.Gate, "gate"));
 
 		r.Frame(0.5f);
@@ -208,6 +219,7 @@ class DialogueRunTests
 		for (int i < 5)
 			r.Frame(0.25f);
 		Test.Assert(Near(r.X(keeper), 10.0f));
+		Test.Assert(Near(r.X(cart), 10.0f), "the prop by its name");
 		Test.Assert(Near(r.Post.Fade.Amount, 0.5f), "the sequence ended; half way into the fade in");
 		Test.Assert(r.Lines.IsEmpty);
 
