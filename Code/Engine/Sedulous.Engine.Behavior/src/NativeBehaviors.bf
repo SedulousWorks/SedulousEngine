@@ -8,23 +8,6 @@ using Sedulous.Script.Resource;
 
 namespace Sedulous.Engine.Behavior;
 
-/// Marks a class written in native code as a behavior the run host can make: reflected, so the
-/// host makes it by its full name and calls its handlers and properties by the names scripts use,
-/// and always built in, though nothing names it in code. The class derives from RunBehavior,
-/// SceneBehavior or EntityBehavior and has a constructor taking nothing.
-[AttributeUsage(.Class, .ReflectAttribute | .AlwaysIncludeTarget, ReflectUser = .Type | .Methods | .NonStaticFields | .DefaultConstructor, AlwaysIncludeUser = .AssumeInstantiated | .IncludeAllMethods)]
-struct NativeBehaviorAttribute : Attribute
-{
-}
-
-/// Makes a field of a native behavior one of its properties: what the inspector shows and an
-/// entity or a scene overrides, by the field's name with its first letter lowered (`Worth` is
-/// `worth`). A field without it is never written from outside.
-[AttributeUsage(.Field, .ReflectAttribute)]
-struct BehaviorPropertyAttribute : Attribute
-{
-}
-
 /// What the three kinds' bases share: the run host that made it, through which it finds its
 /// run's services, and its fault.
 abstract class NativeBehavior
@@ -253,7 +236,7 @@ class NativeBehaviorObject : BehaviorObject
 	/// The instance method that handles `handler` taking `arity` arguments, on the type or a base.
 	private static Result<MethodInfo> FindMethod(Type type, StringView handler, int arity)
 	{
-		let name = NativeValues.Raised(handler, .. scope .());
+		let name = NativeBehaviorTypes.MemberName(handler, .. scope .());
 		for (var t = type; t != null; t = t.BaseType)
 		{
 			for (let method in t.GetMethods(.Instance | .Public | .NonPublic | .DeclaredOnly))
@@ -268,7 +251,7 @@ class NativeBehaviorObject : BehaviorObject
 	/// The instance field that holds `property`, on the type or a base.
 	private static Result<FieldInfo> FindField(Type type, StringView property)
 	{
-		let name = NativeValues.Raised(property, .. scope .());
+		let name = NativeBehaviorTypes.MemberName(property, .. scope .());
 		for (var t = type; t != null; t = t.BaseType)
 		{
 			for (let field in t.GetFields(.Instance | .Public | .NonPublic | .DeclaredOnly))
@@ -286,9 +269,6 @@ class NativeBehaviorObject : BehaviorObject
 /// through its constructor taking nothing. The run host holds one.
 class NativeBehaviorClasses
 {
-	/// The language a native class's BehaviorClass records.
-	public const String cLanguage = "native";
-
 	/// BORROWED: the run host whose classes these are.
 	private BehaviorRunHost mHost;
 	private String mLastError = new .() ~ delete _;
@@ -302,7 +282,7 @@ class NativeBehaviorClasses
 	/// last error, when the class is not registered, is not of `kind`, or cannot be made.
 	public BehaviorObject Create(BehaviorClass nativeClass, BehaviorKind kind)
 	{
-		let type = FindClass(nativeClass.ClassName);
+		let type = NativeBehaviorTypes.FindClass(nativeClass.ClassName);
 		if (type == null)
 		{
 			Fail(scope $"native class '{nativeClass.ClassName}' is not built in (is its plugin enabled?)");
@@ -329,23 +309,6 @@ class NativeBehaviorClasses
 			Fail(scope $"native class '{nativeClass.ClassName}' cannot be made (does it have a constructor taking nothing?)");
 			return null;
 		}
-	}
-
-	/// The class whose full name is `fullName` ("NativeSample.Orb"), marked NativeBehavior; null
-	/// when none is built in.
-	public static Type FindClass(StringView fullName)
-	{
-		let name = scope String();
-		for (let type in Type.Types)
-		{
-			if (!type.IsObject || !(type.GetCustomAttribute<NativeBehaviorAttribute>() case .Ok))
-				continue;
-			name.Clear();
-			type.GetFullName(name);
-			if (name == fullName)
-				return type;
-		}
-		return null;
 	}
 
 	/// The base type of `kind`'s native classes; null for None.
@@ -379,14 +342,6 @@ class NativeBehaviorClasses
 /// Converting between the layer's values and the types a native behavior declares.
 static class NativeValues
 {
-	/// `name` with its first letter raised: a script's `onPing` or `worth` as a native member's name.
-	public static void Raised(StringView name, String outName)
-	{
-		outName.Append(name);
-		if (!outName.IsEmpty)
-			outName[0] = outName[0].ToUpper;
-	}
-
 	/// Writes `value` into `slot` as `type` declares it, a number fitted to its width; false when
 	/// the value is not one of that type.
 	public static bool ToNative(ScriptValue value, Type type, void* slot)

@@ -108,7 +108,7 @@ class ScriptPlayScene
 	public BehaviorClass NativeClass(StringView fullName, BehaviorKind kind, Span<StringView> handlers, Span<(StringView name, float value)> floats = default)
 	{
 		let product = new BehaviorClass();
-		product.Language.Set(NativeBehaviorClasses.cLanguage);
+		product.Language.Set(NativeBehaviorTypes.cLanguage);
 		product.ClassName.Set(fullName);
 		product.SourceName.Set(fullName);
 		product.Kind = kind;

@@ -130,7 +130,7 @@ class BehaviorRunHost
 			GlobalLog(.Error, scope $"Script: '{scriptClass.SourceName}' {what}: it is set where a class deriving from {BehaviorKinds.TypeName(kind)} goes");
 			return null;
 		}
-		if (scriptClass.Language == NativeBehaviorClasses.cLanguage)
+		if (scriptClass.Language == NativeBehaviorTypes.cLanguage)
 			return mNatives.Create(scriptClass, kind);
 		return mScripts.Create(scriptClass);
 	}

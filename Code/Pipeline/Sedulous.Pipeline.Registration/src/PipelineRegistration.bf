@@ -76,8 +76,8 @@ static class PipelineRegistration
 	public const int cGuiAssetKinds = 2;
 	/// 31 and 13: the old UI's document and theme builders and its importer gone with it, a
 	/// Render Quality's builder added, and a script project's builder and importer; 32 with the
-	/// sequence's.
-	public const int cBuilderCount = 32 + cGuiAssetKinds;
+	/// sequence's; 33 with the Native Behavior's.
+	public const int cBuilderCount = 33 + cGuiAssetKinds;
 	public const int cImporterCount = 13;
 	/// The creators every build has; the scripts add three per language with a cook on top, and
 	/// a project creator for each whose classes build together (ScriptCreators.CountFor).
@@ -209,6 +209,7 @@ static class PipelineRegistration
 		registry.Register(new SoundCueAssetBuilder());
 		registry.Register(new ScriptAssemblyAssetBuilder());
 		registry.Register(new ScriptClassAssetBuilder());
+		registry.Register(new NativeBehaviorAssetBuilder());
 	}
 
 	/// What the pipeline makes once an import has landed, beyond what the importer itself
