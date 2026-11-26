@@ -11,12 +11,15 @@ namespace Sedulous.Engine.Behavior;
 
 /// A run's behaviors: the services its objects find (the host's own, its run's, the
 /// application's), its random numbers, and the classes it makes objects of. A class in a script
-/// language is made in the run's script runtime, which its script half holds (Scripts). Plain
+/// language is made in the run's script runtime, which its script half holds (Scripts); a native
+/// class (language `native`) is made from its built-in type, with no runtime (Natives). Plain
 /// class, no runtime dependencies, so a headless test drives it directly.
 class BehaviorRunHost
 {
 	/// OWNED: the run's script runtime and the classes loaded into it.
 	private ScriptBehaviorClasses mScripts ~ delete _;
+	/// OWNED: the run's native classes.
+	private NativeBehaviorClasses mNatives ~ delete _;
 	/// OWNED: this run's random numbers, `Random` to a script; seedable by the owner.
 	private RandomFacade mRandom = new .() ~ delete _;
 	/// BORROWED: the services the owner installed on this host, by exact type, which its scripts
@@ -33,10 +36,24 @@ class BehaviorRunHost
 	public this()
 	{
 		mScripts = new .(this);
+		mNatives = new .(this);
 	}
 
 	/// The run's script half: its runtime, made for the first class in a script language.
 	public ScriptBehaviorClasses Scripts => mScripts;
+	/// The run's native half: classes written in native code.
+	public NativeBehaviorClasses Natives => mNatives;
+
+	/// Appends why the last class failed to be made, or the last native object faulted, then
+	/// forgets it: a native reason first, else a script one.
+	public void TakeLastError(String outText)
+	{
+		let native = mNatives.TakeLastError(.. scope .());
+		if (!native.IsEmpty)
+			outText.Append(native);
+		else
+			mScripts.TakeLastError(outText);
+	}
 	public RandomFacade Random => mRandom;
 
 	/// A game script running on this host pins it: no teardown while it lives. Set by the
@@ -113,6 +130,8 @@ class BehaviorRunHost
 			GlobalLog(.Error, scope $"Script: '{scriptClass.SourceName}' {what}: it is set where a class deriving from {BehaviorKinds.TypeName(kind)} goes");
 			return null;
 		}
+		if (scriptClass.Language == NativeBehaviorClasses.cLanguage)
+			return mNatives.Create(scriptClass, kind);
 		return mScripts.Create(scriptClass);
 	}
 

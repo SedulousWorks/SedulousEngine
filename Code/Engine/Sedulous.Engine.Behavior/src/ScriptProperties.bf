@@ -14,7 +14,7 @@ namespace Sedulous.Engine.Behavior;
 static class ScriptProperties
 {
 	/// One value onto the instance, resolved against `scene` for an entity reference.
-	public static bool Apply(ScriptRuntime runtime, BehaviorObject instance, BehaviorProperty property,
+	public static bool Apply(BehaviorObject instance, BehaviorProperty property,
 		BehaviorPropertyValue value, Scene scene)
 	{
 		var v = ScriptValue.Nil;
@@ -37,12 +37,12 @@ static class ScriptProperties
 		case .None:
 			return true;
 		}
-		return runtime.SetProperty(instance, property.Name, v);
+		return instance.SetProperty(property.Name, v);
 	}
 
 	/// Defaults, then overrides. A property the instance no longer has, or whose type no
 	/// longer matches, is reported by name rather than dropped silently.
-	public static void ApplyAll(ScriptRuntime runtime, BehaviorObject instance, BehaviorClass scriptClass,
+	public static void ApplyAll(BehaviorObject instance, BehaviorClass scriptClass,
 		List<BehaviorPropertyOverride> overrides, Scene scene, StringView ownerName)
 	{
 		for (let property in scriptClass.Properties)
@@ -56,7 +56,7 @@ static class ScriptProperties
 					break;
 				}
 			}
-			if (!Apply(runtime, instance, property, value, scene))
+			if (!Apply(instance, property, value, scene))
 				GlobalLog(.Warning, scope $"Script: '{ownerName}': {scriptClass.ClassName} has no '{property.Name}' of the authored type; the value was not applied");
 		}
 	}

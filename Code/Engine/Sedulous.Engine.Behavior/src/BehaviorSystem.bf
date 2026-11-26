@@ -500,10 +500,9 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 		}
 
 		// What the instance knows of its place: its entity, scene included, and the scene.
-		let runtime = mHost.Scripts.Runtime;
-		runtime.SetProperty(behavior.Instance, "self", .FromEntity(entity, mScene));
-		runtime.SetProperty(behavior.Instance, "scene", .FromWeak(mScene));
-		ScriptProperties.ApplyAll(runtime, behavior.Instance, scriptClass, behavior.Overrides, mScene, mScene.GetEntityName(entity));
+		behavior.Instance.SetProperty("self", .FromEntity(entity, mScene));
+		behavior.Instance.SetProperty("scene", .FromWeak(mScene));
+		ScriptProperties.ApplyAll(behavior.Instance, scriptClass, behavior.Overrides, mScene, mScene.GetEntityName(entity));
 		SubscribeHandlers(scriptClass);
 	}
 
@@ -514,14 +513,14 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 		let scriptClass = behavior.BoundClass;
 		if ((behavior.Instance == null) || (scriptClass == null) || !scriptClass.HasHandler(handler))
 			return true;
-		if (!mHost.Scripts.Runtime.HasMethod(behavior.Instance, handler, args.Length))
+		if (!behavior.Instance.HasMethod(handler, args.Length))
 			return true;
 
 		var result = ScriptValue.Nil;
 		bool ok;
 		using (ProfileScope(scriptClass.ProfileName))
 		{
-			ok = mHost.Scripts.Runtime.Invoke(behavior.Instance, handler, args, ref result);
+			ok = behavior.Instance.Invoke(handler, args, ref result);
 		}
 		if (ok)
 			return true;
@@ -554,7 +553,7 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 	{
 		if ((behavior.Instance == null) || (behavior.BoundClass == null) || !behavior.BoundClass.UsesCoroutines)
 			return;
-		mHost.Scripts.Runtime.CancelCoroutinesFor(behavior.Instance);
+		behavior.Instance.CancelCoroutines();
 	}
 
 	private void StopBehavior(AttachedBehavior behavior, EntityHandle entity, bool invokeDestroy)
@@ -569,8 +568,8 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 		{
 			// Every coroutine of an instance whose class is not known any more.
 			if ((behavior.BoundClass == null) || behavior.BoundClass.UsesCoroutines)
-				mHost.Scripts.Runtime.CancelCoroutinesFor(behavior.Instance);
-			mHost.Scripts.Runtime.Release(behavior.Instance);
+				behavior.Instance.CancelCoroutines();
+			behavior.Instance.Release();
 			behavior.Instance = null;
 		}
 		behavior.BoundClass = null;
@@ -582,7 +581,7 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 	/// onDestroy and release for one component's behaviours: entity or component removal.
 	public void ReleaseComponentInstances(BehaviorComponent* component, EntityHandle entity)
 	{
-		if ((mHost == null) || (mHost.Scripts.Runtime == null))
+		if (mHost == null)
 			return;
 		for (let behavior in component.Behaviors)
 			StopBehavior(behavior, entity, true);
@@ -785,8 +784,8 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 				GlobalLog(.Error, scope $"Script: scene '{mScene.Name}': the Level '{levelClass.ClassName}' failed to instantiate; disabled");
 				return;
 			}
-			mHost.Scripts.Runtime.SetProperty(mLevel, "scene", .FromWeak(mScene));
-			ScriptProperties.ApplyAll(mHost.Scripts.Runtime, mLevel, levelClass, mSettings.Overrides, mScene, mScene.Name);
+			mLevel.SetProperty("scene", .FromWeak(mScene));
+			ScriptProperties.ApplyAll(mLevel, levelClass, mSettings.Overrides, mScene, mScene.Name);
 			SubscribeHandlers(levelClass);
 		}
 		if (!mLevelStarted)
@@ -803,10 +802,10 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 	{
 		if ((mLevel == null) || (mLevelClass == null) || !mLevelClass.HasHandler(handler))
 			return true;
-		if (!mHost.Scripts.Runtime.HasMethod(mLevel, handler, args.Length))
+		if (!mLevel.HasMethod(handler, args.Length))
 			return true;
 		var result = ScriptValue.Nil;
-		if (mHost.Scripts.Runtime.Invoke(mLevel, handler, args, ref result))
+		if (mLevel.Invoke(handler, args, ref result))
 			return true;
 		if (mHost.IsDebugPaused)
 			return true; // suspended at a breakpoint, not a fault
@@ -826,8 +825,8 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 		if (invokeStop && mLevelStarted && !mLevelFaulted)
 			InvokeLevel(cOnStop, default);
 		if ((mLevelClass == null) || mLevelClass.UsesCoroutines)
-			mHost.Scripts.Runtime.CancelCoroutinesFor(mLevel);
-		mHost.Scripts.Runtime.Release(mLevel);
+			mLevel.CancelCoroutines();
+		mLevel.Release();
 		mLevel = null;
 		mLevelClass = null;
 		ResourceHold.Drop(ref mLevelHold);
@@ -840,8 +839,8 @@ class BehaviorSystem : SceneSystem, IEntityEventSink
 	/// state with it); false with no Level live or no such property.
 	public bool GetLevelProperty(StringView name, ref ScriptValue value)
 	{
-		if ((mLevel == null) || (mHost == null) || (mHost.Scripts.Runtime == null))
+		if (mLevel == null)
 			return false;
-		return mHost.Scripts.Runtime.GetProperty(mLevel, name, ref value);
+		return mLevel.GetProperty(name, ref value);
 	}
 }

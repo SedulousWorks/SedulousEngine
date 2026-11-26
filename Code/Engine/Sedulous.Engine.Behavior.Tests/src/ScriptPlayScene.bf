@@ -103,6 +103,31 @@ class ScriptPlayScene
 		return product;
 	}
 
+	/// A native class's product: its full name, kind and handlers, and its properties' floats
+	/// (name and default), as its cook would record them.
+	public BehaviorClass NativeClass(StringView fullName, BehaviorKind kind, Span<StringView> handlers, Span<(StringView name, float value)> floats = default)
+	{
+		let product = new BehaviorClass();
+		product.Language.Set(NativeBehaviorClasses.cLanguage);
+		product.ClassName.Set(fullName);
+		product.SourceName.Set(fullName);
+		product.Kind = kind;
+		for (let handler in handlers)
+			product.Handlers.Add(new String(handler));
+		for (let entry in floats)
+		{
+			let property = new BehaviorProperty();
+			property.Name.Set(entry.name);
+			property.Hash = ScriptPropertyNames.HashOf(entry.name);
+			property.Type = .Float;
+			property.Default.Kind = .Float;
+			property.Default.Number = entry.value;
+			product.Properties.Add(property);
+		}
+		mClasses.Add(product);
+		return product;
+	}
+
 	/// Frees a product as a hot reload does when it swaps in the rebuilt one.
 	public void Free(BehaviorClass scriptClass)
 	{
@@ -174,7 +199,7 @@ class ScriptPlayScene
 		let behavior = BehaviorOf(entity, 0, into);
 		var v = ScriptValue.Nil;
 		if (behavior.Instance != null)
-			Runtime.GetProperty(behavior.Instance, name, ref v);
+			behavior.Instance.GetProperty(name, ref v);
 		return v;
 	}
 

@@ -18,8 +18,6 @@ namespace Sedulous.Engine.Behavior;
 /// hash, u64 property hash, u8 kind, the value by its kind }.
 extension BehaviorComponentManager
 {
-	private ScriptRuntime LiveRuntime => ((ScriptSystem != null) && (ScriptSystem.Host != null)) ? ScriptSystem.Host.Scripts.Runtime : null;
-
 	public bool WriteReplicatedState(EntityHandle entity, List<uint8> outState)
 	{
 		outState.Clear();
@@ -30,7 +28,6 @@ extension BehaviorComponentManager
 		let writer = scope BinaryWriter(stream);
 		uint32 count = 0;
 		writer.Write(count); // patched below
-		let runtime = LiveRuntime;
 		for (int slot < component.Behaviors.Count)
 		{
 			let behavior = component.Behaviors[slot];
@@ -43,9 +40,9 @@ extension BehaviorComponentManager
 				if (!property.Replicated)
 					continue;
 				var value = BehaviorPropertyValue();
-				// The live value when the script runs (its text this writer's); else what it would
+				// The live value when the behavior runs (its text this writer's); else what it would
 				// start with (borrowed).
-				let live = (runtime != null) && (behavior.Instance != null) && LiveValue(runtime, behavior.Instance, property, ref value);
+				let live = (behavior.Instance != null) && LiveValue(behavior.Instance, property, ref value);
 				if (!live)
 				{
 					if (let over = behavior.FindOverride(property.Hash))
@@ -83,7 +80,6 @@ extension BehaviorComponentManager
 		uint32 count = 0;
 		if (!reader.Read(out count))
 			return;
-		let runtime = LiveRuntime;
 		for (uint32 i < count)
 		{
 			uint32 slot = 0;
@@ -110,16 +106,16 @@ extension BehaviorComponentManager
 			if (value.Text != null)
 				kept.Text = new String(value.Text);
 			behavior.SetOverride(propertyHash, kept);
-			if ((runtime != null) && (behavior.Instance != null))
-				ScriptProperties.Apply(runtime, behavior.Instance, property, value, Scene);
+			if (behavior.Instance != null)
+				ScriptProperties.Apply(behavior.Instance, property, value, Scene);
 		}
 	}
 
 	/// The instance's current value of `property`, as the property's own kind.
-	private static bool LiveValue(ScriptRuntime runtime, BehaviorObject instance, BehaviorProperty property, ref BehaviorPropertyValue value)
+	private static bool LiveValue(BehaviorObject instance, BehaviorProperty property, ref BehaviorPropertyValue value)
 	{
 		var live = ScriptValue.Nil;
-		if (!runtime.GetProperty(instance, property.Name, ref live))
+		if (!instance.GetProperty(property.Name, ref live))
 			return false;
 		value.Kind = property.Type;
 		switch (property.Type)

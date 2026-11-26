@@ -643,9 +643,9 @@ class ApplicationRun : RunBase, IRunInput
 	/// false with no script running or no such property.
 	public bool GetRunBehaviorProperty(StringView name, ref ScriptValue value)
 	{
-		if ((mGame == null) || (mRunHost.Scripts.Runtime == null))
+		if (mGame == null)
 			return false;
-		return mRunHost.Scripts.Runtime.GetProperty(mGame, name, ref value);
+		return mGame.GetProperty(name, ref value);
 	}
 
 	/// Why the game script stopped on its own; empty when it did not (see mRunBehaviorFault).
@@ -698,7 +698,7 @@ class ApplicationRun : RunBase, IRunInput
 		let game = mRunHost.Instantiate(scriptClass, .Run);
 		if (game == null)
 		{
-			let why = mRunHost.Scripts.TakeLastError(.. scope .());
+			let why = mRunHost.TakeLastError(.. scope .());
 			mRunBehaviorFault.AppendF("the run behavior '{}' did not start", scriptClass.SourceName);
 			if (!why.IsEmpty)
 				mRunBehaviorFault.AppendF(": {}", why);
@@ -731,10 +731,10 @@ class ApplicationRun : RunBase, IRunInput
 		if (mGame != null)
 		{
 			InvokeGame(BehaviorSystem.cOnStop, default);
-			if ((mGame != null) && (mRunHost.Scripts.Runtime != null))
+			if (mGame != null)
 			{
-				mRunHost.Scripts.Runtime.CancelCoroutinesFor(mGame);
-				mRunHost.Scripts.Runtime.Release(mGame);
+				mGame.CancelCoroutines();
+				mGame.Release();
 			}
 			mGame = null;
 			mGameClass = null;
@@ -817,11 +817,10 @@ class ApplicationRun : RunBase, IRunInput
 	/// `Update` is fine. A fault stops the script.
 	private void InvokeGame(StringView handler, Span<ScriptValue> args)
 	{
-		let runtime = mRunHost.Scripts.Runtime;
-		if ((mGame == null) || (runtime == null) || !runtime.HasMethod(mGame, handler, args.Length))
+		if ((mGame == null) || !mGame.HasMethod(handler, args.Length))
 			return;
 		var result = ScriptValue.Nil;
-		if (runtime.Invoke(mGame, handler, args, ref result))
+		if (mGame.Invoke(handler, args, ref result))
 			return;
 		if (mRunHost.IsDebugPaused)
 			return; // suspended at a breakpoint, not a fault; the debugger completes it
@@ -829,12 +828,15 @@ class ApplicationRun : RunBase, IRunInput
 		mRunBehaviorFault.Set(scope $"faulted in {handler}");
 		let problems = scope String();
 		mRunHost.Scripts.ReportProblems(problems);
+		// A native behavior's fault gives its own reason.
+		if (problems.IsEmpty)
+			mRunHost.TakeLastError(problems);
 		if (!problems.IsEmpty)
 			mRunBehaviorFault.AppendF(": {}", problems);
 		let faulted = mGame;
 		mGame = null;
-		runtime.CancelCoroutinesFor(faulted);
-		runtime.Release(faulted);
+		faulted.CancelCoroutines();
+		faulted.Release();
 		ClearGameSubscriptions();
 	}
 

@@ -725,9 +725,7 @@ static class PieRunTool
 	{
 		outValue = null;
 		let scripts = scene.GetSystem<BehaviorComponentManager>();
-		let system = scene.GetSystem<BehaviorSystem>();
-		let runtime = ((system != null) && (system.Host != null)) ? system.Host.Scripts.Runtime : null;
-		if ((scripts == null) || (runtime == null) || !scripts.HasComponent(handle))
+		if ((scripts == null) || !scripts.HasComponent(handle))
 			return false;
 		let component = (BehaviorComponent*)scripts.GetComponentAddress(handle);
 		if ((component == null) || (component.Behaviors == null))
@@ -737,7 +735,7 @@ static class PieRunTool
 			if ((behavior.Instance == null) || (behavior.Instance.ClassName != className))
 				continue;
 			var value = ScriptValue.Nil;
-			if (!runtime.GetProperty(behavior.Instance, field, ref value))
+			if (!behavior.Instance.GetProperty(field, ref value))
 				return false;
 			outValue = ComponentJson.ScriptJson(value, scene);
 			return true;

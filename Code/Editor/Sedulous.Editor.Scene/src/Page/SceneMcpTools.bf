@@ -1346,19 +1346,14 @@ static class SceneMcpTools
 			// properties, where `properties` holds what is authored.
 			if ((behavior.Instance != null) && (scriptClass != null))
 			{
-				let system = scene.GetSystem<BehaviorSystem>();
-				let runtime = ((system != null) && (system.Host != null)) ? system.Host.Scripts.Runtime : null;
-				if (runtime != null)
+				let live = JsonValue.MakeObject();
+				for (let desc in scriptClass.Properties)
 				{
-					let live = JsonValue.MakeObject();
-					for (let desc in scriptClass.Properties)
-					{
-						var value = Sedulous.Script.ScriptValue.Nil;
-						if (runtime.GetProperty(behavior.Instance, desc.Name, ref value))
-							live.Set(desc.Name, ComponentJson.ScriptJson(value, scene));
-					}
-					json.Set("live", live);
+					var value = Sedulous.Script.ScriptValue.Nil;
+					if (behavior.Instance.GetProperty(desc.Name, ref value))
+						live.Set(desc.Name, ComponentJson.ScriptJson(value, scene));
 				}
+				json.Set("live", live);
 			}
 			list.Add(json);
 		}
