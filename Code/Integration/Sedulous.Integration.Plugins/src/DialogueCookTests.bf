@@ -27,8 +27,10 @@ namespace Sedulous.Integration.Plugins;
 /// dialogue assets. A file that names only what the project has cooks to its compiled
 /// conversations, one with an error (a jump to a conversation the other file lacks among them)
 /// fails the cook, and File > New's three creators make their assets, a new dialogue file taking
-/// the settings' default cast and dialogue assets. Conversation ids are a file's own: two files may
-/// share one, and a jump into another file names it by its dialogue asset.
+/// the settings' default cast and dialogue assets. The plugin's MCP tools check every file or one
+/// without cooking (dialogue_validate) and read one's conversations (dialogue_read). Conversation
+/// ids are a file's own: two files may share one, and a jump into another file names it by its
+/// dialogue asset.
 static class DialogueCookTests
 {
 	/// A dialogue file in the project's sources and its asset, naming `cast` and `assets`; its guid.
@@ -268,6 +270,102 @@ static class DialogueCookTests
 			defer delete failing;
 			Test.Assert(failing.Get("failed").AsInt() == 2, text);
 		}
+
+		// The plugin's tools: the checks over every file, without cooking, and one file's conversations.
+		Test.Assert(Call(server, DialogueToolingPart.cValidateTool, JsonValue.MakeObject(), text..Clear()), text);
+		{
+			let validated = JsonValue.Parse(text);
+			defer delete validated;
+			let files = validated.Get("files");
+			Test.Assert(files.Count == 4, text); // Gate, Lane, Wrong, Astray
+			Test.Assert(validated.Get("errors").AsInt() == 2, text);
+			bool wrongTold = false;
+			for (int i < files.Count)
+			{
+				let file = files.At(i);
+				let name = file.Get("name").AsString();
+				Test.Assert(file.Get("ok").AsBool() == ((name != "Wrong") && (name != "Astray")), scope String(name));
+				if (name != "Wrong")
+					continue;
+				let problems = file.Get("problems");
+				Test.Assert(problems.Count == 1, text);
+				Test.Assert(problems.At(0).Get("line").AsInt() == 2);
+				Test.Assert(problems.At(0).Get("severity").AsString() == "error");
+				Test.Assert(problems.At(0).Get("message").AsString().Contains("no mood `angry`"), text);
+				wrongTold = true;
+			}
+			Test.Assert(wrongTold);
+		}
+		let gateText = gate.ToString(.. scope .());
+		Test.Assert(Call(server, DialogueToolingPart.cValidateTool, Arguments("asset", gateText), text..Clear()), text);
+		{
+			let validated = JsonValue.Parse(text);
+			defer delete validated;
+			Test.Assert(validated.Get("files").Count == 1, text);
+			Test.Assert(validated.Get("files").At(0).Get("name").AsString() == "Gate");
+			Test.Assert(validated.Get("files").At(0).Get("ok").AsBool());
+			Test.Assert(validated.Get("errors").AsInt() == 0);
+		}
+		Test.Assert(Call(server, DialogueToolingPart.cReadTool, Arguments("asset", gateText), text..Clear()), text);
+		{
+			let read = JsonValue.Parse(text);
+			defer delete read;
+			Test.Assert(read.Get("name").AsString() == "Gate");
+			Test.Assert(read.Get("problems").Count == 0, text);
+			let conversations = read.Get("conversations");
+			Test.Assert(conversations.Count == 1, text);
+			let talk = conversations.At(0);
+			Test.Assert(talk.Get("id").AsString() == "gate");
+			let lines = talk.Get("lines");
+			Test.Assert(lines.Count == 2, text);
+			Test.Assert(lines.At(0).Get("speaker").AsString() == "keeper");
+			Test.Assert(lines.At(0).Get("mood").AsString() == "worried");
+			Test.Assert(lines.At(0).Get("text").AsString() == "Who goes there?");
+			Test.Assert(lines.At(0).Get("line").AsInt() == 2);
+			Test.Assert(lines.At(1).Get("speaker").AsString() == "visitor");
+			Test.Assert(lines.At(1).Get("mood") == null, "no mood, none given");
+			let choices = talk.Get("choices");
+			Test.Assert(choices.Count == 1, text);
+			let answers = choices.At(0).Get("answers");
+			Test.Assert(answers.Count == 2, text);
+			Test.Assert(answers.At(0).Get("text").AsString() == "A friend.");
+			Test.Assert(answers.At(1).Get("id").AsString() == "nobody");
+			Test.Assert(answers.At(1).Get("text").AsString() == "Nobody.");
+			let commands = talk.Get("commands");
+			Test.Assert(commands.Count == 1, text);
+			Test.Assert(commands.At(0).Get("name").AsString() == "cue");
+			Test.Assert(commands.At(0).Get("arguments").Get("event").AsString() == "lights dim", text);
+			Test.Assert(talk.Get("jumps").Count == 1);
+			Test.Assert(talk.Get("jumps").At(0).AsString() == "lane in lane", text);
+			Test.Assert((talk.Get("flagsWritten").Count == 1) && (talk.Get("flagsWritten").At(0).AsString() == "friendly"), text);
+			Test.Assert((talk.Get("flagsRead").Count == 1) && (talk.Get("flagsRead").At(0).AsString() == "seen_gate"), text);
+		}
+		// A jump within the file names no file; a file whose source is gone reads as an error.
+		let loop = AddDialogueFile(session.Project, session.Project.SourceDb.RootGroup, "Loop",
+			"conversation loop\n" +
+			"@ visitor: Round again.\n" +
+			"jump loop\n", castId, assetsId);
+		Test.Assert(Call(server, DialogueToolingPart.cReadTool, Arguments("asset", loop.ToString(.. scope .())), text..Clear()), text);
+		{
+			let read = JsonValue.Parse(text);
+			defer delete read;
+			Test.Assert(read.Get("conversations").At(0).Get("jumps").At(0).AsString() == "loop", text);
+		}
+		Test.Assert(DeleteFile(session.Project.SourceFile("Dialogue/Loop.dialogue", .. scope .())));
+		Test.Assert(!Call(server, DialogueToolingPart.cReadTool, Arguments("asset", loop.ToString(.. scope .())), text..Clear()), "its source is gone");
+		Test.Assert(text.Contains("missing"), text);
+		Test.Assert(Call(server, DialogueToolingPart.cValidateTool, Arguments("asset", loop.ToString(.. scope .())), text..Clear()), text);
+		{
+			let validated = JsonValue.Parse(text);
+			defer delete validated;
+			Test.Assert(!validated.Get("files").At(0).Get("ok").AsBool());
+			Test.Assert(validated.Get("errors").AsInt() == 1, text);
+			Test.Assert(validated.Get("files").At(0).Get("error").AsString().Contains("missing"), text);
+		}
+		Test.Assert(!Call(server, DialogueToolingPart.cReadTool, Arguments("asset", ""), text..Clear()), "no asset named");
+		Test.Assert(text.Contains("guid"), text);
+		Test.Assert(!Call(server, DialogueToolingPart.cReadTool, Arguments("asset", castId.ToString(.. scope .())), text..Clear()), "the cast is no dialogue file");
+		Test.Assert(!Call(server, DialogueToolingPart.cValidateTool, Arguments("asset", castId.ToString(.. scope .())), text..Clear()), "the cast is no dialogue file");
 
 		// File > New: the three creators make their types.
 		Guid Create(StringView creator, StringView name, Type type)

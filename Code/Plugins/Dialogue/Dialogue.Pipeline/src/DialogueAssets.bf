@@ -56,8 +56,11 @@ static class DialoguePipelineTypes
 {
 }
 
+/// Reads the source file `fileName` (as an asset names it) into `outText`; false when it cannot.
+typealias DialogueSourceReader = delegate bool(StringView fileName, String outText);
+
 /// A dialogue file's project: what its checks read, gathered from a source database and the
-/// sources it links. Cook and tools build it the same way.
+/// sources it links. The cook and the MCP tools build it the same way.
 class DialogueProject
 {
 	public List<DialogueCommandForm> Commands = new .() ~ DeleteContainerAndItems!(_);
@@ -81,8 +84,8 @@ class DialogueProject
 	public List<Guid> InputMaps = new .() ~ delete _;
 
 	/// Gathers it for the dialogue file `file` (its cast and dialogue assets; `self`, its id, nil for
-	/// none) from `db`, reading the other files' sources through `reader`'s sources.
-	public void Gather(DialogueSettings settings, DialogueAsset file, IContentDatabase db, AssetBuildContext reader, Guid self)
+	/// none) from `db`, reading the other files' sources through `readSource`.
+	public void Gather(DialogueSettings settings, DialogueAsset file, IContentDatabase db, DialogueSourceReader readSource, Guid self)
 	{
 		Self = self;
 		let error = scope String();
@@ -154,7 +157,7 @@ class DialogueProject
 				defer { delete read; }
 				let other = read as DialogueAsset;
 				text.Clear();
-				if ((other == null) || (AssetSource.ReadText(reader, other.FileName.Value, text) case .Err))
+				if ((other == null) || (readSource == null) || !readSource(other.FileName.Value, text))
 					continue; // its own cook says so
 				let parse = scope DialogueParse();
 				DialogueFormat.ParseDialogue(text, Commands, parse);
@@ -299,6 +302,22 @@ static class DialogueCook
 		DialogueChecks.CheckDialogue(outParse, inputs);
 	}
 
+	/// Checks `text` as the dialogue file `self` (its asset in `db`) into `outParse`, as the cook
+	/// does: its project gathered, every other file read through `read`. What the MCP tools check;
+	/// a file with no asset in `db` checks against no cast or dialogue assets.
+	public static void CheckDialogueText(StringView text, DialogueSettings settings, Guid self, IContentDatabase db,
+		DialogueSourceReader read, DialogueParse outParse)
+	{
+		let project = scope DialogueProject();
+		let stored = (self != .()) ? db.ReadObject(self) : null;
+		defer { delete stored; }
+		var file = stored as DialogueAsset;
+		if (file == null)
+			file = scope:: DialogueAsset();
+		project.Gather(settings, file, db, read, self);
+		CookDialogue(text, settings, project, db, outParse);
+	}
+
 	/// The source database the cook reads asset envelopes from: a scan's context carries it as
 	/// Database, a build's as SourceDatabase.
 	public static IContentDatabase SourceDatabase(AssetBuildContext context) =>
@@ -408,7 +427,10 @@ class DialogueBuilder : IAssetBuilder
 		let db = DialogueCook.SourceDatabase(context);
 		let project = scope DialogueProject();
 		if (db != null)
-			project.Gather(mSettings, (DialogueAsset)asset, db, context, (context.Source != null) ? context.Source.Id : Guid());
+		{
+			DialogueSourceReader reader = scope (fileName, outText) => AssetSource.ReadText(context, fileName, outText) case .Ok;
+			project.Gather(mSettings, (DialogueAsset)asset, db, reader, (context.Source != null) ? context.Source.Id : Guid());
+		}
 		let parse = scope DialogueParse();
 		DialogueCook.CookDialogue(text, mSettings, project, db, parse);
 		for (let problem in parse.Problems)
