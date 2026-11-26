@@ -12,12 +12,12 @@ namespace Dialogue;
 /// screen stack that blocks nothing under it: a portrait, the speaker's name, the line typed out at
 /// the settings' speed, and a choice's answers as buttons that the pad, the keys and the mouse all
 /// reach. The advance action (the settings', Interact by default) or a press on the box first
-/// finishes the typing, then advances; a press on an answer chooses it. The box goes when the
-/// conversation ends. Its look is a sheet over the box alone: the plugin's own, or the project's
-/// (`StockBoxSheet`) in its place, so a game restyles it without building its own. The class names
-/// the sheets style: dialogue-screen, dialogue-box (portrait-right with `PortraitOnRight`),
-/// dialogue-portrait, dialogue-words, dialogue-name, dialogue-text, dialogue-answers and
-/// dialogue-answer.
+/// finishes the typing, then advances; a press on an answer chooses it, and the advance action
+/// chooses the focused answer. The box goes when the conversation ends. Its look is a sheet over
+/// the box alone: the plugin's own, or the project's (`StockBoxSheet`) in its place, so a game
+/// restyles it without building its own. The class names the sheets style: dialogue-screen,
+/// dialogue-box (portrait-right with `PortraitOnRight`), dialogue-portrait, dialogue-words,
+/// dialogue-name, dialogue-text, dialogue-answers and dialogue-answer.
 class DialogueStockBox
 {
 	/// What the player asked for in a frame.
@@ -170,7 +170,18 @@ class DialogueStockBox
 		}
 		if (!mAnswers.IsEmpty)
 		{
-			request.Choose = mAnswerPressed; // the answers take the presses; the advance action is theirs to confirm
+			// A press on an answer chooses it; the advance action chooses the focused one (the pad's
+			// or the keys' way through the answers), the first when none has the focus.
+			request.Choose = mAnswerPressed;
+			if ((request.Choose < 0) && advancePressed)
+			{
+				request.Choose = 0;
+				for (int i < mAnswers.Count)
+				{
+					if (mAnswers[i].IsFocused)
+						request.Choose = (int32)i;
+				}
+			}
 			mAnswerPressed = -1;
 			return request;
 		}
@@ -200,6 +211,12 @@ class DialogueStockBox
 	{
 		if (index < mAnswers.Count)
 			mAnswerPressed = (int32)index;
+	}
+	/// Focuses answer `index`, as the pad's or the keys' moves do.
+	public void Focus(int index)
+	{
+		if (index < mAnswers.Count)
+			mAnswers[index].FocusElement();
 	}
 	/// Presses the box, as a click on it does.
 	public void PressBox() => mBoxPressed = true;

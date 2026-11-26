@@ -333,6 +333,10 @@ class DialogueRunTests
 		Test.Assert(stockBox.AnswerCount == 2);
 		Test.Assert(stockBox.AnswerText(1) == "Go.");
 		Test.Assert(stockBox.AnswerText(2).IsEmpty, "none past the last");
+		Test.Assert(stockBox.Update(0.0f, false).Choose == -1, "no press, no answer");
+		Test.Assert(stockBox.Update(0.0f, true).Choose == 0, "the advance action: the focused answer, the first");
+		stockBox.Focus(1);
+		Test.Assert(stockBox.Update(0.0f, true).Choose == 1, "the advance action: the focused answer");
 		stockBox.Press(1); // Go.
 		r.Frame(0.0f);
 		Test.Assert(r.Runner.Waiting == .Command);
