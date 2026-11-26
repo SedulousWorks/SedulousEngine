@@ -209,7 +209,7 @@ static class BehaviorLifecycleTests
 		play.Start();
 		play.Step();
 		Test.Assert(play.PropFloat(first, "seen") == 2.0f, "the global read on the first generation");
-		let generation = play.Host.Generation;
+		let generation = play.Host.Scripts.Generation;
 
 		// A class the run has not loaded yet: its first use builds the next generation.
 		let latecomer = play.Class("Latecomer", """
@@ -221,7 +221,7 @@ static class BehaviorLifecycleTests
 			""");
 		let late = play.AddBehavior(latecomer, "late");
 		play.Step(2);
-		Test.Assert(play.Host.Generation > generation, "the latecomer built a new generation");
+		Test.Assert(play.Host.Scripts.Generation > generation, "the latecomer built a new generation");
 		Test.Assert(play.Prop(late, "updates").AsInt >= 1, "and runs");
 		Test.Assert(!play.BehaviorOf(first).Faulted, "the earlier behaviour still reads its global");
 		Test.Assert(play.PropFloat(first, "seen") == 2.0f);
@@ -356,8 +356,8 @@ static class BehaviorLifecycleTests
 		Test.Assert(play.Host.Instantiate(broken, .Entity) == null);
 		Test.Assert(play.Host.Instantiate(later, .Entity) != null, "a class after the broken one loads");
 		Test.Assert(play.Host.Instantiate(good, .Entity) != null, "and one before it still does");
-		Test.Assert(play.Host.ModuleOf("Broken").IsEmpty, "the broken class is not kept");
-		Test.Assert(play.Host.ModuleOf("Good") != play.Host.ModuleOf("Later"), "each in its own module");
+		Test.Assert(play.Host.Scripts.ModuleOf("Broken").IsEmpty, "the broken class is not kept");
+		Test.Assert(play.Host.Scripts.ModuleOf("Good") != play.Host.Scripts.ModuleOf("Later"), "each in its own module");
 	}
 
 	/// A class compiled from source loads the files it includes beside it, as the cook compiled
@@ -380,14 +380,14 @@ static class BehaviorLifecycleTests
 		let made = play.Host.Instantiate(tripler, .Entity);
 		Test.Assert(made != null);
 		var r = ScriptValue.Nil;
-		Test.Assert(play.Host.Runtime.Invoke(made, "get", default, ref r) && (r.AsInt == 6));
+		Test.Assert(play.Host.Scripts.Runtime.Invoke(made, "get", default, ref r) && (r.AsInt == 6));
 
-		let generation = play.Host.Generation;
+		let generation = play.Host.Scripts.Generation;
 		lib.Source.Set("int thrice(int x) { return x * 30; }\n");
 		let again = play.Host.Instantiate(tripler, .Entity);
 		Test.Assert(again != null);
-		Test.Assert(play.Host.Generation > generation, "the edited include loaded again");
-		Test.Assert(play.Host.Runtime.Invoke(again, "get", default, ref r) && (r.AsInt == 60));
+		Test.Assert(play.Host.Scripts.Generation > generation, "the edited include loaded again");
+		Test.Assert(play.Host.Scripts.Runtime.Invoke(again, "get", default, ref r) && (r.AsInt == 60));
 	}
 
 	/// A reload's previous module stays while an instance made before it reads its globals, and
@@ -401,15 +401,15 @@ static class BehaviorLifecycleTests
 		let v2 = play.Class("Keeper", "int kSeen = 2;\nclass Keeper { int read() { return kSeen; } }");
 		let fresh = play.Host.Instantiate(v2, .Entity);
 		Test.Assert((old != null) && (fresh != null));
-		Test.Assert(play.Host.ReplacedModuleCount == 1, "kept: the old instance reads its module's globals");
+		Test.Assert(play.Host.Scripts.ReplacedModuleCount == 1, "kept: the old instance reads its module's globals");
 		var r = ScriptValue.Nil;
-		Test.Assert(play.Host.Runtime.Invoke(old, "read", default, ref r) && (r.AsInt == 1));
-		Test.Assert(play.Host.Runtime.Invoke(fresh, "read", default, ref r) && (r.AsInt == 2));
+		Test.Assert(play.Host.Scripts.Runtime.Invoke(old, "read", default, ref r) && (r.AsInt == 1));
+		Test.Assert(play.Host.Scripts.Runtime.Invoke(fresh, "read", default, ref r) && (r.AsInt == 2));
 
-		play.Host.Runtime.Release(old);
+		play.Host.Scripts.Runtime.Release(old);
 		play.Host.Advance(0.0f);
-		Test.Assert(play.Host.ReplacedModuleCount == 0, "gone once nothing runs it");
-		Test.Assert(play.Host.Runtime.Invoke(fresh, "read", default, ref r) && (r.AsInt == 2));
+		Test.Assert(play.Host.Scripts.ReplacedModuleCount == 0, "gone once nothing runs it");
+		Test.Assert(play.Host.Scripts.Runtime.Invoke(fresh, "read", default, ref r) && (r.AsInt == 2));
 	}
 
 	[Test]
@@ -430,7 +430,7 @@ static class BehaviorLifecycleTests
 		Test.Assert(play.PropInt(e, "version") == 2, "the new class");
 		Test.Assert(play.PropFloat(e, "speed") == 9, "the override re-applied");
 		Test.Assert(play.PropInt(e, "starts") == 1, "a fresh instance started once");
-		Test.Assert(play.Host.Generation == 2, "v1, v2: one generation per change");
+		Test.Assert(play.Host.Scripts.Generation == 2, "v1, v2: one generation per change");
 	}
 
 	[Test]
@@ -457,19 +457,19 @@ static class BehaviorLifecycleTests
 	{
 		let play = scope ScriptPlayScene();
 		let first = play.Class("Walker", "class Walker { Entity self; Scene@ scene; int steps = 1; }", "Walker.as");
-		Test.Assert(play.Host.EnsureClassLoaded(first));
+		Test.Assert(play.Host.Scripts.EnsureClassLoaded(first));
 		play.Free(first);
 
 		let other = play.Class("Runner", "class Runner { Entity self; Scene@ scene; }", "Runner.as");
-		Test.Assert(play.Host.EnsureClassLoaded(other), "a new class loads past a freed product");
+		Test.Assert(play.Host.Scripts.EnsureClassLoaded(other), "a new class loads past a freed product");
 
 		let rebuilt = play.Class("Walker", "class Walker { Entity self; Scene@ scene; int steps = 2; }", "Walker.as");
 		let walker = play.Host.Instantiate(rebuilt, .Entity);
 		Test.Assert(walker != null);
 		var steps = ScriptValue.Nil;
-		Test.Assert(play.Host.Runtime.GetProperty(walker, "steps", ref steps));
+		Test.Assert(play.Host.Scripts.Runtime.GetProperty(walker, "steps", ref steps));
 		Test.Assert(steps.AsInt == 2, "the rebuilt source compiled");
-		play.Host.Runtime.Release(walker);
+		play.Host.Scripts.Runtime.Release(walker);
 	}
 
 	/// A run host goes when nothing pins it: a stopped scene with no game script holding the
@@ -502,7 +502,7 @@ static class BehaviorLifecycleTests
 
 		// Nothing pins the host: the stop tears it down.
 		play.Stop();
-		Test.Assert(!play.Host.IsActive, "the host went with the run");
+		Test.Assert(!play.Host.Scripts.IsActive, "the host went with the run");
 
 		// The next play: a fresh module, so the global starts over, and so do the numbers.
 		play.Start();
@@ -513,10 +513,10 @@ static class BehaviorLifecycleTests
 		// A game script's hold keeps the host through a stop; releasing it lets the host go.
 		play.Host.HasGameScriptHold = true;
 		play.Stop();
-		Test.Assert(play.Host.IsActive, "held by the game script");
+		Test.Assert(play.Host.Scripts.IsActive, "held by the game script");
 		play.Host.HasGameScriptHold = false;
 		play.Host.CheckTeardown();
-		Test.Assert(!play.Host.IsActive, "released, it goes");
+		Test.Assert(!play.Host.Scripts.IsActive, "released, it goes");
 	}
 
 	/// A run host's Advance is its scripts' clock, called once a frame by whoever owns the host:
@@ -528,7 +528,7 @@ static class BehaviorLifecycleTests
 		let bare = scope BehaviorRunHost();
 		bare.Advance(0.25f);
 		bare.Advance(0.5f);
-		Test.Assert(!bare.IsActive, "advancing makes no runtime");
+		Test.Assert(!bare.Scripts.IsActive, "advancing makes no runtime");
 
 		let play = scope ScriptPlayScene();
 		let waiter = play.Class("Waiter", """
@@ -618,18 +618,18 @@ static class BehaviorLifecycleTests
 		context.BeginFrame(1.0f / 60.0f);
 		context.Update(1.0f / 60.0f);
 		context.PostUpdate(1.0f / 60.0f);
-		Test.Assert(run.Host.IsActive, "the run's runtime made");
-		Test.Assert(!scripts.Host.IsActive, "the default host's not");
+		Test.Assert(run.Host.Scripts.IsActive, "the run's runtime made");
+		Test.Assert(!scripts.Host.Scripts.IsActive, "the default host's not");
 		let behavior = classes.BehaviorOf(entity, 0, owned);
 		Test.Assert(behavior.Instance != null);
 		var updates = ScriptValue.Nil;
-		Test.Assert(run.Host.Runtime.GetProperty(behavior.Instance, "updates", ref updates));
+		Test.Assert(run.Host.Scripts.Runtime.GetProperty(behavior.Instance, "updates", ref updates));
 		Test.Assert(updates.AsInt == 1);
 
 		owned.Stop();
 		inRun.DestroyScene(owned);
 		loose.DestroyScene(outside);
-		Test.Assert(!run.Host.IsActive, "nothing pins it once its scene is gone");
+		Test.Assert(!run.Host.Scripts.IsActive, "nothing pins it once its scene is gone");
 		scenes.UnregisterManager(inRun);
 		scenes.UnregisterManager(loose);
 		context.Shutdown();

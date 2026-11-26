@@ -96,7 +96,7 @@ class SequenceScriptTests
 
 		let instance = level.GetSystem<BehaviorComponentManager>().Get(actor).Behaviors[0].Instance;
 		Test.Assert(instance != null, "the director runs");
-		let runtime = run.Instance.RunHost.Runtime;
+		let runtime = run.Instance.RunHost.Scripts.Runtime;
 		var heard = ScriptValue.Nil;
 		runtime.GetProperty(instance, "heard", ref heard);
 		Test.Assert(heard.AsString == "cue gate", scope $"heard '{heard.AsString}'");

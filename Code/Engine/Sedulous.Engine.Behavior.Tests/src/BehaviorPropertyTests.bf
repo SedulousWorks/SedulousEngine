@@ -57,7 +57,7 @@ static class BehaviorPropertyTests
 
 		bool Refused(StringView source, StringView reason)
 		{
-			let runtime = play.Host.EnsureRuntime(Sedulous.Script.AngelScript.AngelScriptBackend.cLanguage);
+			let runtime = play.Host.Scripts.EnsureRuntime(Sedulous.Script.AngelScript.AngelScriptBackend.cLanguage);
 			Test.Assert(runtime.Compile("refused", "Guest.as", source));
 			let record = scope BehaviorClassSource();
 			let problems = scope List<String>();

@@ -36,8 +36,8 @@ class BehaviorSubsystem : Subsystem, ISceneObserver
 	{
 		if (host == null)
 			return;
-		delete host.Configure;
-		host.Configure = new (runtime) =>
+		delete host.Scripts.Configure;
+		host.Scripts.Configure = new (runtime) =>
 			{
 				if (Configure != null)
 					Configure(runtime);
@@ -52,7 +52,7 @@ class BehaviorSubsystem : Subsystem, ISceneObserver
 	/// instance's host and the default one go independently.
 	public void MaybeTeardownRunHost(BehaviorRunHost host)
 	{
-		if ((host == null) || !host.IsActive || host.HasGameScriptHold)
+		if ((host == null) || !host.Scripts.IsActive || host.HasGameScriptHold)
 			return;
 		for (let system in mSystems)
 		{
@@ -69,7 +69,7 @@ class BehaviorSubsystem : Subsystem, ISceneObserver
 
 	/// A debugger on the default host: the scenes outside every run. A run (an application run's)
 	/// is debugged through its own host.
-	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mHost.RequestDebugger(configurator);
+	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mHost.Scripts.RequestDebugger(configurator);
 	public bool IsDebugPaused => mHost.IsDebugPaused;
 
 	/// The default host's coroutines move with the context's time: `deltaTime` is already
@@ -84,7 +84,7 @@ class BehaviorSubsystem : Subsystem, ISceneObserver
 	{
 		if (Manager == null)
 			return;
-		mHost.Configure = new (runtime) =>
+		mHost.Scripts.Configure = new (runtime) =>
 			{
 				if (Configure != null)
 					Configure(runtime);

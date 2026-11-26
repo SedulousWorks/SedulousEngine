@@ -18,7 +18,7 @@ namespace Sedulous.Engine.Behavior;
 /// hash, u64 property hash, u8 kind, the value by its kind }.
 extension BehaviorComponentManager
 {
-	private ScriptRuntime LiveRuntime => ((ScriptSystem != null) && (ScriptSystem.Host != null)) ? ScriptSystem.Host.Runtime : null;
+	private ScriptRuntime LiveRuntime => ((ScriptSystem != null) && (ScriptSystem.Host != null)) ? ScriptSystem.Host.Scripts.Runtime : null;
 
 	public bool WriteReplicatedState(EntityHandle entity, List<uint8> outState)
 	{

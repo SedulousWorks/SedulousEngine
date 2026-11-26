@@ -15,7 +15,7 @@ extension GameEditorPage
 	{
 		if (mApplicationRun == null)
 			return;
-		mApplicationRun.RunHost.RequestDebugger(new [=this](debugger) =>
+		mApplicationRun.RunHost.Scripts.RequestDebugger(new [=this](debugger) =>
 		{
 			debugger.SetListener(mDebugListener);
 			for (let breakpoint in mContext.Breakpoints)

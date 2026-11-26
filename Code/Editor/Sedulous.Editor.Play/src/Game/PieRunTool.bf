@@ -726,7 +726,7 @@ static class PieRunTool
 		outValue = null;
 		let scripts = scene.GetSystem<BehaviorComponentManager>();
 		let system = scene.GetSystem<BehaviorSystem>();
-		let runtime = ((system != null) && (system.Host != null)) ? system.Host.Runtime : null;
+		let runtime = ((system != null) && (system.Host != null)) ? system.Host.Scripts.Runtime : null;
 		if ((scripts == null) || (runtime == null) || !scripts.HasComponent(handle))
 			return false;
 		let component = (BehaviorComponent*)scripts.GetComponentAddress(handle);

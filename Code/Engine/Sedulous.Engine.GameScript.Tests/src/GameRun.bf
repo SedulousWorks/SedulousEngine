@@ -66,7 +66,7 @@ class GameRun
 		Resources.AddFactory(mPrefabs);
 
 		// What the application does: the host wired to the surface, the run's verbs backed.
-		Instance.RunHost.Configure = new (runtime) =>
+		Instance.RunHost.Scripts.Configure = new (runtime) =>
 			{
 				runtime.Bind(Surface);
 				ClearAndDeleteItems!(runtime.Problems);
@@ -139,7 +139,7 @@ class GameRun
 	/// the behavior kind `kind` (an entity's behavior is Entity).
 	public BehaviorClass Class(StringView className, StringView source, BehaviorKind kind = .Run)
 	{
-		let runtime = Instance.RunHost.EnsureRuntime(AngelScriptBackend.cLanguage);
+		let runtime = Instance.RunHost.Scripts.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
 		let module = scope $"harvest#{mHarvested++}";
 		let ok = runtime.Compile(module, "Game.as", source);
@@ -180,7 +180,7 @@ class GameRun
 	{
 		var v = ScriptValue.Nil;
 		if (Game != null)
-			Instance.RunHost.Runtime.GetProperty(Game, name, ref v);
+			Instance.RunHost.Scripts.Runtime.GetProperty(Game, name, ref v);
 		return v;
 	}
 	public int PropInt(StringView name) => (int)Prop(name).AsInt;

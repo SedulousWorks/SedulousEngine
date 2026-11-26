@@ -463,7 +463,7 @@ class DialogueScriptTests
 			EngineScriptSurface.Populate(Surface);
 			DialogueScriptSurface.Populate(Surface);
 			Run = new .();
-			Run.RunHost.Configure = new (runtime) =>
+			Run.RunHost.Scripts.Configure = new (runtime) =>
 				{
 					runtime.Bind(Surface);
 					for (let p in runtime.Problems)
@@ -500,7 +500,7 @@ class DialogueScriptTests
 		/// Compiles and harvests a class through the run's own runtime, as the cook does.
 		public BehaviorClass Class(StringView className, StringView source, BehaviorKind kind)
 		{
-			let runtime = Run.RunHost.EnsureRuntime(AngelScriptBackend.cLanguage);
+			let runtime = Run.RunHost.Scripts.EnsureRuntime(AngelScriptBackend.cLanguage);
 			Test.Assert(runtime != null);
 			let module = scope $"harvest#{mHarvested++}";
 			let ok = runtime.Compile(module, "Game.as", source);
@@ -585,7 +585,7 @@ class DialogueScriptTests
 		let instance = level.GetSystem<BehaviorComponentManager>().Get(actor).Behaviors[0].Instance;
 		Test.Assert(instance != null, "the director runs");
 		var log = ScriptValue.Nil;
-		r.Run.RunHost.Runtime.GetProperty(instance, "log", ref log);
+		r.Run.RunHost.Scripts.Runtime.GetProperty(instance, "log", ref log);
 		Test.Assert(log.AsString == "|playing|The Keeper: Welcome back.|Stay. or Go.|cue lights out|ended gate met", scope $"heard '{log.AsString}'");
 		Test.Assert(!r.Runner.IsPlaying);
 		Test.Assert(Math.Abs(level.GetLocalTransform(actor).Position.X - 10.0f) < 1e-3f, "the keeper, bound to the director, walked");

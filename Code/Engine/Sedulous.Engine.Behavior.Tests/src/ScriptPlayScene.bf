@@ -48,7 +48,7 @@ class ScriptPlayScene
 			sRegistered = true;
 		}
 		EngineScriptSurface.Populate(mSurface);
-		Host.Configure = new (runtime) =>
+		Host.Scripts.Configure = new (runtime) =>
 			{
 				runtime.Bind(mSurface);
 				// The binding's known gaps (the lists) are not this test's business.
@@ -80,7 +80,7 @@ class ScriptPlayScene
 	/// resource manager would own it.
 	public BehaviorClass Class(StringView className, StringView source, StringView sourceName = "Test.as", BehaviorKind kind = .Entity)
 	{
-		let runtime = Host.EnsureRuntime(AngelScriptBackend.cLanguage);
+		let runtime = Host.Scripts.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
 		let module = scope $"harvest#{mHarvested++}";
 		let ok = runtime.Compile(module, sourceName, source);
@@ -166,7 +166,7 @@ class ScriptPlayScene
 		}
 	}
 
-	public ScriptRuntime Runtime => Host.Runtime;
+	public ScriptRuntime Runtime => Host.Scripts.Runtime;
 
 	/// A property of the entity's first behaviour's instance.
 	public ScriptValue Prop(EntityHandle entity, StringView name, Scene into = null)

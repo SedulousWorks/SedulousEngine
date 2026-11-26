@@ -643,9 +643,9 @@ class ApplicationRun : RunBase, IRunInput
 	/// false with no script running or no such property.
 	public bool GetRunBehaviorProperty(StringView name, ref ScriptValue value)
 	{
-		if ((mGame == null) || (mRunHost.Runtime == null))
+		if ((mGame == null) || (mRunHost.Scripts.Runtime == null))
 			return false;
-		return mRunHost.Runtime.GetProperty(mGame, name, ref value);
+		return mRunHost.Scripts.Runtime.GetProperty(mGame, name, ref value);
 	}
 
 	/// Why the game script stopped on its own; empty when it did not (see mRunBehaviorFault).
@@ -671,8 +671,8 @@ class ApplicationRun : RunBase, IRunInput
 
 	/// A step debugger over this run: its behaviours and its game script. The configurator
 	/// applies the breakpoints and takes the pointer; TAKES OWNERSHIP of the delegate.
-	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mRunHost.RequestDebugger(configurator);
-	public IScriptDebugger Debugger => mRunHost.Debugger;
+	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mRunHost.Scripts.RequestDebugger(configurator);
+	public IScriptDebugger Debugger => mRunHost.Scripts.Debugger;
 	public bool IsDebugPaused => mRunHost.IsDebugPaused;
 
 	/// Compiles and launches the game script: the class's constructor, then `onStart()` when
@@ -728,10 +728,10 @@ class ApplicationRun : RunBase, IRunInput
 		if (mGame != null)
 		{
 			InvokeGame(BehaviorSystem.cOnStop, default);
-			if ((mGame != null) && (mRunHost.Runtime != null))
+			if ((mGame != null) && (mRunHost.Scripts.Runtime != null))
 			{
-				mRunHost.Runtime.CancelCoroutinesFor(mGame);
-				mRunHost.Runtime.Release(mGame);
+				mRunHost.Scripts.Runtime.CancelCoroutinesFor(mGame);
+				mRunHost.Scripts.Runtime.Release(mGame);
 			}
 			mGame = null;
 			mGameClass = null;
@@ -814,7 +814,7 @@ class ApplicationRun : RunBase, IRunInput
 	/// `Update` is fine. A fault stops the script.
 	private void InvokeGame(StringView handler, Span<ScriptValue> args)
 	{
-		let runtime = mRunHost.Runtime;
+		let runtime = mRunHost.Scripts.Runtime;
 		if ((mGame == null) || (runtime == null) || !runtime.HasMethod(mGame, handler, args.Length))
 			return;
 		var result = ScriptValue.Nil;
@@ -825,7 +825,7 @@ class ApplicationRun : RunBase, IRunInput
 		GlobalLog(.Error, scope $"Run: the game script faulted in {handler}; stopped");
 		mRunBehaviorFault.Set(scope $"faulted in {handler}");
 		let problems = scope String();
-		mRunHost.ReportProblems(problems);
+		mRunHost.Scripts.ReportProblems(problems);
 		if (!problems.IsEmpty)
 			mRunBehaviorFault.AppendF(": {}", problems);
 		let faulted = mGame;

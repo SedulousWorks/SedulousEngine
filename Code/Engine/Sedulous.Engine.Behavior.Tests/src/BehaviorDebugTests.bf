@@ -37,12 +37,12 @@ static class BehaviorDebugTests
 
 		// The debugger, requested through the host with its breakpoint: line 8 is `marks++`.
 		IScriptDebugger captured = null;
-		play.Host.RequestDebugger(new [&] (debugger) =>
+		play.Host.Scripts.RequestDebugger(new [&] (debugger) =>
 			{
 				debugger.SetBreakpoint("Test.as", 8);
 				captured = debugger;
 			});
-		Test.Assert((captured != null) && (play.Host.Debugger === captured), "attached to the live runtime");
+		Test.Assert((captured != null) && (play.Host.Scripts.Debugger === captured), "attached to the live runtime");
 
 		// The next tick: a's update hits the breakpoint mid call. The frame ends there for
 		// scripts: b is not ticked, nothing faulted, and the run is paused.

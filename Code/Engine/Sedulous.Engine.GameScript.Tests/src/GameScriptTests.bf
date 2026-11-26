@@ -236,13 +236,13 @@ static class GameScriptTests
 		Test.Assert(!run.PropBool("ready"));
 
 		run.Step(20);
-		for (let p in run.Instance.RunHost.Runtime.Problems)
+		for (let p in run.Instance.RunHost.Scripts.Runtime.Problems)
 			Console.WriteLine("  {}", p);
 		Test.Assert(run.PropBool("ready"), "the scene is live once the load completed");
 		Test.Assert(run.PropInt("entities") == 3, "the current scene is the loaded level");
 		Test.Assert(run.Instance.SceneReady && (run.Instance.GetScene().EntityCount == 3));
 		Test.Assert(run.Instance.Scenes.IsActive(run.Instance.GetScene()), "activated by the policy");
-		Test.Assert(run.Instance.RunHost.Runtime.CoroutineCount == 0, "the boot coroutine finished");
+		Test.Assert(run.Instance.RunHost.Scripts.Runtime.CoroutineCount == 0, "the boot coroutine finished");
 	}
 
 	[Test]
@@ -376,7 +376,7 @@ static class GameScriptTests
 		b.Step();
 		Test.Assert(!a.PropBool("ready"), "a's Run is a's instance");
 		Test.Assert(b.PropBool("ready"), "b's Run is b's");
-		Test.Assert(a.Instance.RunHost.Runtime !== b.Instance.RunHost.Runtime, "one gameplay context per run");
+		Test.Assert(a.Instance.RunHost.Scripts.Runtime !== b.Instance.RunHost.Scripts.Runtime, "one gameplay context per run");
 	}
 
 	[Test]
@@ -986,8 +986,8 @@ static class GameScriptTests
 		application.RegisterService(idleInput);
 		application.RegisterService(idleSave);
 		application.RegisterService(appOnly);
-		delete run.Instance.RunHost.Configure;
-		run.Instance.RunHost.Configure = new [=](runtime) =>
+		delete run.Instance.RunHost.Scripts.Configure;
+		run.Instance.RunHost.Scripts.Configure = new [=](runtime) =>
 			{
 				runtime.Bind(surface);
 				ClearAndDeleteItems!(runtime.Problems);
@@ -996,7 +996,7 @@ static class GameScriptTests
 		defer { run.Instance.RunHost.Subsystems = null; }
 
 		Test.Assert(!run.Instance.RunBehaviorRunning);
-		let runtime = run.Instance.RunHost.EnsureRuntime(AngelScriptBackend.cLanguage);
+		let runtime = run.Instance.RunHost.Scripts.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
 		let context = runtime.Context;
 		Test.Assert(context.FindService(typeof(InputFacade)) === run.Instance.[Friend]mInputFacade, "the run's Input");

@@ -86,7 +86,7 @@ class AnimationWorld
 	/// Compiles and harvests a class through the run's own runtime, as ContactWorld does.
 	public BehaviorClass Class(StringView className, StringView source)
 	{
-		let runtime = Scripts.Host.EnsureRuntime(AngelScriptBackend.cLanguage);
+		let runtime = Scripts.Host.Scripts.EnsureRuntime(AngelScriptBackend.cLanguage);
 		Test.Assert(runtime != null);
 		let module = scope $"harvest#{mHarvested++}";
 		let ok = runtime.Compile(module, "Test.as", source);
@@ -125,7 +125,7 @@ class AnimationWorld
 	public ScriptValue Prop(EntityHandle entity, StringView name)
 	{
 		var value = ScriptValue.Nil;
-		let runtime = Scripts.Host.EnsureRuntime(AngelScriptBackend.cLanguage);
+		let runtime = Scripts.Host.Scripts.EnsureRuntime(AngelScriptBackend.cLanguage);
 		runtime.GetProperty(BehaviorOf(entity).Instance, name, ref value);
 		return value;
 	}

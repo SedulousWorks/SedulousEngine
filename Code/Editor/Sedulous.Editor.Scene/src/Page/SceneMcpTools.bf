@@ -1347,7 +1347,7 @@ static class SceneMcpTools
 			if ((behavior.Instance != null) && (scriptClass != null))
 			{
 				let system = scene.GetSystem<BehaviorSystem>();
-				let runtime = ((system != null) && (system.Host != null)) ? system.Host.Runtime : null;
+				let runtime = ((system != null) && (system.Host != null)) ? system.Host.Scripts.Runtime : null;
 				if (runtime != null)
 				{
 					let live = JsonValue.MakeObject();

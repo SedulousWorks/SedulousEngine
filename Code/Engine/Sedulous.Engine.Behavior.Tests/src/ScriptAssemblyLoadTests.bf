@@ -102,7 +102,7 @@ static class ScriptAssemblyLoadTests
 		let host = scope BehaviorRunHost();
 		let instance = host.Instantiate(mover, .Entity);
 		Test.Assert(instance != null, "made from the loaded image");
-		let runtime = host.Runtime as ImageRuntime;
+		let runtime = host.Scripts.Runtime as ImageRuntime;
 		Test.Assert(runtime != null);
 		Test.Assert(runtime.Compiles == 0, "its source never compiled");
 		Test.Assert(runtime.Modules.Count == 1);
@@ -113,14 +113,14 @@ static class ScriptAssemblyLoadTests
 
 		// The same image is already loaded. Another file of its project changes the image, not the
 		// class's source, and the class loads again for it.
-		Test.Assert(host.EnsureClassLoaded(mover));
+		Test.Assert(host.Scripts.EnsureClassLoaded(mover));
 		Test.Assert(runtime.Modules.Count == 1, "loaded once");
 		assembly.Image.Add(0x90);
-		Test.Assert(host.EnsureClassLoaded(mover));
+		Test.Assert(host.Scripts.EnsureClassLoaded(mover));
 		Test.Assert(runtime.Modules.Count == 2, "a changed image loads again");
 		Test.Assert(runtime.LastImage.Count == 3);
 		assembly.Symbols.Add(0x43);
-		Test.Assert(host.EnsureClassLoaded(mover));
+		Test.Assert(host.Scripts.EnsureClassLoaded(mover));
 		Test.Assert(runtime.Modules.Count == 3, "and so do changed symbols");
 
 		// A class built into no assembly compiles its source, which this language refuses.
@@ -129,7 +129,7 @@ static class ScriptAssemblyLoadTests
 		loose.ClassName.Set("Loose");
 		loose.SourceName.Set("Loose.si");
 		loose.Source.Set("class Loose");
-		Test.Assert(!host.EnsureClassLoaded(loose));
+		Test.Assert(!host.Scripts.EnsureClassLoaded(loose));
 		Test.Assert(runtime.Compiles == 1, "compiled, as any class with no assembly is");
 		Test.Assert(runtime.Modules.Count == 3);
 	}
