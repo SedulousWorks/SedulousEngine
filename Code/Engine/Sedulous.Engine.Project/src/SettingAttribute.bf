@@ -8,7 +8,8 @@ namespace Sedulous.Engine.Project;
 /// A field a settings editor offers: its label and, for an asset setting (a guid or a list of
 /// them), the asset type it takes and what unset means. The Project Settings dialog builds its
 /// rows from these and the MCP tools their arguments, so a field added with one is offered by
-/// both rather than by whichever hand list remembered it. A count's bounds are its `Range`; a
+/// both rather than by whichever hand list remembered it. A count's or a number's bounds are its
+/// `Range`; a colour is a Float4 marked `AsColor`; a
 /// choice's enum reflects its cases (`[Reflect(.StaticFields)]`), the names it is offered by.
 /// The category names the group it shows in (the dialog's tab); none is General.
 [AttributeUsage(.Field, .ReflectAttribute, ReflectUser = .Type | .NonStaticFields)]
@@ -76,7 +77,11 @@ enum SettingKind
 	Count,
 	Flag,
 	/// An enum, by its cases' names.
-	Choice
+	Choice,
+	/// A float, within its Range when it has one.
+	Number,
+	/// A Float4 marked AsColor: red, green, blue and alpha, each 0 to 1.
+	Color
 }
 
 /// The setting fields of a type, read from its reflection.
@@ -141,6 +146,10 @@ static class SettingFields
 			kind = .Flag;
 		else if (type.IsEnum && (type.Size <= 8))
 			kind = .Choice;
+		else if (type == typeof(float))
+			kind = .Number;
+		else if ((type == typeof(Float4)) && (field.GetCustomAttribute<AsColorAttribute>() case .Ok))
+			kind = .Color;
 		else
 			return false;
 		return true;
@@ -170,6 +179,20 @@ static class SettingFields
 			least = (uint32)Math.Max(range.Min, 0.0f);
 			most = (uint32)range.Max;
 		}
+	}
+
+	/// A number's bounds: its Range; false when it has none.
+	public static bool NumberRange(FieldInfo field, out float least, out float most)
+	{
+		least = 0.0f;
+		most = 0.0f;
+		if (field.GetCustomAttribute<RangeAttribute>() case .Ok(let range))
+		{
+			least = range.Min;
+			most = range.Max;
+			return true;
+		}
+		return false;
 	}
 
 	/// A choice field's value.

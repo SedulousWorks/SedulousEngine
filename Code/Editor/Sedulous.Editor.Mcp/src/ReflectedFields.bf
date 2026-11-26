@@ -32,6 +32,8 @@ static class ReflectedFields
 		public bool Flag;
 		public int64 Choice;
 		public uint32 Number;
+		public float Real;
+		public Float4 Color;
 	}
 
 	/// An asset a field names, as {guid, path}; the path is null when the guid names nothing
@@ -46,7 +48,8 @@ static class ReflectedFields
 	}
 
 	/// The fields' values: an asset as {guid, path} (null when unset), a list as an array, a
-	/// text as text, a flag as a bool, a choice by its case's name, a count as a number.
+	/// text as text, a flag as a bool, a choice by its case's name, a count or a number as a
+	/// number, a colour as [r, g, b, a].
 	public static JsonValue ToJson(Object record, Span<FieldInfo> fields, ContentDatabase db)
 	{
 		let json = JsonValue.MakeObject();
@@ -81,6 +84,16 @@ static class ReflectedFields
 				json.Set(key, JsonValue.MakeString(name));
 			case .Count:
 				json.Set(key, JsonValue.MakeNumber(*(uint32*)address));
+			case .Number:
+				json.Set(key, JsonValue.MakeNumber(*(float*)address));
+			case .Color:
+				let color = *(Float4*)address;
+				let channels = JsonValue.MakeArray();
+				channels.Add(JsonValue.MakeNumber(color.X));
+				channels.Add(JsonValue.MakeNumber(color.Y));
+				channels.Add(JsonValue.MakeNumber(color.Z));
+				channels.Add(JsonValue.MakeNumber(color.W));
+				json.Set(key, channels);
 			}
 		}
 		return json;
@@ -124,6 +137,15 @@ static class ReflectedFields
 				else
 					text.AppendF("{}: {} to {}", setting.Label, least, most);
 				schema.Integer(key, text);
+			case .Number:
+				if (SettingFields.NumberRange(field, let least, let most))
+					text.AppendF("{}: {} to {}", setting.Label, least, most);
+				else
+					text.Append(setting.Label);
+				schema.Number(key, text);
+			case .Color:
+				text.AppendF("{}: [r, g, b] or [r, g, b, a], each 0 to 1", setting.Label);
+				schema.Arr(key, "number", text);
 			}
 		}
 	}
@@ -163,7 +185,8 @@ static class ReflectedFields
 
 	/// Checks every argument that names one of `fields` against its kind: an asset must exist
 	/// in `db` and be of the setting's type (an asset list's entries once each), a count within
-	/// its range, a choice one of its cases, a flag a bool. The changes, OWNED by the caller, or
+	/// its range, a number within its range when it has one, a colour three or four channels of 0
+	/// to 1, a choice one of its cases, a flag a bool. The changes, OWNED by the caller, or
 	/// false with the refusal.
 	public static bool Check(JsonValue arguments, Span<FieldInfo> fields, ContentDatabase db, List<Change> outChanges, String outError)
 	{
@@ -243,6 +266,33 @@ static class ReflectedFields
 					return false;
 				}
 				change.Number = (uint32)number;
+			case .Number:
+				let bounded = SettingFields.NumberRange(field, let least, let most);
+				let number = value.AsNumber(0.0);
+				if (!value.IsNumber || (bounded && ((number < least) || (number > most))))
+				{
+					if (bounded)
+						outError.AppendF("`{}` takes a number from {} to {}", key, least, most);
+					else
+						outError.AppendF("`{}` takes a number", key);
+					return false;
+				}
+				change.Real = (float)number;
+			case .Color:
+				float[4] channels = .(0.0f, 0.0f, 0.0f, 1.0f); // three channels: opaque
+				bool valid = value.IsArray && ((value.Count == 3) || (value.Count == 4));
+				for (int i = 0; valid && (i < value.Count); i++)
+				{
+					let channel = value.At(i);
+					valid = channel.IsNumber && (channel.AsNumber(-1.0) >= 0.0) && (channel.AsNumber(-1.0) <= 1.0);
+					channels[i] = (float)channel.AsNumber(0.0);
+				}
+				if (!valid)
+				{
+					outError.AppendF("`{}` takes a colour as [r, g, b] or [r, g, b, a], each 0 to 1", key);
+					return false;
+				}
+				change.Color = .(channels[0], channels[1], channels[2], channels[3]);
 			}
 		}
 		return true;
@@ -275,6 +325,10 @@ static class ReflectedFields
 				SettingFields.WriteChoice(record, change.Field, change.Choice);
 			case .Count:
 				*(uint32*)address = change.Number;
+			case .Number:
+				*(float*)address = change.Real;
+			case .Color:
+				*(Float4*)address = change.Color;
 			}
 		}
 	}

@@ -273,7 +273,8 @@ at `Plugins/<Game>` enabled in the project, or adds to it the parts it lacks, as
 Native Code does; it never overwrites code, and the editor's Project > Build Project builds it into
 the project's own editor and player. A loaded plugin reports its
 `settings`, and `plugin_settings_set` (`id`, `settings` by name, each as `project_settings_set`
-takes its kind) changes them, checked in full first, then saved. An entry whose plugin is not
+takes its kind; a plugin's settings may also be numbers, checked against their range, and colours,
+`[r, g, b]` or `[r, g, b, a]` with each channel 0 to 1) changes them, checked in full first, then saved. An entry whose plugin is not
 loaded keeps its settings as written: no tool reads or changes them. A loaded plugin may serve
 tools of its own: `tools/list` shows them while it is loaded (each host enables the open project's
 plugins when it opens the project), and none takes a name the engine's tools hold. `project_health`

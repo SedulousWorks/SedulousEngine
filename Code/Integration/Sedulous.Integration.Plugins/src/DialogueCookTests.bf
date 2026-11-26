@@ -141,6 +141,7 @@ static class DialogueCookTests
 		AssetWriteTools.Register(server, session, importers, operations);
 		AssetCreateTools.Register(server, session, creators, operations);
 		ProjectOpenTools.Register(server, session, owner);
+		PluginTools.Register(server, session);
 		pluginTools.AttachServer(server, session);
 
 		let text = scope String();
@@ -276,6 +277,49 @@ static class DialogueCookTests
 			let failing = JsonValue.Parse(text);
 			defer delete failing;
 			Test.Assert(failing.Get("failed").AsInt() == 2, text);
+		}
+
+		// Its settings as the MCP tools read and set them: numbers and colours too.
+		{
+			Test.Assert(Call(server, "plugin_list", JsonValue.MakeObject(), text..Clear()), text);
+			let listed = JsonValue.Parse(text);
+			defer delete listed;
+			let settings = listed.Get("plugins").At(0).Get("settings");
+			Test.Assert(settings.Get("typingSpeed")?.AsNumber() == 40.0, text);
+			Test.Assert(settings.Get("fadeSeconds")?.AsNumber() == 0.5, text);
+			Test.Assert(settings.Get("fadeColor")?.Count == 4, text);
+			Test.Assert(settings.Get("fadeColor").At(3).AsNumber() == 1.0, text);
+		}
+		bool SetSettings(StringView name, JsonValue value, String outText)
+		{
+			let values = JsonValue.MakeObject();
+			values.Set(name, value);
+			let arguments = Arguments("id", "dialogue");
+			arguments.Set("settings", values);
+			return Call(server, "plugin_settings_set", arguments, outText);
+		}
+		JsonValue Channels(params double[] values)
+		{
+			let array = JsonValue.MakeArray();
+			for (let value in values)
+				array.Add(JsonValue.MakeNumber(value));
+			return array;
+		}
+		Test.Assert(!SetSettings("fadeSeconds", JsonValue.MakeNumber(50.0), text..Clear()));
+		Test.Assert(text.Contains("`fadeSeconds` takes a number from 0 to 10"), text);
+		Test.Assert(!SetSettings("fadeSeconds", JsonValue.MakeString("slow"), text..Clear()));
+		Test.Assert(!SetSettings("fadeColor", JsonValue.MakeString("white"), text..Clear()));
+		Test.Assert(text.Contains("`fadeColor` takes a colour as [r, g, b] or [r, g, b, a], each 0 to 1"), text);
+		Test.Assert(!SetSettings("fadeColor", Channels(1.0, 1.0), text..Clear()), "too few channels");
+		Test.Assert(!SetSettings("fadeColor", Channels(1.0, 1.0, 2.0), text..Clear()), "a channel past 1");
+		Test.Assert(SetSettings("fadeSeconds", JsonValue.MakeNumber(2.0), text..Clear()), text);
+		Test.Assert(SetSettings("fadeColor", Channels(1.0, 0.5, 0.25), text..Clear()), text);
+		{
+			let held = session.Plugins.Settings("dialogue") as DialogueSettings;
+			Test.Assert(held != null);
+			Test.Assert(held.FadeSeconds == 2.0f);
+			Test.Assert((held.FadeColor.X == 1.0f) && (held.FadeColor.Y == 0.5f) && (held.FadeColor.Z == 0.25f));
+			Test.Assert(held.FadeColor.W == 1.0f, "three channels: opaque");
 		}
 
 		// The plugin's tools: the checks over every file, without cooking, and one file's conversations.
