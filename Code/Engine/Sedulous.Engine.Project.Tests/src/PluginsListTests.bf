@@ -133,12 +133,16 @@ class PluginsListTests
 		defer delete webXml;
 		let staleXml = Manifest("stale", "Linux64", "0.0");
 		defer delete staleXml;
+		let later = scope StatusPart("later");
+		let laterXml = Manifest("later", "Linux64");
+		defer delete laterXml;
 
 		let subsystems = scope SubsystemManager();
 		let host = scope PluginHost(subsystems, .Player, "0.1.0", "Linux64");
 		Test.Assert(host.AddLinked(hereXml, scope PluginPart[](here)) case .Ok);
 		Test.Assert(host.AddLinked(webXml, scope PluginPart[](webOnly)) case .Ok);
 		Test.Assert(host.AddLinked(staleXml, scope PluginPart[](stale)) case .Ok);
+		Test.Assert(host.AddLinked(laterXml, scope PluginPart[](later)) case .Ok);
 		let entries = scope List<EnabledPlugin>();
 		defer { ClearAndDeleteItems!(entries); }
 		entries.Add(Entry("here", "Linux64", "Win64"));
@@ -168,6 +172,15 @@ class PluginsListTests
 		Test.Assert(missing.State == .Missing);
 		Test.Assert(missing.Reason.Contains("is not in this build"));
 		Test.Assert(PluginState.Missing.Name == "missing");
+
+		// Linked here, and enabled after the host loaded the project's plugins.
+		let enabledLater = Entry("later");
+		defer delete enabledLater;
+		let pending = scope PluginStatus();
+		PluginStatus.Of(enabledLater, host, pending);
+		Test.Assert(pending.State == .Pending);
+		Test.Assert(pending.Reason.Contains("loads when the project next opens"));
+		Test.Assert(PluginState.Pending.Name == "pending");
 
 		let noHost = scope PluginStatus();
 		PluginStatus.Of(entries[0], null, noHost);

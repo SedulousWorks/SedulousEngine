@@ -14,6 +14,8 @@ enum PluginState : uint8
 	case Refused;
 	/// Not in this host: its entry and settings are kept as written.
 	case Missing;
+	/// In this host, enabled since it opened the project: it loads when the project next opens.
+	case Pending;
 
 	/// Its name as the tools report it.
 	public StringView Name
@@ -25,6 +27,7 @@ enum PluginState : uint8
 			case .Loaded: return "loaded";
 			case .NotEnabled: return "notEnabled";
 			case .Refused: return "refused";
+			case .Pending: return "pending";
 			default: return "missing"; // Missing
 			}
 		}
@@ -74,6 +77,13 @@ class PluginStatus
 		{
 			outStatus.State = .Refused;
 			outStatus.Reason.Set(refusal.Reason);
+			return;
+		}
+		if (host.Knows(id) && (refusal == null))
+		{
+			// The host offers it, but did not load the project's plugins with it enabled.
+			outStatus.State = .Pending;
+			outStatus.Reason.AppendF("plugin '{}' was enabled after the project opened: it loads when the project next opens", id);
 			return;
 		}
 		outStatus.State = .Missing;

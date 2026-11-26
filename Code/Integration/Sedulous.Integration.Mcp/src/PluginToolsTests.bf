@@ -270,6 +270,10 @@ static class PluginToolsTests
 			defer delete enabled;
 			Test.Assert(enabled.Get("plugins").Count == 1);
 			Test.Assert(enabled.Get("plugins").At(0).Get("platforms").At(0).AsString() == PluginHost.HostPlatform);
+			// This host offers it but loaded the project's plugins before it was enabled: it is
+			// pending, loaded when the project next opens, not missing from the build.
+			Test.Assert(enabled.Get("plugins").At(0).Get("state").AsString() == "pending");
+			Test.Assert(enabled.Get("plugins").At(0).Get("reason").AsString().Contains("loads when the project next opens"));
 		}
 		{
 			let enabled = CallOk(server, "plugin_enable", EnableArgs("steam", "Linux64", "Win64"));
