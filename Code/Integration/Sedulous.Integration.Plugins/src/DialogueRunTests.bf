@@ -316,6 +316,7 @@ class DialogueRunTests
 
 		Test.Assert(r.Runner.Play(r.Store.Gate, "gate"));
 		Test.Assert(stockBox.IsShown);
+		Test.Assert(stockBox.IsStyled, "its sheet over the box alone");
 		Test.Assert(gui.Screens.Top === stockBox.ScreenNode);
 		Test.Assert(stockBox.ShownName == "The Keeper");
 		Test.Assert(stockBox.ShownText.IsEmpty);
@@ -330,12 +331,15 @@ class DialogueRunTests
 		r.Frame(0.0f);
 		Test.Assert(r.Runner.Waiting == .Choice);
 		Test.Assert(stockBox.AnswerCount == 2);
+		Test.Assert(stockBox.AnswerText(1) == "Go.");
+		Test.Assert(stockBox.AnswerText(2).IsEmpty, "none past the last");
 		stockBox.Press(1); // Go.
 		r.Frame(0.0f);
 		Test.Assert(r.Runner.Waiting == .Command);
 		Test.Assert(r.Runner.Done());
 		Test.Assert(!r.Runner.IsPlaying);
 		Test.Assert(!stockBox.IsShown, "gone with the conversation");
+		Test.Assert(!stockBox.IsStyled);
 		Test.Assert(gui.Screens.Top == null, "popped");
 	}
 

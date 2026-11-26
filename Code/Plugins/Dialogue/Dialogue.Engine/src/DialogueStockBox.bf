@@ -46,10 +46,10 @@ class DialogueStockBox
 	/// The plugin's sheet for it.
 	public const String cSheet = """
 		.dialogue-screen { flex-grow: 1; flex-direction: column; justify-content: end; align-items: center; padding: 24px; }
-		.dialogue-box { flex-direction: row; align-items: start; gap: 18px; width: 920px; padding: 18px; background-color: rgba(14, 14, 20, 0.9); border: 2px solid #5A5468; border-radius: 14px; }
+		.dialogue-box { flex-direction: row; align-items: start; gap: 18px; width: 100%; max-width: 920px; padding: 18px; background-color: rgba(14, 14, 20, 0.9); border: 2px solid #5A5468; border-radius: 14px; }
 		.dialogue-box.portrait-right { flex-direction: row-reverse; }
 		.dialogue-portrait { width: 120px; height: 120px; border-radius: 10px; }
-		.dialogue-words { flex-direction: column; flex-grow: 1; gap: 8px; }
+		.dialogue-words { flex-direction: column; flex-grow: 1; flex-shrink: 1; min-width: 0px; gap: 8px; }
 		.dialogue-name { font-size: 22px; color: #F2D9A6; }
 		.dialogue-text { font-size: 21px; color: #F4F0E8; white-space: normal; }
 		.dialogue-answers { flex-direction: column; gap: 6px; margin-top: 4px; }
@@ -76,6 +76,8 @@ class DialogueStockBox
 	/// How many show.
 	private float mTyped = 0.0f;
 	private bool mBoxPressed = false;
+	/// Whether its sheet took: it is set once the box is in the GUI.
+	private bool mStyled = false;
 	private int32 mAnswerPressed = -1;
 
 	public this(DialogueSettings settings)
@@ -143,6 +145,7 @@ class DialogueStockBox
 			mScreen.ReleaseRef();
 		}
 		mScreen = null;
+		mStyled = false;
 		mBox = null;
 		mPortrait = null;
 		mName = null;
@@ -184,10 +187,14 @@ class DialogueStockBox
 	// === For tests ===
 
 	public bool IsShown => mScreen != null;
+	/// Whether its sheet took (it is set once the box is in the GUI).
+	public bool IsStyled => mStyled;
 	public bool IsTyping => (mScreen != null) && (mTyped < (float)mLength);
 	public StringView ShownText => (mText != null) ? mText.Text : "";
 	public StringView ShownName => ((mName != null) && mName.Displayed) ? mName.Text : "";
 	public int AnswerCount => mAnswers.Count;
+	/// Answer `index`'s text; empty past the last.
+	public StringView AnswerText(int index) => (index < mAnswers.Count) ? mAnswers[index].Text : "";
 	/// Presses answer `index`, as a click on it does.
 	public void Press(int index)
 	{
@@ -228,9 +235,10 @@ class DialogueStockBox
 			mBox.AddClass("portrait-right");
 		mBox.AddEventListener(.MouseClick, new [&] (e) => { mBoxPressed = true; });
 		stack.Push(screen);
+		// Once it is in the GUI: a subtree's sheet is kept by the tree's element reference.
 		let sheet = scope StyleSheet();
 		CSSParser.Parse(css, sheet);
-		gui.Styles.SetSubtreeSheet(screen, sheet);
+		mStyled = gui.Styles.SetSubtreeSheet(screen, sheet);
 		return true;
 	}
 
