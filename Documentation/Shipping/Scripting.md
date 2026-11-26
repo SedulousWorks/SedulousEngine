@@ -283,7 +283,9 @@ asset is: a property tagged `"asset:DialogueResource"`.
   `onDialogueChoice(DialogueChoiceNotice@ notice)` (`AnswerCount()`, `Answer(i)`),
   `onDialogueCommand(DialogueCommandNotice@ notice)` (its `Name`, `Waits`, `Leaves`, and its
   arguments by name: `Text(name)`, `Number(name)`, `Asset(name)`, `Entity(name)`, `Has(name)`) and
-  `onDialogueEnded(DialogueEndedNotice@ notice)` (`Conversation`, `Stopped`, `Left`).
+  `onDialogueEnded(DialogueEndedNotice@ notice)` (`Conversation`, `Stopped`, `Left`; a line a
+  sequence showed ends with no `Conversation`, so a game that acts on a conversation's end checks
+  it).
 - A notice lasts as long as its handler: keep what you need from it (its text, an answer), not the
   notice. A notice kept past its handler reads as gone (`IsValid()` is false).
 - A script outside every run (an editor tool) finds a `Dialogue` that refuses every call.
